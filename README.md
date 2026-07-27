@@ -170,9 +170,10 @@ HadesBot/
 │   │   ├── konfigurasyon.py      # Ortam değişkenleri yönetimi
 │   │   ├── veritabani.py         # SQLite bağlantı ve bağlam yönetimi
 │   │   ├── guvenlik.py           # JWT, bcrypt, RBAC kimlik doğrulama
-│   │   ├── istek_sinirlayici.py  # Rate limiting yapılandırması
-│   │   ├── gunlukleyici.py       # JSON formatlı yapılandırılmış loglama
-│   │   └── onbellek.py           # LRU bellek içi önbellek
+│   │   ├── istek_sinirlayici.py     # Rate limiting yapılandırması
+│   │   ├── gunlukleyici.py          # JSON formatlı yapılandırılmış loglama
+│   │   ├── onbellek.py              # LRU bellek içi önbellek
+│   │   └── guvenlik_basliklari.py   # HTTP güvenlik başlıkları middleware'i
 │   ├── modeller/                 # Veri modelleri ve şemalar
 │   │   ├── veritabani_modelleri.py  # 8 tablo + FTS5 + tetikleyiciler
 │   │   └── semalar.py            # Pydantic istek/yanıt modelleri
@@ -200,13 +201,12 @@ HadesBot/
 | Faz 1 | Ortam kurulumu, Docker altyapısı, güvenlik, bağımlılıklar | Tamamlandı |
 | Faz 2 | SQLite veritabanı, FTS5, veri modelleri, önbellek | Tamamlandı |
 | Faz 3 | Excel içe aktarma, metin parçalama, sürümleme | Beklemede |
-| Faz 3.5 | Güvenlik sertleştirmesi (input validasyon, JWT refresh, bağımlılık taraması) | Beklemede |
 | Faz 4 | Vektör gömmeleri, eş anlamlı terim haritası | Beklemede |
 | Faz 5 | Hibrit arama, RRF, Cross-Encoder yeniden sıralama | Beklemede |
 | Faz 6 | DeepSeek API, SSE akış, oturum hafızası | Beklemede |
-| Faz 7 | API uç noktaları ve iş mantığı servisleri | Beklemede |
-| Faz 8 | Kurumsal Kurşuni ön yüz (HTML/CSS/JS) | Beklemede |
-| Faz 9 | Geri bildirim döngüsü, yönetici onayı, analitik | Beklemede |
+| Faz 7 | API uç noktaları, iş mantığı servisleri, API güvenliği | Beklemede |
+| Faz 8 | Geri bildirim döngüsü, yönetici onayı, analitik | Beklemede |
+| Faz 9 | Kurumsal Kurşuni ön yüz (HTML/CSS/JS) | Beklemede |
 | Faz 10 | Test, sızma testi, güvenlik taraması, dokümantasyon | Beklemede |
 
 ---
