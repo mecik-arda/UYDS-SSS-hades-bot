@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  uyds_sohbet_botu_uygulamasi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uyds_asistani
+    ports:
+      - "${UYGULAMA_PORT:-8000}:8000"
+    volumes:
+      - ./veriler:/uygulama/veriler
+    environment:
+      - DEEPSEEK_API_ANAHTARI=${DEEPSEEK_API_ANAHTARI:-}
+      - VERITABANI_YOLU=${VERITABANI_YOLU:-veriler/veri_deposu.db}
+      - GUVEN_ESIGI=${GUVEN_ESIGI:-0.70}
+      - VEKTOR_MODEL_ADI=${VEKTOR_MODEL_ADI:-paraphrase-multilingual-MiniLM-L12-v2}
+      - JWT_GIZLI_ANAHTARI=${JWT_GIZLI_ANAHTARI:-varsayilan_gizli_anahtar_degistir}
+      - JWT_ALGORITMASI=${JWT_ALGORITMASI:-HS256}
+      - JWT_OMRU_DAKIKA=${JWT_OMRU_DAKIKA:-30}
+      - ISTEK_SINIRI=${ISTEK_SINIRI:-100}
+      - ISTEK_PENCERESI_SANIYE=${ISTEK_PENCERESI_SANIYE:-60}
+      - UYGULAMA_PORT=${UYGULAMA_PORT:-8000}
+    restart: unless-stopped
