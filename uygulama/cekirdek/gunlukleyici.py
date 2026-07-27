@@ -1,9 +1,26 @@
 import logging
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+_HASSAS_KELIME_KALIPLARI = [
+    (r'(api[_-]?anahtar[_\s]*[:=]\s*)(\S+)', r'\1[GIZLI]'),
+    (r'(sifre[_\s]*[:=]\s*)(\S+)', r'\1[GIZLI]'),
+    (r'(token[_\s]*[:=]\s*)(\S+)', r'\1[GIZLI]'),
+    (r'(secret[_\s]*[:=]\s*)(\S+)', r'\1[GIZLI]'),
+    (r'(Authorization:\s*Bearer\s+)(\S+)', r'\1[GIZLI]'),
+    (r'(DEEPSEEK_API_ANAHTARI\s*=\s*)(\S+)', r'\1[GIZLI]'),
+    (r'(JWT_GIZLI_ANAHTARI\s*=\s*)(\S+)', r'\1[GIZLI]'),
+]
+
+
+def hassas_verileri_maskele(mesaj: str) -> str:
+    for kalip, degistirme in _HASSAS_KELIME_KALIPLARI:
+        mesaj = re.sub(kalip, degistirme, mesaj, flags=re.IGNORECASE)
+    return mesaj
 
 
 class YapilandirilmisFormatlayici(logging.Formatter):
@@ -12,7 +29,7 @@ class YapilandirilmisFormatlayici(logging.Formatter):
             "zaman_damgasi": datetime.now(timezone.utc).isoformat(),
             "duzey": kayit.levelname,
             "modul": kayit.name,
-            "mesaj": kayit.getMessage(),
+            "mesaj": hassas_verileri_maskele(kayit.getMessage()),
         }
         return json.dumps(giris, ensure_ascii=False)
 

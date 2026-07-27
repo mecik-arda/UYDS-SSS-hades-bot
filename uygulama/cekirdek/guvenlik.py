@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Optional
+from typing import Annotated, Dict, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -13,6 +13,11 @@ from uygulama.cekirdek.veritabani import baglam_yoneticisi
 
 sifre_baglami = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_semasi = OAuth2PasswordBearer(tokenUrl="/api/v1/kimlik-dogrulama/giris")
+
+_basarisiz_giris_sayaci: Dict[str, int] = {}
+_basarisiz_giris_zamani: Dict[str, datetime] = {}
+_HESAP_KILITLEME_ESIK = 5
+_HESAP_KILITLEME_SURE_DAKIKA = 15
 
 
 class BelirtecVerisi(BaseModel):
@@ -110,3 +115,30 @@ async def mevcut_yoneticiyi_al(
             detail="Bu islem icin yonetici yetkisi gereklidir",
         )
     return mevcut_kullanici
+
+
+def brute_force_kontrol(kullanici_adi: str) -> None:
+    simdi = datetime.now(timezone.utc)
+    if kullanici_adi in _basarisiz_giris_zamani:
+        kilit_zamani = _basarisiz_giris_zamani[kullanici_adi]
+        if (simdi - kilit_zamani).total_seconds() < _HESAP_KILITLEME_SURE_DAKIKA * 60:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Cok fazla basarisiz giris denemesi. Hesabiniz gecici olarak kilitlendi. Lutfen 15 dakika sonra tekrar deneyin.",
+            )
+        else:
+            _basarisiz_giris_sayaci.pop(kullanici_adi, None)
+            _basarisiz_giris_zamani.pop(kullanici_adi, None)
+
+
+def basarisiz_giris_kaydet(kullanici_adi: str) -> None:
+    simdi = datetime.now(timezone.utc)
+    mevcut_sayi = _basarisiz_giris_sayaci.get(kullanici_adi, 0)
+    _basarisiz_giris_sayaci[kullanici_adi] = mevcut_sayi + 1
+    if _basarisiz_giris_sayaci[kullanici_adi] >= _HESAP_KILITLEME_ESIK:
+        _basarisiz_giris_zamani[kullanici_adi] = simdi
+
+
+def basarili_giris_sifirla(kullanici_adi: str) -> None:
+    _basarisiz_giris_sayaci.pop(kullanici_adi, None)
+    _basarisiz_giris_zamani.pop(kullanici_adi, None)

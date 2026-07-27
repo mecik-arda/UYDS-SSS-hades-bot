@@ -1,4 +1,5 @@
 veriler/
+yedekler/
 data/
 *.xlsx
 *.xls
@@ -8,7 +9,6 @@ data/
 *.sqlite
 *.sqlite3
 .env
-.skills/
 __pycache__/
 *.pyc
 .venv/

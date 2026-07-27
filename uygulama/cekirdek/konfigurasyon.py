@@ -13,6 +13,12 @@ class Konfigurasyon(BaseSettings):
     ISTEK_SINIRI: int = Field(default=100)
     ISTEK_PENCERESI_SANIYE: int = Field(default=60)
     UYGULAMA_PORT: int = Field(default=8000)
+    MESAJ_MAKS_KARAKTER: int = Field(default=2000)
+    DEEPSEEK_MAKS_TOKEN: int = Field(default=4096)
+    GUNLUK_MESAJ_KOTASI: int = Field(default=500)
+    OTURUM_MAKS_MESAJ: int = Field(default=50)
+    ISTEK_GOVDE_MAKS_BOYUT: int = Field(default=1048576)
+    DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800)
 
     model_config = {
         "env_file": ".env",
