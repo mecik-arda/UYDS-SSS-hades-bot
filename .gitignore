@@ -13,6 +13,9 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.skills/
+/modeller/
+.faz4_test*
 plan.md
 kurallar.md
 hata_duzeltme_kaydi.md

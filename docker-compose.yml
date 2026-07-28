@@ -11,10 +11,14 @@ services:
     cap_drop:
       - ALL
     pids_limit: 256
+    read_only: true
     ports:
       - "${UYGULAMA_PORT:-8000}:8000"
     volumes:
       - ./veriler:/uygulama/veriler
+      - ./modeller:/uygulama/modeller:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
     environment:
       - ORTAM_PROFILI=${ORTAM_PROFILI:-prod}
       - DEEPSEEK_API_ANAHTARI=${DEEPSEEK_API_ANAHTARI:-}
@@ -22,6 +26,12 @@ services:
       - VERITABANI_SIFRELEME_ANAHTARI=${VERITABANI_SIFRELEME_ANAHTARI:-}
       - GUVEN_ESIGI=${GUVEN_ESIGI:-0.70}
       - VEKTOR_MODEL_ADI=${VEKTOR_MODEL_ADI:-paraphrase-multilingual-MiniLM-L12-v2}
+      - VEKTOR_MODEL_YOLU=${VEKTOR_MODEL_YOLU:-modeller/paraphrase-multilingual-MiniLM-L12-v2}
+      - VEKTOR_BOYUTU=${VEKTOR_BOYUTU:-384}
+      - VEKTOR_TOPLU_ISLEM_BOYUTU=${VEKTOR_TOPLU_ISLEM_BOYUTU:-32}
+      - ES_ANLAMLILAR_YOLU=${ES_ANLAMLILAR_YOLU:-veriler/es_anlamlilar.json}
+      - HF_HOME=/tmp/huggingface
+      - TORCH_HOME=/tmp/torch
       - JWT_GIZLI_ANAHTARI=${JWT_GIZLI_ANAHTARI:-}
       - JWT_ALGORITMASI=${JWT_ALGORITMASI:-HS256}
       - JWT_OMRU_DAKIKA=${JWT_OMRU_DAKIKA:-30}
@@ -53,6 +63,7 @@ services:
     cap_drop:
       - ALL
     pids_limit: 64
+    read_only: true
     command:
       - python
       - yedekle.py
@@ -61,6 +72,8 @@ services:
       - ${YEDEKLEME_ARALIGI_SAAT:-24}
     volumes:
       - ./veriler:/uygulama/veriler
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
     environment:
       - MAKSIMUM_YEDEK_SAYISI=${MAKSIMUM_YEDEK_SAYISI:-10}
       - YEDEKLEME_ARALIGI_SAAT=${YEDEKLEME_ARALIGI_SAAT:-24}
@@ -69,3 +82,5 @@ services:
         condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 30s
+    healthcheck:
+      disable: true

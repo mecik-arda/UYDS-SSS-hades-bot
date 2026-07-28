@@ -1,0 +1,26 @@
+{
+  "madde numarası": [
+    "madde no",
+    "kayıt numarası"
+  ],
+  "modül": [
+    "uygulama bölümü",
+    "sistem modülü"
+  ],
+  "sıkça sorulan sorular": [
+    "sss",
+    "soru cevap"
+  ],
+  "uyds": [
+    "uyds sistemi",
+    "uyds uygulaması"
+  ],
+  "yapılacak işlem": [
+    "planlanan işlem",
+    "yapılacak"
+  ],
+  "yapılan işlem": [
+    "gerçekleştirilen işlem",
+    "yapılan"
+  ]
+}

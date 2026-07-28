@@ -641,3 +641,107 @@ Excel hucrelerinde `@` baslangicini reddeden formul enjeksiyonu korumasi kaldiri
 - Gercek UYDS dosyasi temiz veritabanina aktarildi; 2.398 aktif kayit, 4.075 parca, 2.398 FTS satiri ve 2.398 aktif surum uyeligi dogrulandi.
 - Gercek dosyanin tekrar aktarimi yinelenen olarak algilandi, kuru calisma 2.398 kaydi korunan olarak raporladi ve Surum 1 geri alma akisi kayip olmadan yeni Surum 2'yi olusturdu.
 - Yedek, SHA-256 manifesti ve geri yukleme akisi bagimsiz gecici veritabaninda basarili oldu.
+
+---
+
+## Faz 4 Uygulama ve Guvenlik Dogrulama Turu - 28.07.2026
+
+### Yuksek Seviye - Model tedarik zincirinin revizyon ve dosya turu acisindan sinirlanmamasi
+
+Vektor modelinin hareketli bir uzak depo dalindan dogrudan yuklenmesi engellendi. `paraphrase-multilingual-MiniLM-L12-v2` modeli 28 Ocak 2026 tarihli `e8f8c211226b894fcb81acc59f3b34ba3efd5f42` revizyonuna sabitlendi. Hazirlama araci yalnizca izinli JSON, tokenizer, sentencepiece ve `model.safetensors` dosyalarini indiriyor.
+
+`model.safetensors`, `tokenizer.json` ve `sentencepiece.bpe.model` dosyalari resmi LFS boyutlari ve SHA-256 ozetleriyle dogrulaniyor. Tum yerel dosyalar icin ayrica guvenlik manifesti olusturuluyor. Beklenmeyen dosya, sembolik bag, ozel model modulu, farkli mimari, farkli tokenizer sinifi veya degisen dosya ozeti model yuklenmeden once islemi durduruyor.
+
+### Yuksek Seviye - Normal model yuklemesinde dis ag erisimi riski
+
+Model servisi yalnizca dogrulanmis yerel dizini kabul ediyor. Model yuklenmeden once `HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE` ve `HF_DATASETS_OFFLINE` zorunlu olarak etkinlestiriliyor. Model hazirlama islemi vektor uretiminden ayrildi; UYDS metinleri model indirme asamasinda okunmuyor ve normal vektor uretiminde dis aga gonderilmiyor.
+
+### Orta Seviye - Vektor kayitlarinda benzersizlik ve icerik izleme eksikligi
+
+`sss_vektorleri` tablosuna `vektor_boyutu`, `metin_ozeti` ve `olusturulma_tarihi` alanlari eklendi. Parca ve model ikilisi benzersiz hale getirildi. Vektor BLOB uzunlugu `vektor_boyutu * 4` olmadan, metin ozeti bosken veya parca kimligi bulunmadan kayit eklenmesi ve guncellenmesi tetikleyicilerle reddediliyor.
+
+Eski semalardaki tekrar eden parca-model satirlarini son kaydi koruyarak temizleyen `faz4_vektor_benzersizligi_v1` migrasyonu eklendi.
+
+### Orta Seviye - Tum vektorlerin her calismada yeniden uretilmesi
+
+Metin parcalarinin SHA-256 ozetleri saklanmaya baslandi. Ilk calismada eksik vektorler uretiliyor; sonraki calismalarda model, boyut ve metin ozeti degismeyen kayitlar korunuyor. Yalnizca yeni, degisen veya gecersiz vektorler yeniden uretiliyor. Pasif SSS kayitlarina ait model vektorleri temizleniyor.
+
+### Yuksek Seviye - Tam yenilemede model hatasindan once mevcut vektorlerin silinmesi
+
+`--tumunu-yenile` akisi mevcut aktif vektorleri uretim baslamadan once siliyordu. Model yukleme veya kodlama hatasi halinde calisir veri seti kaybedilebilirdi. Tam yenileme artik aktif kayitlari silmeden tum parcalari uretim planina aliyor ve her basarili toplu islemi atomik olarak guncelliyor. Uretim basarisiz olursa henuz yenilenmemis mevcut vektorler korunuyor.
+
+### Dusuk Seviye - Kurum ici terim haritasinin yapisal dogrulamasinin bulunmamasi
+
+Yerel `veriler/es_anlamlilar.json` dosyasini ve guvenli varsayilan haritayi okuyan terim servisi eklendi. Bos, cok uzun, kontrol karakterli, yinelenen ve birden fazla grupta cakisan terimler reddediliyor.
+
+### Faz 4 Dogrulama Sonuclari
+
+- Hugging Face Temmuz 2026 guvenlik olayi resmi duyurudan dogrulandi; kamuya acik modellerde degisiklik kaniti bildirilmemesine ragmen ek tedarik zinciri onlemleri uygulandi.
+- Ilk yeniden kaydedilmis model kopyasi resmi LFS hash'iyle birebir karsilastirilamadigi icin kullanilmadan karantinaya tasindi.
+- Olaydan onceki sabit model revizyonu allowlist ile yeniden indirildi ve resmi LFS SHA-256 degerleriyle dogrulandi.
+- Model dizininde calistirilabilir kod, pickle, `.bin`, `.pt`, DLL veya betik bulunmadi.
+- Windows Defender gercek zamanli korumasi etkindi ve ozel model taramasi sifir tehdit bildirdi.
+- Model cevrimdisi modda iki metin icin 384 boyutlu ve birim normlu vektor uretti.
+- Sentetik ilk calisma 2 vektor uretti; ikinci calisma 2 vektoru korudu.
+- Sentetik tek metin degisikligi yalnizca 1 vektoru yeniledi ve pasif kaydin 1 vektorunu temizledi.
+- Basarisiz tam yenileme denemesinde mevcut vektorlerin korundugu dogrulandi.
+- Gercek UYDS dosyasindaki 2.398 aktif kaydin 4.075 parcasi 76,427 saniyede vektorlestirildi.
+- Tum gercek vektorler 384 Float32 deger, 1.536 bayt BLOB, sonlu sayilar ve birim norm acisindan dogrulandi.
+- Gercek ikinci calisma 0 yeni uretim ve 4.075 korunan vektor raporladi.
+- Eski vektor semasindaki tekrarlar temizlendi; yeni kolonlar ve benzersiz indeks veri kaybi olmadan eklendi.
+
+---
+
+## Docker Uctan Uca Denetim Duzeltmeleri - 28.07.2026
+
+### Kritik Seviye - Docker baglaminin uygulama kodunu dislamasi
+
+`.dockerignore` icindeki genis `modeller` kalibi Python paket dizinini de eslestiriyordu. Kural yalnizca kokteki `/modeller/` dizinini dislayacak bicimde daraltildi. Test onbellekleri, yerel skill dizini ve Faz 4 gecici test ciktilari da imaj baglamindan ayrildi.
+
+### Kritik Seviye - Istek boyutu middleware uygulama nesnesi uyumsuzlugu
+
+Middleware kurucusu ASGI uygulamasini kabul etmedigi halde istek sonunda tanimsiz `self.uygulama` alanini cagiriyordu. Kurucu FastAPI middleware sozlesmesine uygun hale getirildi ve uygulama nesnesi acikca saklandi. Normal istekler ile siniri asan akis tabanli govdeler yeniden dogrulandi.
+
+### Yuksek Seviye - Model dizininin yanlis servise baglanmasi
+
+Salt-okunur model dizini yedekleyici servisine bagli, vektor ureten uygulama servisinde eksikti. Model baglama noktasi uygulama servisine tasindi; yedekleyiciden model ve vektor ortam degiskenleri kaldirildi.
+
+### Yuksek Seviye - Guncel olmayan bagimliliklar ve JWT kutuphanesi
+
+Uretim bagimliliklari guncel ve birbiriyle uyumlu sabit surumlere yukseltildi. `python-jose` yerine bakimi suren `PyJWT` kullanildi. Docker icindeki bagimlilik denetiminde bilinen guvenlik acigi bulunmadi; yerel `torch==2.13.0+cpu` surum eki PyPI cozumlemesi disinda kaldi.
+
+### Yuksek Seviye - Veritabani sifreleme ve acik baglanti yarisi
+
+Yalnizca surec ici kilit kullanilmasi uygulama ve yedekleyici sureclerinin ayni SQLite dosyasinda yarismasina izin veriyordu. Windows icin `msvcrt`, Linux icin `fcntl` tabanli surecler arasi dosya kilidi eklendi. Baglantilar tum omurleri boyunca paylasimli kilit, sifreleme ve sifre cozme islemleri ozel kilit tasiyor.
+
+### Yuksek Seviye - CUDA bagimliliklariyla gereksiz buyuk imaj
+
+PyTorch resmi CPU paket indeksinden kurulmaya baslandi. Imaj katmanlari yeniden duzenlendi ve dosyalar sahiplik bilgisiyle kopyalandi. Uretim imaji yaklasik 3,10 GB'den 459 MB'ye indirildi.
+
+### Orta Seviye - Yedekleyicinin yanlis HTTP healthcheck kullanmasi
+
+HTTP sunmayan zamanlanmis yedekleyici uygulama readiness rotasini sorguladigi icin surekli sagliksiz gorunuyordu. Healthcheck yalnizca uygulama servisine birakildi.
+
+### Orta Seviye - Konteyner kok dosya sistemlerinin yazilabilir olmasi
+
+Uygulama ve yedekleyici servisleri salt-okunur kok dosya sistemiyle calisacak bicimde sertlestirildi. Gerekli gecici yazma alanlari `noexec` ve `nosuid` secenekli boyut sinirli `tmpfs` olarak tanimlandi; kalici yazma yalnizca veri baglama noktasinda birakildi.
+
+### Orta Seviye - Yeni Sentence Transformers boyut API uyumsuzlugu
+
+Vektor boyutu okumasi once guncel `get_embedding_dimension` API'sini, yalnizca eski surumlerde geriye uyumlu yontemi kullanacak bicimde degistirildi. Guncel kutuphane ile model yuklemesindeki kullanimdan kaldirma uyarisi giderildi.
+
+### Docker Denetim Dogrulama Sonuclari
+
+- Temiz Docker imaji basariyla olusturuldu.
+- Uygulama konteyneri saglikli, yedekleyici HTTP healthcheck olmadan calisir durumda dogrulandi.
+- Iki serviste salt-okunur kok dosya sistemi ve non-root kullanici dogrulandi.
+- Uygulama model baglama noktasi salt-okunur, veri baglama noktasi yazilabilir olarak dogrulandi.
+- Saglik ve hazirlik rotalari 200 yaniti verdi.
+- Bir MiB sinirini asan istek govdesi 413 yaniti verdi.
+- Konteyner icinde `pip check` basarili oldu.
+- PyTorch CPU surumu ve CUDA'nin kapali oldugu dogrulandi.
+- Sabit yerel model cevrimdisi yuklendi ve 384 boyutlu birim normlu vektor uretti.
+- Gercek Excel verisi 2.398 kayit ve 4.075 parca olarak aktarildi.
+- Gercek verinin 4.075 vektoru uretildi; ikinci calisma hepsini korudu.
+- Paylasimli baglanti acikken sifreleme ozel kilidin serbest kalmasini bekledi.
+- Bagimlilik guvenlik taramasinda bilinen acik bulunmadi; yerel CPU Torch surum eki PyPI cozumlemesi disinda kaldi.

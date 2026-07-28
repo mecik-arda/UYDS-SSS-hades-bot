@@ -4,9 +4,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import bcrypt
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from pydantic import BaseModel
 
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
@@ -69,7 +69,7 @@ def belirtec_coz(belirtec: str) -> BelirtecVerisi | None:
         if kullanici_adi is None or rol is None:
             return None
         return BelirtecVerisi(kullanici_adi=kullanici_adi, rol=rol)
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None
 
 

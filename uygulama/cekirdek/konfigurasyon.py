@@ -11,6 +11,12 @@ class Konfigurasyon(BaseSettings):
     VERITABANI_SIFRELEME_ANAHTARI: str = Field(min_length=32)
     GUVEN_ESIGI: float = Field(default=0.70)
     VEKTOR_MODEL_ADI: str = Field(default="paraphrase-multilingual-MiniLM-L12-v2")
+    VEKTOR_MODEL_YOLU: str = Field(
+        default="modeller/paraphrase-multilingual-MiniLM-L12-v2"
+    )
+    VEKTOR_BOYUTU: int = Field(default=384, gt=0)
+    VEKTOR_TOPLU_ISLEM_BOYUTU: int = Field(default=32, gt=0, le=512)
+    ES_ANLAMLILAR_YOLU: str = Field(default="veriler/es_anlamlilar.json")
     JWT_GIZLI_ANAHTARI: str = Field(min_length=32)
     JWT_ALGORITMASI: str = Field(default="HS256")
     JWT_OMRU_DAKIKA: int = Field(default=30)

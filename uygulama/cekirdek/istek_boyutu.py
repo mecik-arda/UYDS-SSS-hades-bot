@@ -9,12 +9,12 @@ class IstekGovdesiBoyutuAsildi(Exception):
 class IstekGovdesiBoyutMiddleware:
     def __init__(
         self,
-        uygulama: ASGIApp,
+        app: ASGIApp,
         maksimum_boyut: int,
         dosya_yukleme_maksimum_boyutu: int,
         dosya_yukleme_yollari: set[str],
     ) -> None:
-        self.uygulama = uygulama
+        self.uygulama = app
         self.maksimum_boyut = maksimum_boyut
         self.dosya_yukleme_maksimum_boyutu = dosya_yukleme_maksimum_boyutu
         self.dosya_yukleme_yollari = dosya_yukleme_yollari

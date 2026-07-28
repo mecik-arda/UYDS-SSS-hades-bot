@@ -59,11 +59,15 @@ SSS_VEKTORLERI_TABLOSU = """
 CREATE TABLE IF NOT EXISTS sss_vektorleri (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sss_id INTEGER NOT NULL,
-    parca_id INTEGER,
+    parca_id INTEGER NOT NULL,
     vektor_verisi BLOB NOT NULL,
     model_adi TEXT NOT NULL,
+    vektor_boyutu INTEGER NOT NULL DEFAULT 384 CHECK (vektor_boyutu > 0),
+    metin_ozeti TEXT NOT NULL,
+    olusturulma_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sss_id) REFERENCES sss_kayitlari(id) ON DELETE CASCADE,
-    FOREIGN KEY (parca_id) REFERENCES sss_parcalari(id) ON DELETE CASCADE
+    FOREIGN KEY (parca_id) REFERENCES sss_parcalari(id) ON DELETE CASCADE,
+    UNIQUE (parca_id, model_adi)
 )
 """
 
@@ -290,6 +294,12 @@ VERI_SURUMU_KAYITLARI_EK_KOLONLARI = {
     "kayit_ozeti": "TEXT",
 }
 
+SSS_VEKTORLERI_EK_KOLONLARI = {
+    "vektor_boyutu": "INTEGER NOT NULL DEFAULT 384",
+    "metin_ozeti": "TEXT",
+    "olusturulma_tarihi": "DATETIME",
+}
+
 INDEX_SORGULARI = [
     """
     CREATE UNIQUE INDEX IF NOT EXISTS veri_surumleri_dosya_ozeti_benzersiz
@@ -324,6 +334,11 @@ INDEX_SORGULARI = [
     """
     CREATE INDEX IF NOT EXISTS sss_vektorleri_sss_parca_model
     ON sss_vektorleri(sss_id, parca_id, model_adi)
+    """,
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS sss_vektorleri_parca_model_benzersiz
+    ON sss_vektorleri(parca_id, model_adi)
+    WHERE parca_id IS NOT NULL
     """,
     """
     CREATE INDEX IF NOT EXISTS alternatif_sorular_durum_sss
@@ -382,6 +397,30 @@ DOGRULAMA_TETIKLEYICILERI = [
         SELECT RAISE(ABORT, 'Gecersiz geri bildirim');
     END
     """,
+    """
+    CREATE TRIGGER IF NOT EXISTS sss_vektorleri_dogrula_ekle
+    BEFORE INSERT ON sss_vektorleri
+    WHEN NEW.parca_id IS NULL
+        OR NEW.vektor_boyutu < 1
+        OR NEW.metin_ozeti IS NULL
+        OR trim(NEW.metin_ozeti) = ''
+        OR length(NEW.vektor_verisi) != NEW.vektor_boyutu * 4
+    BEGIN
+        SELECT RAISE(ABORT, 'Gecersiz SSS vektoru');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS sss_vektorleri_dogrula_guncelle
+    BEFORE UPDATE ON sss_vektorleri
+    WHEN NEW.parca_id IS NULL
+        OR NEW.vektor_boyutu < 1
+        OR NEW.metin_ozeti IS NULL
+        OR trim(NEW.metin_ozeti) = ''
+        OR length(NEW.vektor_verisi) != NEW.vektor_boyutu * 4
+    BEGIN
+        SELECT RAISE(ABORT, 'Gecersiz SSS vektoru');
+    END
+    """,
 ]
 
 DOGRULAMA_TETIKLEYICI_ADLARI = (
@@ -389,6 +428,8 @@ DOGRULAMA_TETIKLEYICI_ADLARI = (
     "sss_kayitlari_dogrula_guncelle",
     "geri_bildirim_dogrula_ekle",
     "geri_bildirim_dogrula_guncelle",
+    "sss_vektorleri_dogrula_ekle",
+    "sss_vektorleri_dogrula_guncelle",
 )
 
 TETIKLEYICI_SORGULARI = [
@@ -506,6 +547,38 @@ def _icerik_surumlerini_bir_kez_duzelt(baglanti) -> None:
     )
 
 
+def _vektor_kayitlarini_bir_kez_temizle(baglanti) -> None:
+    migrasyon_adi = "faz4_vektor_benzersizligi_v1"
+    migrasyon_var_mi = baglanti.execute(
+        """
+        SELECT 1
+        FROM sistem_migrasyonlari
+        WHERE migrasyon_adi = ?
+        """,
+        (migrasyon_adi,),
+    ).fetchone()
+    if migrasyon_var_mi:
+        return
+    baglanti.execute(
+        """
+        DELETE FROM sss_vektorleri
+        WHERE parca_id IS NULL
+            OR id NOT IN (
+                SELECT MAX(id)
+                FROM sss_vektorleri
+                GROUP BY parca_id, model_adi
+            )
+        """
+    )
+    baglanti.execute(
+        """
+        INSERT INTO sistem_migrasyonlari (migrasyon_adi)
+        VALUES (?)
+        """,
+        (migrasyon_adi,),
+    )
+
+
 def tablolari_olustur() -> None:
     with baglam_yoneticisi() as baglanti:
         for sorgu in TABLO_SORGULARI:
@@ -525,8 +598,14 @@ def tablolari_olustur() -> None:
             "veri_surumu_kayitlari",
             VERI_SURUMU_KAYITLARI_EK_KOLONLARI,
         )
+        _eksik_kolonlari_ekle(
+            baglanti,
+            "sss_vektorleri",
+            SSS_VEKTORLERI_EK_KOLONLARI,
+        )
         _arama_metnini_bir_kez_geriye_doldur(baglanti)
         _icerik_surumlerini_bir_kez_duzelt(baglanti)
+        _vektor_kayitlarini_bir_kez_temizle(baglanti)
         for sorgu in INDEX_SORGULARI:
             baglanti.execute(sorgu)
         for tetikleyici_adi in DOGRULAMA_TETIKLEYICI_ADLARI:

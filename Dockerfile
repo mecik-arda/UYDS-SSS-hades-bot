@@ -11,18 +11,20 @@ WORKDIR /uygulama
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir pip==26.1.2 setuptools==83.0.0
 
-COPY . .
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.13.0+cpu
 
-RUN chown -R uygulama_kullanicisi:uygulama_grubu /uygulama
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=uygulama_kullanicisi:uygulama_grubu . .
+
+ENV HOME=/tmp
 
 USER uygulama_kullanicisi
 
 EXPOSE 8000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/hazirlik')"
 
 CMD ["uvicorn", "uygulama.ana:uygulama", "--host", "0.0.0.0", "--port", "8000"]

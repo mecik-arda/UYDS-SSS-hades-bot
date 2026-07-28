@@ -1,4 +1,7 @@
 __pycache__
+.pytest_cache
+.skills
+.faz4_test*
 *.pyc
 *.pyo
 *.egg-info
@@ -8,6 +11,7 @@ __pycache__
 .env.prod
 .venv
 venv
+/modeller/
 .git
 .gitignore
 veriler

@@ -1,19 +1,19 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-Sürüm 1.0.0 | Faz 1-3 tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-4 tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlamak, anlamsal olarak aranabilir hale getirmek ve sonraki fazlarda kaynak kontrollü bir destek asistanına dönüştürmek amacıyla geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi ve metin parçalamayı içerir. Vektör tabanlı arama, hibrit sıralama, DeepSeek yanıt üretimi, kullanıcı API’leri ve web arayüzü henüz uygulanmamıştır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı ve yerel anlamsal vektör üretimini içerir. Vektörlerin arama sonuçlarıyla birleştirilmesi, hibrit sıralama, DeepSeek yanıt üretimi, kullanıcı API’leri ve web arayüzü henüz uygulanmamıştır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
 | Faz 1 | Ortam, Docker, yapılandırma ve güvenlik altyapısı | Tamamlandı |
 | Faz 2 | SQLite, FTS5, veri modelleri ve şifreleme | Tamamlandı |
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
-| Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Beklemede |
+| Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
 | Faz 5 | Hibrit arama, RRF ve yeniden sıralama | Beklemede |
 | Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Beklemede |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Beklemede |
@@ -25,7 +25,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 
 UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör kayıtları, günlükler, yedekler ve proje çıktıları özel kurumsal veridir. Bu dosyalar GitHub, kişisel bulut depolama, e-posta veya harici dosya paylaşım servislerine aktarılmamalıdır.
 
-`veriler/` ve `yedekler/` dizinleri sürüm kontrolü ile Docker imaj bağlamından çıkarılmıştır. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır.
+`veriler/`, `yedekler/` ve `modeller/` dizinleri sürüm kontrolünden çıkarılmıştır. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır. UYDS metinleri vektör üretimi sırasında dış servislere gönderilmez.
 
 ## Tamamlanan Özellikler
 
@@ -40,7 +40,9 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - bcrypt tabanlı parola özetleme
 - JWT oluşturma, çözme ve RBAC bağımlılık altyapısı
 - Hassas değer maskeleyen yapılandırılmış günlükleme
-- Non-root Docker kullanıcısı, capability kaldırma ve `no-new-privileges`
+- Non-root Docker kullanıcısı, salt-okunur kök dosya sistemi, capability kaldırma ve `no-new-privileges`
+- Salt-okunur model bağlama noktası ve yalnızca veri dizininde kalıcı yazma yetkisi
+- Güvenlik düzeltmeleri güncel bağımlılıklar, CPU odaklı PyTorch ve PyJWT ile sınırlandırılmış çalışma zamanı
 - Ayrı liveness ve veritabanı/FTS readiness kontrolleri
 - PID sınırı ve kontrollü kapanış süresi
 
@@ -56,6 +58,7 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - Veri sürümleri ile SSS kayıtlarını, kaynak sayfa ve satır anlık görüntüsüyle eşleyen kalıcı ilişki tablosu
 - AES-256-GCM ile doğrulanmış veritabanı şifreleme
 - PBKDF2-HMAC-SHA256 anahtar türetme
+- Bağlantı ömrü boyunca paylaşımlı, şifreleme sırasında özel süreçler arası dosya kilidi
 - Temiz kapanışta WAL checkpoint, bütünlük kontrolü ve düz metin temizliği
 - Atomik yedekleme, geri yükleme, saklama sınırı ve zamanlama
 
@@ -80,6 +83,18 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - Denetim günlüğü ve veri sürümü geçmişi
 - Paragraf, satır ve cümle sınırlarını koruyan metin parçalama
 
+### Yerel anlamsal vektörler
+
+- Olay öncesi sabit committen indirilen `paraphrase-multilingual-MiniLM-L12-v2`
+- Yalnızca JSON, tokenizer ve `safetensors` dosyalarına izin veren model allowlist’i
+- Resmî LFS SHA-256, dosya boyutu, yerel manifest ve model mimarisi doğrulaması
+- Normal çalışma sırasında zorunlu çevrimdışı model yükleme
+- Her aktif metin parçası için normalize edilmiş 384 boyutlu Float32 vektör
+- Metin SHA-256 özetiyle yalnızca yeni veya değişen parçaları işleyen artımlı üretim
+- Pasif SSS kayıtlarına ait vektörlerin temizlenmesi
+- BLOB uzunluğu, vektör boyutu ve parça-model benzersizliği için veritabanı koruması
+- Doğrulanan kurum içi terim ve eş anlamlı haritası
+
 ## Mevcut Veri Akışı
 
 ```mermaid
@@ -97,14 +112,14 @@ flowchart TD
     L --> M["SQLite aktif ve arşiv kayıtları"]
     M --> G["Mantıksal metin parçaları"]
     M --> H["FTS5 tam metin indeksi"]
-    G --> I["Faz 4 vektör üretimine hazır veri"]
+    G --> I["Çevrimdışı MiniLM vektör üretimi"]
+    I --> O["SQLite Float32 vektör BLOB kayıtları"]
 ```
 
 Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerrer bir satır elendikten sonra 2.398 benzersiz kayıt ve 4.075 metin parçası oluşturulmuştur. Gerçek içerikler ve üretilen veritabanı sürüm kontrolüne dahil edilmez.
 
 ## Planlanan Özellikler
 
-- Yerel Türkçe sentence-transformer modeli ile vektör üretimi
 - FTS5 ve kosinüs benzerliğini birleştiren hibrit arama
 - Reciprocal Rank Fusion ve Cross-Encoder yeniden sıralama
 - DeepSeek API ile yalnızca seçilen kaynaklardan yanıt üretimi
@@ -131,7 +146,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 | Parola güvenliği | bcrypt | Aktif |
 | İstek sınırlama | SlowAPI | Aktif |
 | Konteyner | Docker ve Docker Compose | Aktif |
-| Vektör gömmeleri | Sentence-Transformers ve NumPy | Faz 4 için planlandı |
+| Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
 | Yeniden sıralama | Cross-Encoder | Faz 5 için planlandı |
 | LLM istemcisi | HTTPX ve DeepSeek API | Faz 6 için planlandı |
 | Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
@@ -148,7 +163,7 @@ Yerel çalıştırma:
 - Python 3.11
 - Proje bağımlılıkları için izole sanal ortam
 
-DeepSeek API anahtarı Faz 1-3 için gerekli değildir. Anahtar, Faz 6 entegrasyonu devreye alındığında zorunlu olacaktır.
+DeepSeek API anahtarı mevcut Faz 1-4 kapsamı için gerekli değildir. Anahtar, Faz 6 entegrasyonu devreye alındığında zorunlu olacaktır.
 
 ## Kurulum
 
@@ -194,7 +209,11 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `VERITABANI_YOLU` | SQLite dosya yolu | `veriler/veri_deposu.db` |
 | `VERITABANI_SIFRELEME_ANAHTARI` | En az 32 karakterli şifreleme anahtarı | Zorunlu |
 | `GUVEN_ESIGI` | Gelecek arama güven eşiği | `0.70` |
-| `VEKTOR_MODEL_ADI` | Gelecek vektör modeli | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `VEKTOR_MODEL_ADI` | Veritabanında saklanan model kimliği | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `VEKTOR_MODEL_YOLU` | Doğrulanmış yerel model dizini | `modeller/paraphrase-multilingual-MiniLM-L12-v2` |
+| `VEKTOR_BOYUTU` | Beklenen embedding boyutu | `384` |
+| `VEKTOR_TOPLU_ISLEM_BOYUTU` | Tek model çağrısında işlenen parça sayısı | `32` |
+| `ES_ANLAMLILAR_YOLU` | Kuruma özel terim haritası | `veriler/es_anlamlilar.json` |
 | `JWT_GIZLI_ANAHTARI` | En az 32 karakterli JWT anahtarı | Zorunlu |
 | `JWT_ALGORITMASI` | JWT imza algoritması | `HS256` |
 | `JWT_OMRU_DAKIKA` | Erişim belirteci ömrü | `30` |
@@ -267,19 +286,87 @@ Kuru çalışma çıktısı toplam, eklenen, güncellenen, korunan ve arşivlene
 
 Aktarım tamamlandığında düz metin SQLite dosyası AES-256-GCM ile şifrelenir.
 
+## Yerel Vektör Modeli ve Embedding Üretimi
+
+Model hazırlama işlemi yalnızca genel model dosyalarını indirir; UYDS verisini okumaz veya dışarı göndermez. İndirme aracı model kimliğini ve olay öncesi revizyonu sabit tutar, yalnızca izinli dosyaları alır ve resmî LFS SHA-256 değerlerini doğrular:
+
+```text
+python vektor_modelini_hazirla.py
+```
+
+Model hazırlandıktan sonra aktif SSS parçalarının vektörlerini üretin:
+
+```text
+python vektorleri_olustur.py
+```
+
+Vektör durumunu modeli belleğe yüklemeden inceleyin:
+
+```text
+python vektorleri_olustur.py --durum
+```
+
+Seçili modele ait bütün aktif vektörleri yeniden üretin:
+
+```text
+python vektorleri_olustur.py --tumunu-yenile
+```
+
+Tam yenileme mevcut aktif vektörleri önceden silmez. Model yükleme veya üretim hatasında tamamlanmamış kayıtlar önceki geçerli vektörlerini korur; yalnızca başarıyla üretilen toplu işlemler atomik olarak güncellenir.
+
+Docker kullanırken model hazırlama işlemi ana makinede bir kez yapılır. `modeller/` dizini uygulama konteynerine salt-okunur bağlanır. Normal vektör üretimi `HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE` ve `HF_DATASETS_OFFLINE` değerlerini zorunlu olarak etkinleştirir.
+
 ## Uygulamayı Çalıştırma
 
 Docker:
 
 ```text
-docker compose up --build
+docker compose up --detach --build
 ```
+
+### Docker Compose servis yapısı
+
+Docker Desktop içindeki `hadesbot` satırı tek başına bir konteyner değildir. Docker Compose tarafından oluşturulan proje grubudur ve aşağıdaki iki bağımsız konteyneri birlikte gösterir:
+
+| Docker Desktop adı | Compose servisi | Görev |
+|---|---|---|
+| `uyds_asistani` | `uyds_sohbet_botu_uygulamasi` | FastAPI uygulamasını, sağlık kontrollerini, veritabanı işlemlerini ve yerel vektör modelini çalıştırır. Dışarıya `8000` portunu açar. |
+| `hadesbot-uyds_yedekleyici-1` | `uyds_yedekleyici` | Yapılandırılan aralıkta veritabanı ve kurum içi terim haritası yedeklerini oluşturur. Dışarıya HTTP portu açmaz. |
+
+İki konteyner aynı `hadesbot-uygulama:yerel` imajından oluşturulur ancak farklı komutlarla ayrı süreçler olarak çalışır. Aynı Compose ağına ve ana makinedeki `veriler/` dizinine bağlanırlar. Uygulama konteyneri ayrıca `modeller/` dizinini salt-okunur bağlar. Docker Desktop’ta `hadesbot` satırının solundaki ok kullanılarak iki konteyner ayrı ayrı görüntülenebilir.
+
+Servislerin durumunu görüntüleme:
+
+```text
+docker compose ps
+```
+
+Canlı günlükleri izleme:
+
+```text
+docker compose logs --follow
+```
+
+Konteynerleri Docker Desktop listesinde tutarak durdurma:
+
+```text
+docker compose stop
+```
+
+Konteynerleri ve Compose ağını kaldırma:
+
+```text
+docker compose down
+```
+
+`docker compose down` çalışan konteynerleri durdurur ve Docker Desktop listesinden kaldırır. Oluşturulan imajı, proje kaynaklarını ve ana makinedeki `veriler/` ile `modeller/` dizinlerini silmez. `docker compose up --detach` komutu konteynerleri yeniden oluşturup arka planda başlatır.
 
 Yerel Python:
 
 ```text
 python -m venv .venv
 .venv\Scripts\activate
+python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.13.0+cpu
 python -m pip install -r requirements.txt
 uvicorn uygulama.ana:uygulama --host 127.0.0.1 --port 8000
 ```
@@ -344,12 +431,14 @@ Her yedek dosyasının yanında `.manifest.json` uzantılı bir bütünlük mani
 
 Docker Compose içindeki `uyds_yedekleyici` servisi zamanlanmış yedeklemeyi otomatik yürütür. Geri yükleme ve elle Excel aktarımı öncesinde uygulama durdurulmalıdır.
 
+Veritabanı bağlantıları süreçler arasında paylaşımlı dosya kilidi taşır. Şifreleme ve şifre çözme işlemleri özel kilit alarak açık SQLite bağlantılarının tamamlanmasını bekler; böylece uygulama ile yedekleyici aynı veri dosyasında yarışmaz.
+
 ## Doğrulama
 
 Sözdizimi ve import derlemesi:
 
 ```text
-python -m compileall -q uygulama excel_ice_aktar.py yedekle.py
+python -m compileall -q uygulama excel_ice_aktar.py yedekle.py vektorleri_olustur.py vektor_modelini_hazirla.py
 ```
 
 Docker Compose yapılandırması:
@@ -375,6 +464,22 @@ Faz 3 doğrulamalarında:
 - Merkezi brute-force sayacı süreçler arasında ve eşzamanlı erişimde doğrulandı.
 - Şifreli kapanış sonrasında düz metin veritabanı bırakılmadı.
 
+Faz 4 doğrulamalarında:
+
+- Sabit model revizyonu ve üç büyük LFS dosyasının resmî SHA-256 değerleri doğrulandı.
+- Model dizininde çalıştırılabilir özel kod, pickle veya güvensiz ağırlık biçimi bulunmadı.
+- Windows Defender özel model taraması tehdit bulmadı.
+- Model ağ kapalıyken iki deneme metni için normalize edilmiş 384 boyutlu vektör üretti.
+- Gerçek UYDS verisindeki 4.075 parçanın tamamı güncel CPU konteynerinde 126,766 saniyede vektörleştirildi.
+- 4.075 vektörün BLOB boyutu, sonlu değerleri ve birim normu doğrulandı.
+- İkinci çalıştırma 0 yeni üretim ve 4.075 korunan vektör raporladı.
+- Metni değişen tek parçada yalnızca bir vektör yenilendi, pasif kaydın vektörü temizlendi.
+- Eski vektör şemasındaki tekrarlar temizlenerek benzersiz parça-model indeksine yükseltildi.
+- CPU odaklı Docker imajı yaklaşık 3,10 GB'den 459 MB'ye düşürüldü.
+- Konteyner bağımlılık taramasında bilinen güvenlik açığı bulunmadı; yerel `torch==2.13.0+cpu` sürüm eki PyPI çözümlemesi dışında kaldı.
+- Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
+- Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
+
 Kalıcı pytest ve benchmark paketi Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
@@ -399,9 +504,16 @@ HadesBot/
 │   ├── sablonlar/
 │   ├── servisler/
 │   │   ├── excel_yukleyici.py
-│   │   └── metin_parcalayici.py
+│   │   ├── metin_parcalayici.py
+│   │   ├── model_guvenligi.py
+│   │   ├── terim_haritasi.py
+│   │   └── vektor_servisi.py
+│   ├── varsayilanlar/
+│   │   └── es_anlamlilar.json
 │   └── statik/
 ├── excel_ice_aktar.py
+├── vektor_modelini_hazirla.py
+├── vektorleri_olustur.py
 ├── yedekle.py
 ├── Dockerfile
 ├── docker-compose.yml
@@ -418,7 +530,7 @@ Henüz oluşturulmamış `api/`, `sablonlar/`, `statik/` ve `testler/` içerikle
 ## Bilinen Sınırlamalar
 
 - Yalnızca sağlık ve hazırlık kontrolü rotaları uygulanmıştır.
-- Vektör üretimi ve anlamsal arama henüz yoktur.
+- Vektör üretimi hazırdır; FTS5 ile vektörleri birleştiren anlamsal arama Faz 5 kapsamındadır.
 - DeepSeek API çağrısı ve kaynak kontrollü yanıt üretimi henüz yoktur.
 - Kimlik doğrulama servisleri hazır olsa da HTTP giriş rotası henüz yoktur.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
