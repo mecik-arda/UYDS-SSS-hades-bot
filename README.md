@@ -149,6 +149,20 @@ python yedekle.py geri-yukle veri_deposu_YYYYMMDD_HHMMSS.db
 
 Zamanlanmış yedekleme Docker Compose içindeki `uyds_yedekleyici` servisi tarafından yürütülür. Geri yükleme öncesinde uygulama durdurulmalıdır.
 
+### Excel Verilerini İçe Aktarma
+
+Varsayılan `veriler/UYDS_SSS_Listesi.xlsx` dosyasını güvenli biçimde içe aktarın:
+```
+python excel_ice_aktar.py
+```
+
+Farklı bir `.xlsx` dosyası kullanın:
+```
+python excel_ice_aktar.py veriler/yeni_sss_surumu.xlsx
+```
+
+İçe aktarma uygulama kapalıyken çalıştırılmalıdır. Dosya MIME türü, OOXML yapısı, boyutu, makro ve formül içeriği bakımından denetlenir. Aynı dosyanın yeniden aktarımı yeni sürüm oluşturmaz; değişmiş dosyada önceki aktif kayıtlar arşivlenir, yeni veri sürümü etkinleştirilir ve işlem denetim günlüğüne kaydedilir. Standart `Kategori`, `Soru`, `Cevap`, `Kaynak Doküman` başlıkları ile mevcut UYDS kurumsal şeması desteklenir.
+
 ---
 
 ## API Uç Noktaları
@@ -173,7 +187,8 @@ Uygulama aşağıdaki güvenlik katmanlarını içermektedir:
 - **Kimlik Doğrulama:** Tüm korumalı uç noktalar JWT Bearer token ile erişim gerektirir. Token'lar yapılandırılabilir süre sonuna sahiptir.
 - **Yetkilendirme:** Kullanıcı (`KULLANICI`) ve yönetici (`YONETICI`) olmak üzere iki rol seviyesi tanımlanmıştır. Yönetici uç noktaları ek yetki kontrolüne tabidir.
 - **Kullanıcı Doğrulama:** Token çözümleme sonrası kullanıcının veritabanında varlığı ve hesap aktifliği kontrol edilir. Silinmiş veya devre dışı bırakılmış hesapların token'ları reddedilir.
-- **İstek Sınırlama:** IP tabanlı rate limiting, hizmet reddi (DoS) saldırılarına karşı koruma sağlar. Eşik değerleri `.env` üzerinden yapılandırılabilir.
+- **İstek Sınırlama:** IP tabanlı rate limiting, hizmet reddi (DoS) saldırılarına karşı koruma sağlar. Eşik değerleri `.env` üzerinden yapılandırılabilir. İstek gövdeleri bellekte biriktirilmeden akış sırasında ölçülür.
+- **Brute-force Koruması:** Kullanıcı ve IP giriş sayaçları SQLite üzerinde merkezi olarak tutulur; sayaçlar birden fazla uygulama süreci tarafından ortak kullanılır.
 - **Veritabanı Güvenliği:** Tüm SQL sorguları parametreli olarak çalıştırılır. SQLite uzantı yükleme (`enable_load_extension`) devre dışıdır.
 - **Docker İzolasyonu:** Konteyner root kullanıcısı yerine yetkisiz bir sistem kullanıcısı ile çalışır. Dosya sistemi izinleri asgari seviyede tutulur.
 - **Vektör İşlemleri:** Tüm vektör gömme işlemleri yerel olarak, çevrimdışı modda gerçekleştirilir. Hiçbir veri dış hizmetlere gönderilmez.
@@ -198,7 +213,7 @@ HadesBot/
 │   ├── modeller/                 # Veri modelleri ve şemalar
 │   │   ├── veritabani_modelleri.py  # 8 tablo + FTS5 + tetikleyiciler
 │   │   └── semalar.py            # Pydantic istek/yanıt modelleri
-│   ├── servisler/                # İş mantığı servisleri (geliştirme aşamasında)
+│   ├── servisler/                # Excel içe aktarma ve metin parçalama servisleri
 │   ├── api/                      # API rota tanımları (geliştirme aşamasında)
 │   ├── sablonlar/                # Jinja2 HTML şablonları (geliştirme aşamasında)
 │   └── statik/                   # CSS ve JavaScript (geliştirme aşamasında)
@@ -221,7 +236,7 @@ HadesBot/
 |---|---|---|
 | Faz 1 | Ortam kurulumu, Docker altyapısı, güvenlik, bağımlılıklar | Tamamlandı |
 | Faz 2 | SQLite veritabanı, FTS5, veri modelleri, önbellek | Tamamlandı |
-| Faz 3 | Excel içe aktarma, metin parçalama, sürümleme | Beklemede |
+| Faz 3 | Excel içe aktarma, metin parçalama, sürümleme | Tamamlandı |
 | Faz 4 | Vektör gömmeleri, eş anlamlı terim haritası | Beklemede |
 | Faz 5 | Hibrit arama, RRF, Cross-Encoder yeniden sıralama | Beklemede |
 | Faz 6 | DeepSeek API, SSE akış, oturum hafızası | Beklemede |

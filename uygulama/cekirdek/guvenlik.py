@@ -1,7 +1,7 @@
 import asyncio
+import hashlib
 from datetime import datetime, timedelta, timezone
-from threading import Lock
-from typing import Annotated, Dict, Optional
+from typing import Annotated
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -14,9 +14,6 @@ from uygulama.cekirdek.veritabani import baglam_yoneticisi
 
 oauth2_semasi = OAuth2PasswordBearer(tokenUrl="/api/v1/kimlik-dogrulama/giris")
 
-_basarisiz_giris_sayaci: Dict[str, int] = {}
-_basarisiz_giris_zamani: Dict[str, datetime] = {}
-_giris_sayaci_kilidi = Lock()
 _HESAP_KILITLEME_ESIK = 5
 _HESAP_KILITLEME_SURE_DAKIKA = 15
 
@@ -60,7 +57,7 @@ def erisim_belirteci_olustur(veri: BelirtecVerisi) -> str:
     return jwt.encode(odeme, konfigurasyon.JWT_GIZLI_ANAHTARI, algorithm=konfigurasyon.JWT_ALGORITMASI)
 
 
-def belirtec_coz(belirtec: str) -> Optional[BelirtecVerisi]:
+def belirtec_coz(belirtec: str) -> BelirtecVerisi | None:
     try:
         odeme = jwt.decode(
             belirtec,
@@ -76,7 +73,7 @@ def belirtec_coz(belirtec: str) -> Optional[BelirtecVerisi]:
         return None
 
 
-def _kullaniciyi_veritabanindan_al(kullanici_adi: str) -> Optional[dict]:
+def _kullaniciyi_veritabanindan_al(kullanici_adi: str) -> dict | None:
     with baglam_yoneticisi() as baglanti:
         imlec = baglanti.execute(
             "SELECT kullanici_adi, rol, aktif_mi FROM kullanicilar WHERE kullanici_adi = ?",
@@ -127,43 +124,95 @@ async def mevcut_yoneticiyi_al(
     return mevcut_kullanici
 
 
-def _giris_kimlikleri(kullanici_adi: str, ip_adresi: Optional[str]) -> list[str]:
-    kimlikler = [f"kullanici:{kullanici_adi.casefold()}"]
+def _giris_kimlikleri(kullanici_adi: str, ip_adresi: str | None) -> list[str]:
+    ham_kimlikler = [f"kullanici:{kullanici_adi.casefold()}"]
     if ip_adresi:
-        kimlikler.append(f"ip:{ip_adresi}")
-    return kimlikler
+        ham_kimlikler.append(f"ip:{ip_adresi.strip().casefold()}")
+    return [
+        hashlib.sha256(kimlik.encode("utf-8")).hexdigest()
+        for kimlik in ham_kimlikler
+    ]
 
 
-def brute_force_kontrol(kullanici_adi: str, ip_adresi: Optional[str] = None) -> None:
+def brute_force_kontrol(kullanici_adi: str, ip_adresi: str | None = None) -> None:
     simdi = datetime.now(timezone.utc)
-    with _giris_sayaci_kilidi:
+    kilitli_kimlik_var = False
+    with baglam_yoneticisi() as baglanti:
         for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
-            kilit_zamani = _basarisiz_giris_zamani.get(giris_kimligi)
-            if kilit_zamani is None:
+            satir = baglanti.execute(
+                """
+                SELECT kilitlenme_tarihi
+                FROM giris_deneme_kayitlari
+                WHERE kimlik_ozeti = ?
+                """,
+                (giris_kimligi,),
+            ).fetchone()
+            if satir is None or satir["kilitlenme_tarihi"] is None:
                 continue
+            kilit_zamani = datetime.fromisoformat(satir["kilitlenme_tarihi"])
+            if kilit_zamani.tzinfo is None:
+                kilit_zamani = kilit_zamani.replace(tzinfo=timezone.utc)
             gecen_sure = (simdi - kilit_zamani).total_seconds()
             if gecen_sure < _HESAP_KILITLEME_SURE_DAKIKA * 60:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="Cok fazla basarisiz giris denemesi. Lutfen 15 dakika sonra tekrar deneyin.",
+                kilitli_kimlik_var = True
+                continue
+            baglanti.execute(
+                """
+                DELETE FROM giris_deneme_kayitlari
+                WHERE kimlik_ozeti = ?
+                """,
+                (giris_kimligi,),
+            )
+    if kilitli_kimlik_var:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Cok fazla basarisiz giris denemesi. Lutfen 15 dakika sonra tekrar deneyin.",
+        )
+
+
+def basarisiz_giris_kaydet(
+    kullanici_adi: str,
+    ip_adresi: str | None = None,
+) -> None:
+    simdi = datetime.now(timezone.utc).isoformat()
+    with baglam_yoneticisi() as baglanti:
+        for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
+            baglanti.execute(
+                """
+                INSERT INTO giris_deneme_kayitlari (
+                    kimlik_ozeti,
+                    basarisiz_deneme_sayisi,
+                    kilitlenme_tarihi,
+                    son_deneme_tarihi
                 )
-            _basarisiz_giris_sayaci.pop(giris_kimligi, None)
-            _basarisiz_giris_zamani.pop(giris_kimligi, None)
+                VALUES (?, 1, NULL, ?)
+                ON CONFLICT(kimlik_ozeti) DO UPDATE SET
+                    basarisiz_deneme_sayisi =
+                        giris_deneme_kayitlari.basarisiz_deneme_sayisi + 1,
+                    kilitlenme_tarihi = CASE
+                        WHEN giris_deneme_kayitlari.basarisiz_deneme_sayisi + 1 >= ?
+                        THEN COALESCE(
+                            giris_deneme_kayitlari.kilitlenme_tarihi,
+                            excluded.son_deneme_tarihi
+                        )
+                        ELSE giris_deneme_kayitlari.kilitlenme_tarihi
+                    END,
+                    son_deneme_tarihi = excluded.son_deneme_tarihi
+                """,
+                (giris_kimligi, simdi, _HESAP_KILITLEME_ESIK),
+            )
 
 
-def basarisiz_giris_kaydet(kullanici_adi: str, ip_adresi: Optional[str] = None) -> None:
-    simdi = datetime.now(timezone.utc)
-    with _giris_sayaci_kilidi:
+def basarili_giris_sifirla(
+    kullanici_adi: str,
+    ip_adresi: str | None = None,
+) -> None:
+    with baglam_yoneticisi() as baglanti:
         for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
-            mevcut_sayi = _basarisiz_giris_sayaci.get(giris_kimligi, 0)
-            yeni_sayi = mevcut_sayi + 1
-            _basarisiz_giris_sayaci[giris_kimligi] = yeni_sayi
-            if yeni_sayi >= _HESAP_KILITLEME_ESIK:
-                _basarisiz_giris_zamani[giris_kimligi] = simdi
-
-
-def basarili_giris_sifirla(kullanici_adi: str, ip_adresi: Optional[str] = None) -> None:
-    with _giris_sayaci_kilidi:
-        for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
-            _basarisiz_giris_sayaci.pop(giris_kimligi, None)
-            _basarisiz_giris_zamani.pop(giris_kimligi, None)
+            baglanti.execute(
+                """
+                DELETE FROM giris_deneme_kayitlari
+                WHERE kimlik_ozeti = ?
+                """,
+                (giris_kimligi,),
+            )

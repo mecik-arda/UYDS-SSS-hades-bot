@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,23 +10,23 @@ class KaynakRozeti(BaseModel):
 
 class AramaIstegi(BaseModel):
     soru: str = Field(..., min_length=1, max_length=2000)
-    oturum_id: Optional[str] = None
+    oturum_id: str | None = None
 
 
 class AramaYaniti(BaseModel):
     soru: str
     cevap: str
     guven_skoru: float
-    kaynaklar: List[KaynakRozeti] = []
-    islem_suresi_ms: Optional[float] = None
+    kaynaklar: list[KaynakRozeti] = Field(default_factory=list)
+    islem_suresi_ms: float | None = None
 
 
 class GeriBildirimIstegi(BaseModel):
-    sss_id: Optional[int] = None
+    sss_id: int | None = None
     kullanici_sorusu: str
     verilen_cevap: str
     puan: int = Field(..., ge=1, le=5)
-    yorum: Optional[str] = None
+    yorum: str | None = None
 
 
 class GeriBildirimYaniti(BaseModel):
@@ -52,8 +51,10 @@ class AnalitikVerisi(BaseModel):
     toplam_geri_bildirim_sayisi: int
     ortalama_puan: float
     bekleyen_onay_sayisi: int
-    en_cok_sorulan_kategoriler: List[dict] = []
-    cevapsiz_kalan_sorular: List[dict] = []
+    en_cok_sorulan_kategoriler: list[dict[str, object]] = Field(
+        default_factory=list
+    )
+    cevapsiz_kalan_sorular: list[dict[str, object]] = Field(default_factory=list)
 
 
 class KimlikDogrulamaIstegi(BaseModel):
@@ -74,16 +75,16 @@ class Sayfalama(BaseModel):
 
 class BekleyenGeriBildirim(BaseModel):
     id: int
-    sss_id: Optional[int]
+    sss_id: int | None
     kullanici_sorusu: str
     verilen_cevap: str
     puan: int
-    yorum: Optional[str]
+    yorum: str | None
     durum: str
     tarih: datetime
 
 
 class BekleyenGeriBildirimListesi(BaseModel):
-    bildirimler: List[BekleyenGeriBildirim]
+    bildirimler: list[BekleyenGeriBildirim]
     toplam: int
     sayfalama: Sayfalama

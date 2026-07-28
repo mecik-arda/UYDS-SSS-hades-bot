@@ -60,8 +60,11 @@ def gunlukleyici_olustur() -> logging.Logger:
         dosya_isleyici.setLevel(yapilandirilan_seviye)
         dosya_isleyici.setFormatter(YapilandirilmisFormatlayici())
         kok_gunlukleyici.addHandler(dosya_isleyici)
-    except Exception:
-        pass
+    except Exception as hata:
+        print(
+            f"Dosya gunlukleme devre disi: {type(hata).__name__}",
+            file=sys.stderr,
+        )
 
     return kok_gunlukleyici
 

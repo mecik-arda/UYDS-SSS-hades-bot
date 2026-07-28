@@ -297,3 +297,135 @@ Duzeltme: Kullanilmayan version anahtari kaldirildi.
 - Gercek Uvicorn baslangici, `/api/saglik` 200 yaniti ve guvenlik basligi denetimi basarili.
 - Docker Compose yapilandirma dogrulamasi basarili.
 - Kalici pytest ve guvenlik tarama altyapisi plan geregi Faz 10 kapsaminda birakildi.
+
+---
+
+## Sekizinci Denetim (Uctan Uca, 8. Tur) - 28.07.2026
+
+### Kritik Hata - .gitignore Satir 18-19 ~ Bozuk encoding ve .skills/ kalintisi
+`.gitignore` dosyasinin 18. ve 19. satirlarinda `hata_duzeltme_kaydi.md.\x00s\x00k\x00i\x00l\x00l\x00s\x00/\x00\r\x00` ve `\x00` seklinde null byte iceren bozuk satirlar bulunuyor. Bu, 5. denetimde `.skills/` satirinin kaldirilmasi sirasinda olusan bir karakter kodlamasi bozulmasidir. Null byte'lar git tarafindan yanlis yorumlanabilir ve `.gitignore` davranisini bozabilir.
+Duzeltme: Bozuk satirlar tamamen temizlendi, dosya sonundaki null byte'lar kaldirildi.
+
+### Yuksek Seviye - guvenlik.py ~ Brute-force sayaclari coklu worker'da tutarsiz
+`_basarisiz_giris_sayaci` ve `_basarisiz_giris_zamani` modul seviyesinde sozlukler olarak tanimlanmis. Uvicorn birden fazla worker (`--workers N`) ile calistirildiginda her worker kendi surec alaninda bagimsiz sozluk kopyalarina sahip olur. Bu durumda brute-force korumasi worker'lar arasinda paylasilmaz ve bir saldirgan farkli worker'lara istek gondererek kisitlamayi asabilir.
+Duzeltme: Gelistirme notu olarak kaydedildi. Faz 10 kapsaminda Redis veya veritabani tabanli merkezi sayac cozumu degerlendirilmeli. Tek worker konfigurasyonunda sorun yoktur.
+
+### Orta Seviye - excel_yukleyici.py Satir 143 ~ Global mimetypes kutuphanesi degisikligi
+`mimetypes.add_type(XLSX_MIME_TIPI, ".xlsx", strict=True)` cagrisi Python'un global `mimetypes` modulunu kalici olarak degistiriyor. Bu islem thread-safe degildir ve ayni surecte calisan diger kodlari etkileyebilir.
+Duzeltme: Gelistirme notu olarak kaydedildi. `strict=True` parametresi mevcut kaydi ezmez, yalnizca eksikse ekler. Pratikte sorun olusturmaz ancak yan etkili bir islemdir.
+
+### Orta Seviye - istek_boyutu.py Satir 48-66 ~ Tam govdeyi bellekte biriktirme
+`IstekGovdesiBoyutMiddleware` sinifi, `__call__` metodunda tum istek govdesini `mesajlar` listesinde bellekte biriktiriyor. `DOSYA_YUKLEME_MAKS_BOYUT` varsayilan olarak 50MB oldugu icin, eszamanli buyuk dosya yuklemelerinde bellek tuketimi riski olusabilir.
+Duzeltme: Gelistirme notu olarak kaydedildi. Bellek tuketimi, eszamanli yukleme sayisi ve konteyner bellek limiti ile sinirlidir. Ileri fazlarda akis tabanli (streaming) dogrulama degerlendirilebilir.
+
+### Orta Seviye - veritabani_modelleri.py Satir 281-287 ~ Her baslatmada tam tablo taramasi
+`tablolari_olustur()` fonksiyonundaki `UPDATE sss_kayitlari SET arama_metni = trim(...)` sorgusu her uygulama baslangicinda tum `sss_kayitlari` tablosunu tarayip guncelliyor. 2.403 kayit icin bu ihmal edilebilir ancak veri seti buyudukce baslatma suresini uzatabilir.
+Duzeltme: Gelistirme notu olarak kaydedildi. `WHERE arama_metni IS NULL OR trim(arama_metni) = ''` kosulu bos/null degerleri hedefledigi icin pratikte yalnizca ilk baslatmada veya eksik verilerde islem yapar.
+
+### Dusuk Seviye - onbellek.py ~ lru_cache thread-safe degil
+`functools.lru_cache` coklu is parcacikli ortamlarda thread-safe degildir. Ayni anda birden fazla thread ayni fonksiyonu onbellek uzerinden cagirdiginda veri tutarsizligi olusabilir. (5. denetimden beri bekliyor.)
+Durum: Duzeltilmedi. Uvicorn'un varsayilan tek worker yapilandirmasinda (async, thread'siz) sorun olusturmaz. Ileri fazlarda `threading.Lock` sarmalayici veya `cachetools` degerlendirilebilir.
+
+### Dusuk Seviye - semalar.py Satir 2 ~ Gereksiz List import'u
+`from typing import List` Python 3.9+ yerlesik `list` tipi ile degistirilebilir. (5. denetimden beri bekliyor.)
+Durum: Duzeltilmedi. Tip uyumlulugu acisindan sorun yoktur, yalnizca stil onerisi.
+
+### Dusuk Seviye - istek_sinirlayici.py Satir 7 ~ konfigurasyon degerleri dogrudan Limiter'a gecilebilir
+`varsayilan_istek_siniri` string birlestirme ile olusturuluyor. `Limiter` sinifi varsayilan olarak bu degerleri kullanir ancak daha acik bir yapi icin dogrudan `konfigurasyon` degerleri parametre olarak gecilebilir. (5. denetimden beri bekliyor.)
+Durum: Duzeltilmedi. Mevcut yapi islevsel olarak dogrudur.
+
+### Dusuk Seviye - .dockerignore ~ README.md ve LICENSE haric degil
+`.dockerignore` dosyasinda `*.md` pattern'i olsa da `README.md` ve `LICENSE` Docker imajina kopyalaniyor. Imaj boyutuna ihmal edilebilir etkisi var. (5. denetimden beri bekliyor.)
+Durum: Duzeltilmedi.
+
+### Dusuk Seviye - requirements.txt ~ Kesin surum sabitleme (`==`)
+Tum bagimliliklar `==` ile kesin surumlere sabitlenmis. `>=` ile minimum surum belirtmek daha esnek bir yapi saglar. (5. denetimden beri bekliyor.)
+Durum: Duzeltilmedi. Guvenlik ve tekrarlanabilirlik acisindan kesin surum sabitleme Docker imajlarinda tercih edilebilir.
+
+### Dusuk Seviye - gunlukleyici.py Satir 63 ~ Sessiz hata yutma
+`except Exception: pass` satiri dosya loglama olusturma basarisiz oldugunda hicbir uyari vermiyor. Hata ayiklama sirasinda loglama sorunlarini tespit etmeyi zorlastirir.
+Durum: Duzeltilmedi. Planlanan davranis (dosya loglama basarisiz olursa konsola devam et) dogru ancak en azindan `sys.stderr` uzerine bir uyari yazilmasi faydali olabilir.
+
+---
+
+## Denetim Ozeti (8 Tur, 28.07.2026)
+
+| Denetim Turu | Kritik | Yuksek | Orta | Dusuk | Toplam Duzeltilen |
+|---|---|---|---|---|---|
+| 1. Denetim | 1 | 0 | 2 | 1 | 4 |
+| 2. Denetim | 2 | 0 | 1 | 0 | 3 |
+| 3. Denetim | 1 | 0 | 1 | 2 | 1 |
+| 4. Denetim | 1 | 0 | 0 | 1 | 2 |
+| 5. Denetim | 5 | 0 | 4 | 2 | 9 |
+| 7. Denetim | 2 | 3 | 5 | 1 | 11 |
+| 8. Denetim | 1 | 1 | 3 | 6 | 1 |
+| **Toplam** | **12** | **4** | **16** | **13** | **31** |
+
+### Bekleyen Sorunlar (8. Denetim Sonrasi)
+- 1 kritik duzeltildi (.gitignore bozuk encoding)
+- 6 dusuk seviye sorun gelistirme notu olarak bekletiliyor
+- 1 yuksek seviye sorun (coklu worker brute-force) Faz 10 kapsamina birakildi
+
+### Duzeltilen Son Hata
+19. `.gitignore` - Satir 18-19'daki bozuk encoding ve null byte'lar temizlendi (8. denetim)
+
+---
+
+## Dokuzuncu Denetim ve Bekleyen Sorunlarin Kapatilmasi - 28.07.2026
+
+### Yuksek Seviye - Coklu surecte brute-force sayac tutarsizligi
+
+Modul bellegindeki kullanici ve IP sozlukleri kaldirildi. Basarisiz giris sayilari, kilitlenme zamani ve son deneme zamani `giris_deneme_kayitlari` tablosunda kimlik ozetleriyle saklanmaya baslandi. Atomik SQLite UPSERT islemi sayesinde farkli Uvicorn surecleri ayni sayaci kullanir. Iki ayri Python sureci ve 24 eszamanli giris denemesiyle merkezi sayac dogrulandi.
+
+### Orta Seviye - Istek govdesinin bellekte biriktirilmesi
+
+`IstekGovdesiBoyutMiddleware` yeniden yazildi. ASGI `receive` akisi dogrudan alt uygulamaya aktarilirken bayt sayisi anlik izleniyor; tum govdeyi tutan liste kaldirildi. Content-Length asimi govde okunmadan, parcali aktarim asimi ise sinirin gecildigi parca aninda 413 yanitiyla reddediliyor.
+
+### Orta Seviye - Global MIME haritasi degisikligi
+
+Global `mimetypes.add_type` cagrisi kaldirildi. Her dogrulamada yerel `MimeTypes` nesnesi kullaniliyor. Gercek Excel dosyasi dogrulamasindan once ve sonra global MIME haritasinin degismedigi test edildi.
+
+### Orta Seviye - Her baslatmada veri ve FTS taramasi
+
+`arama_metni` geriye doldurma islemi `sistem_migrasyonlari` tablosuyla tek seferlik migrasyona donusturuldu. FTS tablosu artik yalnizca kolon semasi degistiginde yeniden olusturuluyor. Normal baslatmalarda FTS verileri korunuyor ve tam indeks doldurma sorgusu calismiyor.
+
+### Dusuk Seviye - Onbellekte eszamanli ayni hesaplama
+
+Python `lru_cache` veri yapisinin kendi ic tutarliligi thread-safe olmasina ragmen ilk eszamanli cagrilarda sarilan fonksiyon birden fazla kez calisabilir. Dekorator `RLock` ile sarildi ve sekiz eszamanli ayni istekte hesaplamanin yalnizca bir kez yapildigi dogrulandi.
+
+### Dusuk Seviye - Pydantic koleksiyon varsayilanlari ve eski tip yazimi
+
+`typing.List` ve `typing.Optional` kullanimlari yerlesik `list` ve birlesim tiplerine donusturuldu. Liste varsayilanlari `Field(default_factory=list)` ile her model ornegi icin bagimsiz hale getirildi.
+
+### Dusuk Seviye - Dosya gunlukleme hatasinin sessiz yutulmasi
+
+Dosya isleyicisi olusturulamiyorsa hata turu hassas ayrinti icermeden standart hata akisina yaziliyor. Konsol gunlukleme davranisi korunuyor.
+
+### Dusuk Seviye - Docker baglaminda gereksiz lisans dosyasi
+
+`LICENSE` dosyasi `.dockerignore` kapsamina eklendi. `README.md` zaten `*.md` kalibiyla dislaniyordu.
+
+### Yanlis veya Eylem Gerektirmeyen Onceki Bulgular
+
+- `istek_sinirlayici.py` konfigurasyon degerlerini zaten `default_limits` icinde kullanmaktadir; kod degisikligi gerekmemistir.
+- Bagimliliklarin `==` ile sabitlenmesi Docker derlemelerinde tekrarlanabilirlik ve kontrollu guvenlik guncellemesi icin bilincli olarak korunmustur.
+- Docker Compose servis adinin uzunlugu islevsel, performans veya guvenlik sorunu degildir.
+- Sekizinci turdaki tarihsel toplamlar farkli sayim yontemlerini karistirdigi icin guvenilir kabul edilmemistir. Guncel durum dosya ve calisan testler uzerinden yeniden dogrulanmistir.
+
+### Dokuzuncu Tur Dogrulama Sonuclari
+
+- Python compileall basarili.
+- Parcasiz ve parcali ASGI istek boyutu senaryolari 200 ve 413 sonuclariyla basarili.
+- FastAPI middleware zincirinde 800.000 baytlik parcali istek 200, 1.400.000 baytlik parcali istek 413 sonucu verdi.
+- Brute-force sayaci ikinci surecte 429 sonucu uretti.
+- 24 eszamanli giris denemesi kullanici ve IP icin kayipsiz sayildi.
+- Eski Faz 2 veritabani semasi kayit kaybi olmadan Faz 3 semasina yukseltildi.
+- Tek seferlik migrasyon ikinci baslatmada yeniden calismadi.
+- FTS indeksi normal ikinci baslatmada yeniden olusturulmadi.
+- Global MIME haritasi Excel dogrulamasi sirasinda degismedi.
+- Pydantic liste alanlarinin model ornekleri arasinda paylasilmadigi dogrulandi.
+- Docker Compose yapilandirma dogrulamasi basarili.
+
+### Guncel Bekleyen Durum
+
+Faz 1-3 kapsaminda dogrulanmis bekleyen kritik, yuksek veya orta seviye sorun bulunmamaktadir. Faz 7 kimlik dogrulama rotasi merkezi brute-force servisini kullanacak sekilde baglanmalidir. Bu rota Faz 7 plani kapsaminda oldugu icin mevcut fazlarda eksiklik sayilmamistir.

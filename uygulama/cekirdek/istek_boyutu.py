@@ -2,6 +2,10 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
+class IstekGovdesiBoyutuAsildi(Exception):
+    pass
+
+
 class IstekGovdesiBoyutMiddleware:
     def __init__(
         self,
@@ -45,36 +49,34 @@ class IstekGovdesiBoyutMiddleware:
                 await self._gecersiz_uzunluk_hatasi_gonder(kapsam, gonder)
                 return
 
-        mesajlar: list[Message] = []
         toplam_boyut = 0
-        daha_fazla_govde_var = True
-        while daha_fazla_govde_var:
-            mesaj = await al()
-            if mesaj["type"] == "http.disconnect":
-                return
-            govde = mesaj.get("body", b"")
-            toplam_boyut += len(govde)
-            if toplam_boyut > izin_verilen_boyut:
-                await self._boyut_hatasi_gonder(
-                    kapsam,
-                    gonder,
-                    izin_verilen_boyut,
-                )
-                return
-            mesajlar.append(mesaj)
-            daha_fazla_govde_var = mesaj.get("more_body", False)
-
-        mesaj_indeksi = 0
+        yanit_baslatildi = False
 
         async def sinirli_al() -> Message:
-            nonlocal mesaj_indeksi
-            if mesaj_indeksi < len(mesajlar):
-                mesaj = mesajlar[mesaj_indeksi]
-                mesaj_indeksi += 1
-                return mesaj
-            return {"type": "http.request", "body": b"", "more_body": False}
+            nonlocal toplam_boyut
+            mesaj = await al()
+            if mesaj["type"] == "http.request":
+                toplam_boyut += len(mesaj.get("body", b""))
+                if toplam_boyut > izin_verilen_boyut:
+                    raise IstekGovdesiBoyutuAsildi
+            return mesaj
 
-        await self.uygulama(kapsam, sinirli_al, gonder)
+        async def izlenen_gonder(mesaj: Message) -> None:
+            nonlocal yanit_baslatildi
+            if mesaj["type"] == "http.response.start":
+                yanit_baslatildi = True
+            await gonder(mesaj)
+
+        try:
+            await self.uygulama(kapsam, sinirli_al, izlenen_gonder)
+        except IstekGovdesiBoyutuAsildi:
+            if yanit_baslatildi:
+                raise
+            await self._boyut_hatasi_gonder(
+                kapsam,
+                gonder,
+                izin_verilen_boyut,
+            )
 
     async def _boyut_hatasi_gonder(
         self,
