@@ -287,7 +287,9 @@ class VektorServisi:
             silinen_vektor_sayisi += self._pasif_vektorleri_sil()
             durum = self.durumu_al()
             if durum.eksik_vektor_sayisi or durum.gecersiz_vektor_sayisi:
-                raise RuntimeError("Aktif parcalar icin vektor uretimi tamamlanamadi")
+                raise VektorModeliHatasi(
+                    "Aktif parcalar icin vektor uretimi tamamlanamadi"
+                )
         sonuc = VektorUretimSonucu(
             model_adi=self.model_adi,
             vektor_boyutu=self.vektor_boyutu,
@@ -373,6 +375,10 @@ class VektorServisi:
         parcalar: list[dict[str, Any]],
         vektorler: np.ndarray,
     ) -> int:
+        if not parcalar:
+            if len(vektorler) != 0:
+                raise ValueError("Bos parca listesi vektor iceremez")
+            return 0
         parca_kimlikleri = [parca["parca_id"] for parca in parcalar]
         yer_tutucular = ",".join("?" for _ in parca_kimlikleri)
         with baglam_yoneticisi() as baglanti:

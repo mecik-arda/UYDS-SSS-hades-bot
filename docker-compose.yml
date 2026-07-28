@@ -75,6 +75,8 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=32m
     environment:
+      - VERITABANI_YOLU=${VERITABANI_YOLU:-veriler/veri_deposu.db}
+      - ES_ANLAMLILAR_YOLU=${ES_ANLAMLILAR_YOLU:-veriler/es_anlamlilar.json}
       - MAKSIMUM_YEDEK_SAYISI=${MAKSIMUM_YEDEK_SAYISI:-10}
       - YEDEKLEME_ARALIGI_SAAT=${YEDEKLEME_ARALIGI_SAAT:-24}
     depends_on:

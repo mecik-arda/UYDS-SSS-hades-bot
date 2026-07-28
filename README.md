@@ -25,7 +25,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 
 UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör kayıtları, günlükler, yedekler ve proje çıktıları özel kurumsal veridir. Bu dosyalar GitHub, kişisel bulut depolama, e-posta veya harici dosya paylaşım servislerine aktarılmamalıdır.
 
-`veriler/`, `yedekler/` ve `modeller/` dizinleri sürüm kontrolünden çıkarılmıştır. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır. UYDS metinleri vektör üretimi sırasında dış servislere gönderilmez.
+`veriler/`, `yedekler/` ve `modeller/` dizinleri sürüm kontrolünden çıkarılmıştır. Kurum içi terim haritasının gerçek içeriği de yalnızca `veriler/es_anlamlilar.json` dosyasında yerel olarak tutulur. Depodaki `es_anlamlilar.example.json` sadece kurumsal veri içermeyen bir şablondur. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır. UYDS metinleri vektör üretimi sırasında dış servislere gönderilmez.
 
 ## Tamamlanan Özellikler
 
@@ -174,16 +174,20 @@ git clone https://github.com/mecik-arda/UYDS-SSS-hades-bot.git
 cd UYDS-SSS-hades-bot
 ```
 
-Ortam dosyasını oluşturun:
+Ortam dosyasını ve yerel terim haritasını oluşturun:
 
 ```text
 copy .env.example .env
+if not exist veriler mkdir veriler
+copy es_anlamlilar.example.json veriler\es_anlamlilar.json
 ```
 
 Linux veya macOS:
 
 ```text
 cp .env.example .env
+mkdir -p veriler
+cp es_anlamlilar.example.json veriler/es_anlamlilar.json
 ```
 
 `.env` içinde en az şu üç değeri güçlü ve benzersiz değerlerle değiştirin:
@@ -199,6 +203,8 @@ veriler/UYDS_SSS_Listesi.xlsx
 ```
 
 Gerçek Excel dosyasını Git’e eklemeyin.
+
+`veriler/es_anlamlilar.json` içeriğini yalnızca yetkili yerel ortamda kurum terimleriyle düzenleyin. Uygulama bu dosya eksikse örnek veya varsayılan kurumsal içerik kullanmaz ve açık hata verir.
 
 ## Yapılandırma
 
@@ -429,9 +435,9 @@ python yedekle.py zamanla --aralik-saat 24
 
 Her yedek dosyasının yanında `.manifest.json` uzantılı bir bütünlük manifesti oluşturulur. Manifest; SHA-256 dosya özeti, dosya boyutu, UTC oluşturulma zamanı ve düz metin SQLite yedeklerinde aktif kayıt sayısı, FTS5 satır sayısı, veri sürümü ile `quick_check` sonucunu içerir. Geri yükleme öncesinde manifest varsa dosya adı, boyut ve SHA-256 özeti zorunlu olarak doğrulanır. Eski manifestsiz yedekler geriye dönük uyumluluk için kabul edilir.
 
-Docker Compose içindeki `uyds_yedekleyici` servisi zamanlanmış yedeklemeyi otomatik yürütür. Geri yükleme ve elle Excel aktarımı öncesinde uygulama durdurulmalıdır.
+Docker Compose içindeki `uyds_yedekleyici` servisi zamanlanmış yedeklemeyi otomatik yürütür. Uygulama ve yedekleyici aynı `VERITABANI_YOLU` ile `ES_ANLAMLILAR_YOLU` değerlerini kullanır. Yapılandırılan açık veya şifreli veritabanı bulunamazsa yedekleme başarısız olur; yalnızca terim dosyasını yedekleyip başarılı görünmez. Geri yükleme ve elle Excel aktarımı öncesinde uygulama durdurulmalıdır.
 
-Veritabanı bağlantıları süreçler arasında paylaşımlı dosya kilidi taşır. Şifreleme ve şifre çözme işlemleri özel kilit alarak açık SQLite bağlantılarının tamamlanmasını bekler; böylece uygulama ile yedekleyici aynı veri dosyasında yarışmaz.
+Veritabanı bağlantıları ve yedekleme süreçler arasında paylaşımlı dosya kilidi taşır. Şifreleme, şifre çözme ve geri yükleme işlemleri özel kilit alarak açık SQLite bağlantılarının tamamlanmasını bekler; böylece uygulama ile yedekleyici aynı veri dosyasında yarışmaz.
 
 ## Doğrulama
 
@@ -497,6 +503,7 @@ HadesBot/
 │   │   ├── istek_sinirlayici.py
 │   │   ├── konfigurasyon.py
 │   │   ├── onbellek.py
+│   │   ├── dosya_kilidi.py
 │   │   └── veritabani.py
 │   ├── modeller/
 │   │   ├── semalar.py
@@ -508,10 +515,9 @@ HadesBot/
 │   │   ├── model_guvenligi.py
 │   │   ├── terim_haritasi.py
 │   │   └── vektor_servisi.py
-│   ├── varsayilanlar/
-│   │   └── es_anlamlilar.json
 │   └── statik/
 ├── excel_ice_aktar.py
+├── es_anlamlilar.example.json
 ├── vektor_modelini_hazirla.py
 ├── vektorleri_olustur.py
 ├── yedekle.py

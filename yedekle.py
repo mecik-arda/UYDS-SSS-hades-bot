@@ -9,10 +9,19 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from uygulama.cekirdek.dosya_kilidi import surecler_arasi_veritabani_kilidi
+
 VERILER_DIZINI = Path("veriler")
 YEDEK_DIZINI = VERILER_DIZINI / "yedekler"
-VERITABANI_YOLU = VERILER_DIZINI / "veri_deposu.db"
-SIFRELI_VERITABANI_YOLU = VERILER_DIZINI / "veri_deposu.db.enc"
+VERITABANI_YOLU = Path(
+    os.getenv("VERITABANI_YOLU", str(VERILER_DIZINI / "veri_deposu.db"))
+)
+SIFRELI_VERITABANI_YOLU = (
+    VERITABANI_YOLU.parent / f"{VERITABANI_YOLU.name}.enc"
+)
+ES_ANLAMLILAR_YOLU = Path(
+    os.getenv("ES_ANLAMLILAR_YOLU", str(VERILER_DIZINI / "es_anlamlilar.json"))
+)
 
 
 def pozitif_tamsayi_ortam_degiskenini_oku(
@@ -150,7 +159,12 @@ def yedek_manifestini_dogrula(yedek_yolu: Path) -> None:
     manifest_yolu = manifest_yolunu_al(yedek_yolu)
     if not manifest_yolu.exists():
         return
-    manifest = json.loads(manifest_yolu.read_text(encoding="utf-8"))
+    try:
+        manifest = json.loads(manifest_yolu.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as hata:
+        raise ValueError("Yedek manifesti gecerli JSON icermiyor") from hata
+    if not isinstance(manifest, dict):
+        raise ValueError("Yedek manifesti JSON nesnesi olmalidir")
     if manifest.get("manifest_surumu") != 1:
         raise ValueError("Yedek manifest surumu desteklenmiyor")
     if manifest.get("dosya_adi") != yedek_yolu.name:
@@ -220,22 +234,29 @@ def yedekle() -> list[Path]:
     zaman_damgasi = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     olusturulan_yedekler: list[Path] = []
 
-    if VERITABANI_YOLU.exists():
-        veritabani_yedek_adi = f"veri_deposu_{zaman_damgasi}.db"
-        veritabani_dosyasini_adiyla_yedekle(
-            VERITABANI_YOLU,
-            veritabani_yedek_adi,
-        )
-        olusturulan_yedekler.append(YEDEK_DIZINI / veritabani_yedek_adi)
-    elif SIFRELI_VERITABANI_YOLU.exists():
-        sifreli_yedek_adi = f"veri_deposu_{zaman_damgasi}.db.enc"
-        dosya_yedekle(SIFRELI_VERITABANI_YOLU, sifreli_yedek_adi)
-        olusturulan_yedekler.append(YEDEK_DIZINI / sifreli_yedek_adi)
+    with surecler_arasi_veritabani_kilidi(
+        VERITABANI_YOLU,
+        paylasimli=True,
+    ):
+        if VERITABANI_YOLU.exists():
+            veritabani_yedek_adi = f"veri_deposu_{zaman_damgasi}.db"
+            veritabani_dosyasini_adiyla_yedekle(
+                VERITABANI_YOLU,
+                veritabani_yedek_adi,
+            )
+            olusturulan_yedekler.append(YEDEK_DIZINI / veritabani_yedek_adi)
+        elif SIFRELI_VERITABANI_YOLU.exists():
+            sifreli_yedek_adi = f"veri_deposu_{zaman_damgasi}.db.enc"
+            dosya_yedekle(SIFRELI_VERITABANI_YOLU, sifreli_yedek_adi)
+            olusturulan_yedekler.append(YEDEK_DIZINI / sifreli_yedek_adi)
+        else:
+            raise FileNotFoundError(
+                f"Yedeklenecek veritabani bulunamadi: {VERITABANI_YOLU}"
+            )
 
-    es_anlamlilar_yolu = VERILER_DIZINI / "es_anlamlilar.json"
-    if es_anlamlilar_yolu.exists():
+    if ES_ANLAMLILAR_YOLU.exists():
         es_anlamlilar_yedek_adi = f"es_anlamlilar_{zaman_damgasi}.json"
-        dosya_yedekle(es_anlamlilar_yolu, es_anlamlilar_yedek_adi)
+        dosya_yedekle(ES_ANLAMLILAR_YOLU, es_anlamlilar_yedek_adi)
         olusturulan_yedekler.append(YEDEK_DIZINI / es_anlamlilar_yedek_adi)
 
     for yedek_yolu in olusturulan_yedekler:
@@ -261,31 +282,39 @@ def veritabanini_geri_yukle(yedek_adi: str) -> Path:
     yedek_manifestini_dogrula(yedek_yolu)
     VERILER_DIZINI.mkdir(parents=True, exist_ok=True)
 
-    if yedek_yolu.name.endswith(".db.enc"):
-        if VERITABANI_YOLU.exists():
-            raise RuntimeError("Sifreli geri yukleme icin uygulama durdurulmalidir")
-        gecici_hedef = Path(f"{SIFRELI_VERITABANI_YOLU}.geri_yukleniyor")
-        shutil.copy2(yedek_yolu, gecici_hedef)
-        os.replace(gecici_hedef, SIFRELI_VERITABANI_YOLU)
-        return SIFRELI_VERITABANI_YOLU
+    with surecler_arasi_veritabani_kilidi(
+        VERITABANI_YOLU,
+        paylasimli=False,
+    ):
+        if yedek_yolu.name.endswith(".db.enc"):
+            if VERITABANI_YOLU.exists():
+                raise RuntimeError(
+                    "Sifreli geri yukleme icin uygulama durdurulmalidir"
+                )
+            gecici_hedef = Path(f"{SIFRELI_VERITABANI_YOLU}.geri_yukleniyor")
+            shutil.copy2(yedek_yolu, gecici_hedef)
+            os.replace(gecici_hedef, SIFRELI_VERITABANI_YOLU)
+            return SIFRELI_VERITABANI_YOLU
 
-    if yedek_yolu.suffix != ".db":
-        raise ValueError("Yalnizca .db veya .db.enc veritabani yedekleri yuklenebilir")
+        if yedek_yolu.suffix != ".db":
+            raise ValueError(
+                "Yalnizca .db veya .db.enc veritabani yedekleri yuklenebilir"
+            )
 
-    veritabani_butunlugunu_dogrula(yedek_yolu)
-    gecici_hedef = Path(f"{VERITABANI_YOLU}.geri_yukleniyor")
-    kaynak_baglanti = sqlite3.connect(str(yedek_yolu))
-    hedef_baglanti = sqlite3.connect(str(gecici_hedef))
-    try:
-        kaynak_baglanti.backup(hedef_baglanti)
-    finally:
-        hedef_baglanti.close()
-        kaynak_baglanti.close()
-    veritabani_butunlugunu_dogrula(gecici_hedef)
-    os.replace(gecici_hedef, VERITABANI_YOLU)
-    if SIFRELI_VERITABANI_YOLU.exists():
-        SIFRELI_VERITABANI_YOLU.unlink()
-    return VERITABANI_YOLU
+        veritabani_butunlugunu_dogrula(yedek_yolu)
+        gecici_hedef = Path(f"{VERITABANI_YOLU}.geri_yukleniyor")
+        kaynak_baglanti = sqlite3.connect(str(yedek_yolu))
+        hedef_baglanti = sqlite3.connect(str(gecici_hedef))
+        try:
+            kaynak_baglanti.backup(hedef_baglanti)
+        finally:
+            hedef_baglanti.close()
+            kaynak_baglanti.close()
+        veritabani_butunlugunu_dogrula(gecici_hedef)
+        os.replace(gecici_hedef, VERITABANI_YOLU)
+        if SIFRELI_VERITABANI_YOLU.exists():
+            SIFRELI_VERITABANI_YOLU.unlink()
+        return VERITABANI_YOLU
 
 
 def zamanli_yedeklemeyi_baslat(aralik_saat: float) -> None:

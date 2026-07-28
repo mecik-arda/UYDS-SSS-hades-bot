@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 
 class KaynakRozeti(BaseModel):
@@ -51,10 +51,12 @@ class AnalitikVerisi(BaseModel):
     toplam_geri_bildirim_sayisi: int
     ortalama_puan: float
     bekleyen_onay_sayisi: int
-    en_cok_sorulan_kategoriler: list[dict[str, object]] = Field(
+    en_cok_sorulan_kategoriler: list[dict[str, JsonValue]] = Field(
         default_factory=list
     )
-    cevapsiz_kalan_sorular: list[dict[str, object]] = Field(default_factory=list)
+    cevapsiz_kalan_sorular: list[dict[str, JsonValue]] = Field(
+        default_factory=list
+    )
 
 
 class KimlikDogrulamaIstegi(BaseModel):

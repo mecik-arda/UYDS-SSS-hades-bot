@@ -7,11 +7,6 @@ from typing import Any
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
 
 AZAMI_TERIM_DOSYASI_BOYUTU = 1024 * 1024
-VARSAYILAN_TERIM_HARITASI_YOLU = (
-    Path(__file__).resolve().parent.parent
-    / "varsayilanlar"
-    / "es_anlamlilar.json"
-)
 
 
 class TerimHaritasiHatasi(ValueError):
@@ -22,23 +17,19 @@ class TerimHaritasi:
     def __init__(
         self,
         dosya_yolu: str | Path | None = None,
-        varsayilan_dosya_yolu: str | Path = VARSAYILAN_TERIM_HARITASI_YOLU,
     ) -> None:
         self.dosya_yolu = Path(
             dosya_yolu or konfigurasyon.ES_ANLAMLILAR_YOLU
         ).expanduser()
-        self.varsayilan_dosya_yolu = Path(varsayilan_dosya_yolu)
         self._harita: dict[str, tuple[str, ...]] | None = None
         self._ters_harita: dict[str, str] | None = None
 
     def yukle(self) -> dict[str, tuple[str, ...]]:
-        kaynak_yolu = (
-            self.dosya_yolu
-            if self.dosya_yolu.is_file()
-            else self.varsayilan_dosya_yolu
-        )
+        kaynak_yolu = self.dosya_yolu
         if not kaynak_yolu.is_file():
-            raise FileNotFoundError("Es anlamli terim haritasi bulunamadi")
+            raise FileNotFoundError(
+                f"Yerel es anlamli terim haritasi bulunamadi: {kaynak_yolu}"
+            )
         if kaynak_yolu.stat().st_size > AZAMI_TERIM_DOSYASI_BOYUTU:
             raise TerimHaritasiHatasi("Terim haritasi izin verilen boyutu asiyor")
         try:
