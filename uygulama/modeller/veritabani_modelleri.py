@@ -102,8 +102,7 @@ FTS_SILME_TETIKLEYICI = """
 CREATE TRIGGER IF NOT EXISTS sss_fts_silme_tetik
 AFTER DELETE ON sss_kayitlari
 BEGIN
-    INSERT INTO sss_fts(sss_fts, rowid, soru, cevap, kategori)
-    VALUES ('delete', OLD.id, OLD.soru, OLD.cevap, OLD.kategori);
+    DELETE FROM sss_fts WHERE rowid = OLD.id;
 END
 """
 
@@ -111,11 +110,20 @@ FTS_GUNCELLEME_TETIKLEYICI = """
 CREATE TRIGGER IF NOT EXISTS sss_fts_guncelleme_tetik
 AFTER UPDATE ON sss_kayitlari
 BEGIN
-    INSERT INTO sss_fts(sss_fts, rowid, soru, cevap, kategori)
-    VALUES ('delete', OLD.id, OLD.soru, OLD.cevap, OLD.kategori);
+    DELETE FROM sss_fts WHERE rowid = OLD.id;
     INSERT INTO sss_fts(rowid, soru, cevap, kategori)
     VALUES (NEW.id, NEW.soru, NEW.cevap, NEW.kategori);
 END
+"""
+
+FTS_ESITLEME_SORGUSU = """
+DELETE FROM sss_fts
+"""
+
+FTS_YENIDEN_DOLDURMA_SORGUSU = """
+INSERT INTO sss_fts(rowid, soru, cevap, kategori)
+SELECT id, soru, cevap, kategori
+FROM sss_kayitlari
 """
 
 TABLO_SORGULARI = [
@@ -135,6 +143,12 @@ TETIKLEYICI_SORGULARI = [
     FTS_GUNCELLEME_TETIKLEYICI,
 ]
 
+TETIKLEYICI_SILME_SORGULARI = [
+    "DROP TRIGGER IF EXISTS sss_fts_ekleme_tetik",
+    "DROP TRIGGER IF EXISTS sss_fts_silme_tetik",
+    "DROP TRIGGER IF EXISTS sss_fts_guncelleme_tetik",
+]
+
 VARSAYILAN_YONETICI_SORGUSU = """
 INSERT OR IGNORE INTO kullanicilar (kullanici_adi, sifre_hash, rol, aktif_mi)
 VALUES ('yonetici', ?, 'YONETICI', TRUE)
@@ -149,11 +163,16 @@ def tablolari_olustur():
             except Exception as hata:
                 gunlukleyici.error(f"Tablo olusturma hatasi: {hata}")
                 raise
+        for sorgu in TETIKLEYICI_SILME_SORGULARI:
+            baglanti.execute(sorgu)
         for sorgu in TETIKLEYICI_SORGULARI:
             try:
                 baglanti.execute(sorgu)
             except Exception as hata:
                 gunlukleyici.warning(f"Tetikleyici olusturulurken uyari: {hata}")
+                raise
+        baglanti.execute(FTS_ESITLEME_SORGUSU)
+        baglanti.execute(FTS_YENIDEN_DOLDURMA_SORGUSU)
     gunlukleyici.info("Veritabani tablolari ve tetikleyiciler basariyla olusturuldu")
 
 

@@ -61,7 +61,7 @@ Sistem, kullanıcı geri bildirimleri ve yönetici onay süreçleri aracılığ�
 | Vektör Gömmeleri | Sentence-Transformers (yerel, çevrimdışı) |
 | Dış LLM API | DeepSeek API |
 | Konteynerizasyon | Docker, Docker Compose |
-| Kimlik Doğrulama | JWT (python-jose), bcrypt (passlib) |
+| Kimlik Doğrulama | JWT (python-jose), bcrypt |
 | İstek Sınırlama | SlowAPI |
 | Veri İşleme | Pandas, OpenPyXL, NumPy |
 | HTTP İstemci | HTTPX |
@@ -93,10 +93,14 @@ copy .env.example .env
 
 `.env` dosyasında aşağıdaki değişkenleri güncelleyin:
 
+`.env.dev`, `.env.test` ve `.env.prod` dosyaları ortama özgü güvenli varsayılanları içerir. Aktif profil `.env` içindeki `ORTAM_PROFILI` değeriyle seçilir; gizli değerler yalnızca `.env` dosyasında tutulmalıdır.
+
 | Değişken | Açıklama | Varsayılan |
 |---|---|---|
 | `DEEPSEEK_API_ANAHTARI` | DeepSeek API anahtarı (zorunlu) | - |
 | `JWT_GIZLI_ANAHTARI` | JWT imzalama anahtarı (zorunlu) | - |
+| `VERITABANI_SIFRELEME_ANAHTARI` | AES-256-GCM veritabanı şifreleme anahtarı (zorunlu) | - |
+| `VARSAYILAN_YONETICI_SIFRESI` | İlk yönetici hesabının güçlü parolası (zorunlu) | - |
 | `VERITABANI_YOLU` | SQLite veritabanı dosya yolu | `veriler/veri_deposu.db` |
 | `GUVEN_ESIGI` | Arama sonucu kabul eşiği | `0.70` |
 | `VEKTOR_MODEL_ADI` | Vektör gömme modeli | `paraphrase-multilingual-MiniLM-L12-v2` |
@@ -105,6 +109,9 @@ copy .env.example .env
 | `ISTEK_SINIRI` | Dakika başına istek limiti | `100` |
 | `ISTEK_PENCERESI_SANIYE` | İstek sayacı pencere süresi | `60` |
 | `UYGULAMA_PORT` | Uygulama port numarası | `8000` |
+| `LOG_SEVIYESI` | Uygulama günlük seviyesi | `INFO` |
+| `MAKSIMUM_YEDEK_SAYISI` | Saklanacak en fazla yedek sayısı | `10` |
+| `YEDEKLEME_ARALIGI_SAAT` | Otomatik yedekleme aralığı | `24` |
 
 Uygulamayı başlatın:
 ```
@@ -123,10 +130,24 @@ GET http://localhost:8000/api/saglik
 
 ### Varsayılan Yönetici Hesabı
 
-Uygulama ilk başlatıldığında otomatik olarak bir yönetici hesabı oluşturulur. İlk giriş sonrası şifrenin değiştirilmesi önerilir.
+Uygulama ilk başlatıldığında otomatik olarak bir yönetici hesabı oluşturulur. Parola kod içinde bulunmaz ve `.env` dosyasındaki `VARSAYILAN_YONETICI_SIFRESI` değerinden alınır.
 
 - Kullanıcı adı: `yonetici`
-- Şifre: `yonetici123`
+- Şifre: `.env` içinde yapılandırılan güçlü değer
+
+### Yedekleme ve Geri Yükleme
+
+Tek seferlik yedekleme:
+```
+python yedekle.py yedekle
+```
+
+Bir veritabanı yedeğini geri yükleme:
+```
+python yedekle.py geri-yukle veri_deposu_YYYYMMDD_HHMMSS.db
+```
+
+Zamanlanmış yedekleme Docker Compose içindeki `uyds_yedekleyici` servisi tarafından yürütülür. Geri yükleme öncesinde uygulama durdurulmalıdır.
 
 ---
 

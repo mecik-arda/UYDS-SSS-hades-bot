@@ -7,11 +7,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from uygulama.cekirdek.gunlukleyici import gunlukleyici
+from uygulama.cekirdek.istek_boyutu import IstekGovdesiBoyutMiddleware
 from uygulama.cekirdek.istek_sinirlayici import istek_sinirlayici
+from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.cekirdek.guvenlik import sifre_hash_olustur
 from uygulama.cekirdek.guvenlik_basliklari import GuvenlikBasliklariMiddleware
+from uygulama.cekirdek.veritabani import veritabanini_sifrele
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
 
 
@@ -20,14 +24,20 @@ async def uygulama_omru(uygulama: FastAPI):
     gunlukleyici.info("UYDS Asistani baslatiliyor")
     try:
         tablolari_olustur()
-        varsayilan_yonetici_sifre_hash = await asyncio.to_thread(sifre_hash_olustur, "yonetici123")
+        varsayilan_yonetici_sifre_hash = await asyncio.to_thread(
+            sifre_hash_olustur,
+            konfigurasyon.VARSAYILAN_YONETICI_SIFRESI,
+        )
         varsayilan_yonetici_olustur(varsayilan_yonetici_sifre_hash)
         gunlukleyici.info("Veritabani baslatma islemleri tamamlandi")
     except Exception as hata:
         gunlukleyici.error(f"Baslatma islemleri sirasinda hata olustu: {hata}")
         raise
-    yield
-    gunlukleyici.info("UYDS Asistani kapatiliyor")
+    try:
+        yield
+    finally:
+        gunlukleyici.info("UYDS Asistani kapatiliyor")
+        await asyncio.to_thread(veritabanini_sifrele)
 
 
 uygulama = FastAPI(
@@ -39,8 +49,15 @@ uygulama = FastAPI(
 
 uygulama.state.limiter = istek_sinirlayici
 uygulama.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+uygulama.add_middleware(SlowAPIMiddleware)
 
 uygulama.add_middleware(GuvenlikBasliklariMiddleware)
+uygulama.add_middleware(
+    IstekGovdesiBoyutMiddleware,
+    maksimum_boyut=konfigurasyon.ISTEK_GOVDE_MAKS_BOYUT,
+    dosya_yukleme_maksimum_boyutu=konfigurasyon.DOSYA_YUKLEME_MAKS_BOYUT,
+    dosya_yukleme_yollari={"/api/v1/yonetici/excel-yukle"},
+)
 
 uygulama.add_middleware(
     CORSMiddleware,

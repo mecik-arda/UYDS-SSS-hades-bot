@@ -1,30 +1,92 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field
+import os
+from pathlib import Path
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Konfigurasyon(BaseSettings):
     DEEPSEEK_API_ANAHTARI: str = Field(default="")
     VERITABANI_YOLU: str = Field(default="veriler/veri_deposu.db")
+    VERITABANI_SIFRELEME_ANAHTARI: str = Field(min_length=32)
     GUVEN_ESIGI: float = Field(default=0.70)
     VEKTOR_MODEL_ADI: str = Field(default="paraphrase-multilingual-MiniLM-L12-v2")
-    JWT_GIZLI_ANAHTARI: str = Field(default="varsayilan_gizli_anahtar_degistir")
+    JWT_GIZLI_ANAHTARI: str = Field(min_length=32)
     JWT_ALGORITMASI: str = Field(default="HS256")
     JWT_OMRU_DAKIKA: int = Field(default=30)
-    ISTEK_SINIRI: int = Field(default=100)
-    ISTEK_PENCERESI_SANIYE: int = Field(default=60)
-    UYGULAMA_PORT: int = Field(default=8000)
-    MESAJ_MAKS_KARAKTER: int = Field(default=2000)
-    DEEPSEEK_MAKS_TOKEN: int = Field(default=4096)
-    GUNLUK_MESAJ_KOTASI: int = Field(default=500)
-    OTURUM_MAKS_MESAJ: int = Field(default=50)
-    ISTEK_GOVDE_MAKS_BOYUT: int = Field(default=1048576)
-    DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800)
+    VARSAYILAN_YONETICI_SIFRESI: str = Field(min_length=12)
+    ISTEK_SINIRI: int = Field(default=100, gt=0)
+    ISTEK_PENCERESI_SANIYE: int = Field(default=60, gt=0)
+    UYGULAMA_PORT: int = Field(default=8000, ge=1, le=65535)
+    MESAJ_MAKS_KARAKTER: int = Field(default=2000, gt=0)
+    DEEPSEEK_MAKS_TOKEN: int = Field(default=4096, gt=0)
+    GUNLUK_MESAJ_KOTASI: int = Field(default=500, gt=0)
+    OTURUM_MAKS_MESAJ: int = Field(default=50, gt=0)
+    ISTEK_GOVDE_MAKS_BOYUT: int = Field(default=1048576, gt=0)
+    DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
+    LOG_SEVIYESI: str = Field(default="INFO")
+    ORTAM_PROFILI: str = Field(default="prod")
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",
-    }
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    @field_validator("JWT_GIZLI_ANAHTARI", "VERITABANI_SIFRELEME_ANAHTARI")
+    @classmethod
+    def gizli_anahtari_dogrula(cls, deger: str) -> str:
+        kucuk_deger = deger.lower()
+        yasakli_parcalar = ("varsayilan", "buraya_yazin", "change_me", "ornek")
+        if any(parca in kucuk_deger for parca in yasakli_parcalar):
+            raise ValueError("Guvenli ve benzersiz bir gizli anahtar kullanilmalidir")
+        return deger
+
+    @field_validator("VARSAYILAN_YONETICI_SIFRESI")
+    @classmethod
+    def yonetici_sifresini_dogrula(cls, deger: str) -> str:
+        kucuk_deger = deger.lower()
+        if kucuk_deger == "yonetici123" or "buraya_yazin" in kucuk_deger:
+            raise ValueError("Varsayilan yonetici sifresi guclu ve benzersiz olmalidir")
+        return deger
+
+    @field_validator("LOG_SEVIYESI")
+    @classmethod
+    def log_seviyesini_dogrula(cls, deger: str) -> str:
+        buyuk_deger = deger.upper()
+        if buyuk_deger not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+            raise ValueError("Gecersiz log seviyesi")
+        return buyuk_deger
+
+    @field_validator("ORTAM_PROFILI")
+    @classmethod
+    def ortam_profilini_dogrula(cls, deger: str) -> str:
+        kucuk_deger = deger.lower()
+        if kucuk_deger not in {"dev", "test", "prod"}:
+            raise ValueError("Gecersiz ortam profili")
+        return kucuk_deger
 
 
-konfigurasyon = Konfigurasyon()
+def env_dosyasindan_ortam_profilini_al() -> str:
+    env_yolu = Path(".env")
+    if not env_yolu.is_file():
+        return "prod"
+    for satir in env_yolu.read_text(encoding="utf-8").splitlines():
+        temiz_satir = satir.strip()
+        if temiz_satir.startswith("ORTAM_PROFILI="):
+            deger = temiz_satir.split("=", 1)[1].strip().strip("\"'")
+            return deger or "prod"
+    return "prod"
+
+
+def ortam_dosyalarini_al() -> tuple[str, ...]:
+    ortam_profili = os.getenv(
+        "ORTAM_PROFILI",
+        env_dosyasindan_ortam_profilini_al(),
+    ).lower()
+    if ortam_profili not in {"dev", "test", "prod"}:
+        raise ValueError("Gecersiz ORTAM_PROFILI degeri")
+    return ".env", f".env.{ortam_profili}"
+
+
+konfigurasyon = Konfigurasyon(_env_file=ortam_dosyalarini_al())

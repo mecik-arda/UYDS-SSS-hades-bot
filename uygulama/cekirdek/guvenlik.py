@@ -1,21 +1,22 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 from typing import Annotated, Dict, Optional
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 
-sifre_baglami = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_semasi = OAuth2PasswordBearer(tokenUrl="/api/v1/kimlik-dogrulama/giris")
 
 _basarisiz_giris_sayaci: Dict[str, int] = {}
 _basarisiz_giris_zamani: Dict[str, datetime] = {}
+_giris_sayaci_kilidi = Lock()
 _HESAP_KILITLEME_ESIK = 5
 _HESAP_KILITLEME_SURE_DAKIKA = 15
 
@@ -32,11 +33,20 @@ class KullaniciBilgisi(BaseModel):
 
 
 def sifre_hash_olustur(duz_metin_sifre: str) -> str:
-    return sifre_baglami.hash(duz_metin_sifre)
+    sifre_baytlari = duz_metin_sifre.encode("utf-8")
+    if len(sifre_baytlari) > 72:
+        raise ValueError("Sifre bcrypt icin izin verilen 72 bayti asamaz")
+    return bcrypt.hashpw(sifre_baytlari, bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def sifre_dogrula(duz_metin_sifre: str, hash_degeri: str) -> bool:
-    return sifre_baglami.verify(duz_metin_sifre, hash_degeri)
+    try:
+        return bcrypt.checkpw(
+            duz_metin_sifre.encode("utf-8"),
+            hash_degeri.encode("utf-8"),
+        )
+    except (ValueError, TypeError):
+        return False
 
 
 def erisim_belirteci_olustur(veri: BelirtecVerisi) -> str:
@@ -117,28 +127,43 @@ async def mevcut_yoneticiyi_al(
     return mevcut_kullanici
 
 
-def brute_force_kontrol(kullanici_adi: str) -> None:
+def _giris_kimlikleri(kullanici_adi: str, ip_adresi: Optional[str]) -> list[str]:
+    kimlikler = [f"kullanici:{kullanici_adi.casefold()}"]
+    if ip_adresi:
+        kimlikler.append(f"ip:{ip_adresi}")
+    return kimlikler
+
+
+def brute_force_kontrol(kullanici_adi: str, ip_adresi: Optional[str] = None) -> None:
     simdi = datetime.now(timezone.utc)
-    if kullanici_adi in _basarisiz_giris_zamani:
-        kilit_zamani = _basarisiz_giris_zamani[kullanici_adi]
-        if (simdi - kilit_zamani).total_seconds() < _HESAP_KILITLEME_SURE_DAKIKA * 60:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Cok fazla basarisiz giris denemesi. Hesabiniz gecici olarak kilitlendi. Lutfen 15 dakika sonra tekrar deneyin.",
-            )
-        else:
-            _basarisiz_giris_sayaci.pop(kullanici_adi, None)
-            _basarisiz_giris_zamani.pop(kullanici_adi, None)
+    with _giris_sayaci_kilidi:
+        for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
+            kilit_zamani = _basarisiz_giris_zamani.get(giris_kimligi)
+            if kilit_zamani is None:
+                continue
+            gecen_sure = (simdi - kilit_zamani).total_seconds()
+            if gecen_sure < _HESAP_KILITLEME_SURE_DAKIKA * 60:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Cok fazla basarisiz giris denemesi. Lutfen 15 dakika sonra tekrar deneyin.",
+                )
+            _basarisiz_giris_sayaci.pop(giris_kimligi, None)
+            _basarisiz_giris_zamani.pop(giris_kimligi, None)
 
 
-def basarisiz_giris_kaydet(kullanici_adi: str) -> None:
+def basarisiz_giris_kaydet(kullanici_adi: str, ip_adresi: Optional[str] = None) -> None:
     simdi = datetime.now(timezone.utc)
-    mevcut_sayi = _basarisiz_giris_sayaci.get(kullanici_adi, 0)
-    _basarisiz_giris_sayaci[kullanici_adi] = mevcut_sayi + 1
-    if _basarisiz_giris_sayaci[kullanici_adi] >= _HESAP_KILITLEME_ESIK:
-        _basarisiz_giris_zamani[kullanici_adi] = simdi
+    with _giris_sayaci_kilidi:
+        for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
+            mevcut_sayi = _basarisiz_giris_sayaci.get(giris_kimligi, 0)
+            yeni_sayi = mevcut_sayi + 1
+            _basarisiz_giris_sayaci[giris_kimligi] = yeni_sayi
+            if yeni_sayi >= _HESAP_KILITLEME_ESIK:
+                _basarisiz_giris_zamani[giris_kimligi] = simdi
 
 
-def basarili_giris_sifirla(kullanici_adi: str) -> None:
-    _basarisiz_giris_sayaci.pop(kullanici_adi, None)
-    _basarisiz_giris_zamani.pop(kullanici_adi, None)
+def basarili_giris_sifirla(kullanici_adi: str, ip_adresi: Optional[str] = None) -> None:
+    with _giris_sayaci_kilidi:
+        for giris_kimligi in _giris_kimlikleri(kullanici_adi, ip_adresi):
+            _basarisiz_giris_sayaci.pop(giris_kimligi, None)
+            _basarisiz_giris_zamani.pop(giris_kimligi, None)

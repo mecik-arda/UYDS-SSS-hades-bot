@@ -1,7 +1,6 @@
-version: "3.9"
-
 services:
   uyds_sohbet_botu_uygulamasi:
+    image: hadesbot-uygulama:yerel
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,13 +10,16 @@ services:
     volumes:
       - ./veriler:/uygulama/veriler
     environment:
+      - ORTAM_PROFILI=${ORTAM_PROFILI:-prod}
       - DEEPSEEK_API_ANAHTARI=${DEEPSEEK_API_ANAHTARI:-}
       - VERITABANI_YOLU=${VERITABANI_YOLU:-veriler/veri_deposu.db}
+      - VERITABANI_SIFRELEME_ANAHTARI=${VERITABANI_SIFRELEME_ANAHTARI:-}
       - GUVEN_ESIGI=${GUVEN_ESIGI:-0.70}
       - VEKTOR_MODEL_ADI=${VEKTOR_MODEL_ADI:-paraphrase-multilingual-MiniLM-L12-v2}
-      - JWT_GIZLI_ANAHTARI=${JWT_GIZLI_ANAHTARI:-varsayilan_gizli_anahtar_degistir}
+      - JWT_GIZLI_ANAHTARI=${JWT_GIZLI_ANAHTARI:-}
       - JWT_ALGORITMASI=${JWT_ALGORITMASI:-HS256}
       - JWT_OMRU_DAKIKA=${JWT_OMRU_DAKIKA:-30}
+      - VARSAYILAN_YONETICI_SIFRESI=${VARSAYILAN_YONETICI_SIFRESI:-}
       - ISTEK_SINIRI=${ISTEK_SINIRI:-100}
       - ISTEK_PENCERESI_SANIYE=${ISTEK_PENCERESI_SANIYE:-60}
       - UYGULAMA_PORT=${UYGULAMA_PORT:-8000}
@@ -27,10 +29,29 @@ services:
       - OTURUM_MAKS_MESAJ=${OTURUM_MAKS_MESAJ:-50}
       - ISTEK_GOVDE_MAKS_BOYUT=${ISTEK_GOVDE_MAKS_BOYUT:-1048576}
       - DOSYA_YUKLEME_MAKS_BOYUT=${DOSYA_YUKLEME_MAKS_BOYUT:-52428800}
+      - LOG_SEVIYESI=${LOG_SEVIYESI:-INFO}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/saglik')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+
+  uyds_yedekleyici:
+    image: hadesbot-uygulama:yerel
+    command:
+      - python
+      - yedekle.py
+      - zamanla
+      - --aralik-saat
+      - ${YEDEKLEME_ARALIGI_SAAT:-24}
+    volumes:
+      - ./veriler:/uygulama/veriler
+    environment:
+      - MAKSIMUM_YEDEK_SAYISI=${MAKSIMUM_YEDEK_SAYISI:-10}
+      - YEDEKLEME_ARALIGI_SAAT=${YEDEKLEME_ARALIGI_SAAT:-24}
+    depends_on:
+      uyds_sohbet_botu_uygulamasi:
+        condition: service_healthy
     restart: unless-stopped

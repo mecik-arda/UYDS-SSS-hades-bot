@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from uygulama.cekirdek.konfigurasyon import konfigurasyon
+
 _HASSAS_KELIME_KALIPLARI = [
     (r'(api[_-]?anahtar[_\s]*[:=]\s*)(\S+)', r'\1[GIZLI]'),
     (r'(sifre[_\s]*[:=]\s*)(\S+)', r'\1[GIZLI]'),
@@ -36,11 +38,12 @@ class YapilandirilmisFormatlayici(logging.Formatter):
 
 def gunlukleyici_olustur() -> logging.Logger:
     kok_gunlukleyici = logging.getLogger("uyds_asistani")
-    kok_gunlukleyici.setLevel(logging.DEBUG)
+    yapilandirilan_seviye = getattr(logging, konfigurasyon.LOG_SEVIYESI)
+    kok_gunlukleyici.setLevel(yapilandirilan_seviye)
     kok_gunlukleyici.handlers.clear()
 
     konsol_isleyici = logging.StreamHandler(sys.stdout)
-    konsol_isleyici.setLevel(logging.INFO)
+    konsol_isleyici.setLevel(yapilandirilan_seviye)
     konsol_isleyici.setFormatter(YapilandirilmisFormatlayici())
     kok_gunlukleyici.addHandler(konsol_isleyici)
 
@@ -54,7 +57,7 @@ def gunlukleyici_olustur() -> logging.Logger:
             backupCount=5,
             encoding="utf-8",
         )
-        dosya_isleyici.setLevel(logging.DEBUG)
+        dosya_isleyici.setLevel(yapilandirilan_seviye)
         dosya_isleyici.setFormatter(YapilandirilmisFormatlayici())
         kok_gunlukleyici.addHandler(dosya_isleyici)
     except Exception:
