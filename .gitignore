@@ -16,6 +16,7 @@ venv/
 .skills/
 /modeller/
 .faz4_test*
-plan.md
-kurallar.md
-hata_duzeltme_kaydi.md
+/plan.md
+/kurallar.md
+/hata_duzeltme_kaydi.md
+/uygulama/varsayilanlar/es_anlamlilar.json
