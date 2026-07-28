@@ -1,252 +1,384 @@
-# UYDS Akıllı SSS Destek Asistanı (HadesBot)
+# UYDS Akıllı SSS Destek Asistanı
 
-Sürüm 1.0.0 | Geliştirme Aşamasında | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-3 tamamlandı | Geliştirme sürümü | MIT Lisansı
 
----
+## Proje Durumu
 
-## Veri Gizliliği ve Kurumsal Güvenlik Bildirimi
+HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlamak, anlamsal olarak aranabilir hale getirmek ve sonraki fazlarda kaynak kontrollü bir destek asistanına dönüştürmek amacıyla geliştirilmektedir.
 
-Proje kapsamında işlenen UYDS verileri özel ve kurum içi niteliktedir. Bu nedenle Excel dosyaları, SQLite veritabanı, vektör gömme kayıtları, uygulama günlükleri, ekran görüntüleri ve proje çıktıları hiçbir şekilde GitHub, GitLab, kişisel bulut hesapları, e-posta veya harici dosya paylaşım servislerine aktarılmayacaktır. Tüm geliştirme, konteynerizasyon ve test süreçleri yalnızca tahsis edilen yerel iş istasyonlarında yürütülmektedir. `veriler/` dizini `.gitignore` ile korunmakta olup orijinal UYDS SSS veri seti ve teknik şartname dokümanı sürüm kontrolüne dahil edilmemiştir.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi ve metin parçalamayı içerir. Vektör tabanlı arama, hibrit sıralama, DeepSeek yanıt üretimi, kullanıcı API’leri ve web arayüzü henüz uygulanmamıştır.
 
----
+| Faz | Kapsam | Durum |
+|---|---|---|
+| Faz 1 | Ortam, Docker, yapılandırma ve güvenlik altyapısı | Tamamlandı |
+| Faz 2 | SQLite, FTS5, veri modelleri ve şifreleme | Tamamlandı |
+| Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
+| Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Beklemede |
+| Faz 5 | Hibrit arama, RRF ve yeniden sıralama | Beklemede |
+| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Beklemede |
+| Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Beklemede |
+| Faz 8 | Geri bildirim, yönetici onayı ve analitik | Beklemede |
+| Faz 9 | Kurumsal web arayüzü | Beklemede |
+| Faz 10 | Kalıcı testler, benchmark ve güvenlik doğrulaması | Beklemede |
 
-## Proje Hakkında
+## Veri Gizliliği
 
-HadesBot, UYDS bünyesindeki 2.403 adet Sık Sorulan Soru kaydı üzerinde anlamsal arama yapabilen, kurumsal bir destek asistanıdır. Kullanıcı sorularına yalnızca anahtar kelime eşleşmesi ile değil, anlam tabanlı hibrit arama yöntemleriyle yanıt arar. Bulunan sonuçları DeepSeek geniş dil modeli aracılığıyla kaynak kontrollü olarak yanıtlar. Düşük güven skoruna sahip eşleşmelerde bilgi üretmek yerine kullanıcıyı bilgilendirir.
+UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör kayıtları, günlükler, yedekler ve proje çıktıları özel kurumsal veridir. Bu dosyalar GitHub, kişisel bulut depolama, e-posta veya harici dosya paylaşım servislerine aktarılmamalıdır.
 
-Sistem, kullanıcı geri bildirimleri ve yönetici onay süreçleri aracılığıyla zaman içinde iyileşmeye açık olarak tasarlanmıştır.
+`veriler/` ve `yedekler/` dizinleri sürüm kontrolü ile Docker imaj bağlamından çıkarılmıştır. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır.
 
----
+## Tamamlanan Özellikler
 
-## Özellikler
+### Uygulama ve güvenlik altyapısı
 
-### Arama ve Yanıt Üretimi
-- SQLite FTS5 tam metin araması (BM25 algoritması)
-- Yerel Türkçe vektör gömme modelleri ile anlamsal benzerlik araması
-- Hibrit arama sonuçlarının Reciprocal Rank Fusion (RRF) ile harmanlanması
-- Cross-Encoder modeli ile aday yanıtların yeniden sıralanması
-- DeepSeek API ile kaynak kontrollü RAG yanıt üretimi
-- Güven eşiği kontrolü: skorun altında kalan eşleşmelerde yanıt üretilmez
-- Server-Sent Events (SSE) ile canlı akışlı yanıt mekanizması
+- FastAPI uygulama yaşam döngüsü ve sağlık kontrolü
+- Ortam profilleri: `dev`, `test`, `prod`
+- Zorunlu ve doğrulanan JWT, veritabanı şifreleme ve yönetici parolası değerleri
+- Yapılandırılabilir istek sınırı ve akış tabanlı istek gövdesi boyut kontrolü
+- Güvenlik başlıkları ve sınırlı CORS politikası
+- SQLite üzerinde merkezi kullanıcı ve IP brute-force sayaçları
+- bcrypt tabanlı parola özetleme
+- JWT oluşturma, çözme ve RBAC bağımlılık altyapısı
+- Hassas değer maskeleyen yapılandırılmış günlükleme
+- Non-root Docker kullanıcısı ve konteyner sağlık kontrolü
 
-### Güvenlik
-- Rol Tabanlı Erişim Kontrolü (RBAC): Kullanıcı ve Yönetici rolleri
-- JWT tabanlı kimlik doğrulama ve oturum yönetimi
-- IP bazlı istek sınırlama (Rate Limiting)
-- Non-root kullanıcı ile Docker konteyner izolasyonu
-- Parametreli SQL sorguları ile SQL injection koruması
-- Hassas verilerin (`veriler/`) sürüm kontrolünden tamamen dışlanması
+### Veritabanı altyapısı
 
-### Veri Yönetimi
-- Excel formatındaki SSS verilerinin otomatik içe aktarımı
-- Anlamsal metin parçalama (Semantic Chunking)
-- Veri sürümleme ve içe aktarım geçmişi takibi
-- Kurum içi terim ve eş anlamlı kelime haritası desteği
+- Bağlantı başına SQLite yönetimi
+- WAL, foreign key ve busy timeout ayarları
+- 11 normal tablo ve bir FTS5 sanal tablosu
+- INSERT, UPDATE ve DELETE işlemlerinde FTS5 eşitleme tetikleyicileri
+- Tek seferlik ve kayıtlı şema migrasyonları
+- AES-256-GCM ile doğrulanmış veritabanı şifreleme
+- PBKDF2-HMAC-SHA256 anahtar türetme
+- Temiz kapanışta WAL checkpoint, bütünlük kontrolü ve düz metin temizliği
+- Atomik yedekleme, geri yükleme, saklama sınırı ve zamanlama
 
-### Kullanıcı Etkileşimi
-- Kullanıcı puanlama ve geri bildirim mekanizması
-- Yönetici onay ve içerik yönetim paneli
-- Sistem kullanım analitiği ve raporlama
+### Excel veri aktarımı
 
----
+- Standart `Kategori`, `Soru`, `Cevap`, `Kaynak Doküman` şeması
+- Mevcut kurumsal UYDS Excel şeması
+- İlk 25 satır içinde dinamik başlık tespiti
+- Dosya boyutu, MIME, OOXML imzası ve içerik türü doğrulaması
+- ZIP path traversal, sıkıştırma bombası, makro, OLE, ActiveX ve harici bağlantı denetimi
+- Formül ve formül enjeksiyonu reddi
+- SHA-256 ile aynı dosyanın yeniden aktarılmasını engelleme
+- Dosya içindeki birebir mükerrer kayıtları eleme
+- Eski aktif kayıtları arşivleyerek yeni veri sürümü oluşturma
+- Denetim günlüğü ve veri sürümü geçmişi
+- Paragraf, satır ve cümle sınırlarını koruyan metin parçalama
+
+## Mevcut Veri Akışı
+
+```mermaid
+flowchart TD
+    A["UYDS Excel dosyası"] --> B["Dosya ve OOXML güvenlik doğrulaması"]
+    B --> C["Sütun tespiti ve veri temizleme"]
+    C --> D["Mükerrer dosya ve kayıt denetimi"]
+    D --> E["Veri sürümü oluşturma"]
+    E --> F["SQLite aktif ve arşiv kayıtları"]
+    F --> G["Mantıksal metin parçaları"]
+    F --> H["FTS5 tam metin indeksi"]
+    G --> I["Faz 4 vektör üretimine hazır veri"]
+```
+
+Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerrer bir satır elendikten sonra 2.398 benzersiz kayıt ve 4.075 metin parçası oluşturulmuştur. Gerçek içerikler ve üretilen veritabanı sürüm kontrolüne dahil edilmez.
+
+## Planlanan Özellikler
+
+- Yerel Türkçe sentence-transformer modeli ile vektör üretimi
+- FTS5 ve kosinüs benzerliğini birleştiren hibrit arama
+- Reciprocal Rank Fusion ve Cross-Encoder yeniden sıralama
+- DeepSeek API ile yalnızca seçilen kaynaklardan yanıt üretimi
+- Düşük güvenli ve cevapsız sorularda yanıt reddetme
+- Server-Sent Events ile canlı yanıt akışı
+- Kullanıcı oturum hafızası
+- JWT giriş, yenileme ve çıkış rotaları
+- Kullanıcı geri bildirimi ve yönetici onayı
+- Analitik ve yönetici panelleri
+- Kurumsal web arayüzü
+- Benchmark, pytest ve güvenlik testi altyapısı
 
 ## Teknoloji Yığını
 
-| Katman | Teknoloji |
-|---|---|
-| Programlama Dili | Python 3.11 |
-| Web Çerçevesi | FastAPI |
-| ASGI Sunucu | Uvicorn |
-| Veritabanı | SQLite3 (FTS5 tam metin arama) |
-| Vektör Gömmeleri | Sentence-Transformers (yerel, çevrimdışı) |
-| Dış LLM API | DeepSeek API |
-| Konteynerizasyon | Docker, Docker Compose |
-| Kimlik Doğrulama | JWT (python-jose), bcrypt |
-| İstek Sınırlama | SlowAPI |
-| Veri İşleme | Pandas, OpenPyXL, NumPy |
-| HTTP İstemci | HTTPX |
-| Şablon Motoru | Jinja2 |
-| Veri Doğrulama | Pydantic, Pydantic-Settings |
-| Dosya Yükleme | Python-Multipart |
+| Bileşen | Teknoloji | Kullanım durumu |
+|---|---|---|
+| Programlama dili | Python 3.11 | Aktif |
+| Web çatısı | FastAPI | Aktif |
+| ASGI sunucusu | Uvicorn | Aktif |
+| Veritabanı | SQLite3 ve FTS5 | Aktif |
+| Veri işleme | Pandas ve OpenPyXL | Aktif |
+| Veri doğrulama | Pydantic ve Pydantic-Settings | Aktif |
+| Şifreleme | cryptography, AES-256-GCM | Aktif |
+| Parola güvenliği | bcrypt | Aktif |
+| İstek sınırlama | SlowAPI | Aktif |
+| Konteyner | Docker ve Docker Compose | Aktif |
+| Vektör gömmeleri | Sentence-Transformers ve NumPy | Faz 4 için planlandı |
+| Yeniden sıralama | Cross-Encoder | Faz 5 için planlandı |
+| LLM istemcisi | HTTPX ve DeepSeek API | Faz 6 için planlandı |
+| Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
 
----
+## Ön Koşullar
+
+Docker ile çalıştırma:
+
+- Docker Engine 20.10 veya üzeri
+- Docker Compose V2
+
+Yerel çalıştırma:
+
+- Python 3.11
+- Proje bağımlılıkları için izole sanal ortam
+
+DeepSeek API anahtarı Faz 1-3 için gerekli değildir. Anahtar, Faz 6 entegrasyonu devreye alındığında zorunlu olacaktır.
 
 ## Kurulum
 
-### Ön Koşullar
-- Docker 20.10 veya üzeri
-- Docker Compose V2
-- DeepSeek API anahtarı
+Depoyu klonlayın:
 
-### Hızlı Başlangıç
-
-Depoyu klonlayın ve proje dizinine geçin:
-```
-git clone <depo-adresi>
-cd HadesBot
+```text
+git clone https://github.com/mecik-arda/UYDS-SSS-hades-bot.git
+cd UYDS-SSS-hades-bot
 ```
 
-Ortam değişkenleri dosyasını oluşturun:
-```
+Ortam dosyasını oluşturun:
+
+```text
 copy .env.example .env
 ```
 
-`.env` dosyasında aşağıdaki değişkenleri güncelleyin:
+Linux veya macOS:
 
-`.env.dev`, `.env.test` ve `.env.prod` dosyaları ortama özgü güvenli varsayılanları içerir. Aktif profil `.env` içindeki `ORTAM_PROFILI` değeriyle seçilir; gizli değerler yalnızca `.env` dosyasında tutulmalıdır.
+```text
+cp .env.example .env
+```
+
+`.env` içinde en az şu üç değeri güçlü ve benzersiz değerlerle değiştirin:
+
+- `VERITABANI_SIFRELEME_ANAHTARI`
+- `JWT_GIZLI_ANAHTARI`
+- `VARSAYILAN_YONETICI_SIFRESI`
+
+Orijinal çalışma kitabını aşağıdaki konuma yerleştirin:
+
+```text
+veriler/UYDS_SSS_Listesi.xlsx
+```
+
+Gerçek Excel dosyasını Git’e eklemeyin.
+
+## Yapılandırma
 
 | Değişken | Açıklama | Varsayılan |
 |---|---|---|
-| `DEEPSEEK_API_ANAHTARI` | DeepSeek API anahtarı (zorunlu) | - |
-| `JWT_GIZLI_ANAHTARI` | JWT imzalama anahtarı (zorunlu) | - |
-| `VERITABANI_SIFRELEME_ANAHTARI` | AES-256-GCM veritabanı şifreleme anahtarı (zorunlu) | - |
-| `VARSAYILAN_YONETICI_SIFRESI` | İlk yönetici hesabının güçlü parolası (zorunlu) | - |
-| `VERITABANI_YOLU` | SQLite veritabanı dosya yolu | `veriler/veri_deposu.db` |
-| `GUVEN_ESIGI` | Arama sonucu kabul eşiği | `0.70` |
-| `VEKTOR_MODEL_ADI` | Vektör gömme modeli | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `ORTAM_PROFILI` | Etkin ortam profili | `prod` |
+| `DEEPSEEK_API_ANAHTARI` | Faz 6 DeepSeek anahtarı | Boş |
+| `VERITABANI_YOLU` | SQLite dosya yolu | `veriler/veri_deposu.db` |
+| `VERITABANI_SIFRELEME_ANAHTARI` | En az 32 karakterli şifreleme anahtarı | Zorunlu |
+| `GUVEN_ESIGI` | Gelecek arama güven eşiği | `0.70` |
+| `VEKTOR_MODEL_ADI` | Gelecek vektör modeli | `paraphrase-multilingual-MiniLM-L12-v2` |
+| `JWT_GIZLI_ANAHTARI` | En az 32 karakterli JWT anahtarı | Zorunlu |
 | `JWT_ALGORITMASI` | JWT imza algoritması | `HS256` |
-| `JWT_OMRU_DAKIKA` | JWT token geçerlilik süresi | `30` |
-| `ISTEK_SINIRI` | Dakika başına istek limiti | `100` |
-| `ISTEK_PENCERESI_SANIYE` | İstek sayacı pencere süresi | `60` |
-| `UYGULAMA_PORT` | Uygulama port numarası | `8000` |
-| `LOG_SEVIYESI` | Uygulama günlük seviyesi | `INFO` |
-| `MAKSIMUM_YEDEK_SAYISI` | Saklanacak en fazla yedek sayısı | `10` |
-| `YEDEKLEME_ARALIGI_SAAT` | Otomatik yedekleme aralığı | `24` |
+| `JWT_OMRU_DAKIKA` | Erişim belirteci ömrü | `30` |
+| `VARSAYILAN_YONETICI_SIFRESI` | En az 12 karakterli yönetici parolası | Zorunlu |
+| `ISTEK_SINIRI` | Pencere başına istek sayısı | `100` |
+| `ISTEK_PENCERESI_SANIYE` | İstek sınırı penceresi | `60` |
+| `UYGULAMA_PORT` | Dış HTTP portu | `8000` |
+| `MESAJ_MAKS_KARAKTER` | Kullanıcı mesajı karakter sınırı | `2000` |
+| `DEEPSEEK_MAKS_TOKEN` | Gelecek LLM çıktı token sınırı | `4096` |
+| `GUNLUK_MESAJ_KOTASI` | Gelecek kullanıcı günlük kotası | `500` |
+| `OTURUM_MAKS_MESAJ` | Gelecek oturum mesaj sınırı | `50` |
+| `ISTEK_GOVDE_MAKS_BOYUT` | Genel istek gövdesi sınırı | `1048576` |
+| `DOSYA_YUKLEME_MAKS_BOYUT` | Excel yükleme sınırı | `52428800` |
+| `LOG_SEVIYESI` | Günlük seviyesi | `INFO` |
+| `MAKSIMUM_YEDEK_SAYISI` | Saklanacak yedek sayısı | `10` |
+| `YEDEKLEME_ARALIGI_SAAT` | Zamanlanmış yedek aralığı | `24` |
 
-Uygulamayı başlatın:
-```
-docker-compose up --build
-```
+`.env.dev`, `.env.test` ve `.env.prod` dosyaları gizli bilgi içermeyen profil değerlerini taşır. Gizli değerler yalnızca Git dışında tutulan `.env` dosyasına yazılmalıdır.
 
-Tarayıcıdan erişin:
-```
-http://localhost:8000
-```
+## Excel Verilerini İçe Aktarma
 
-Sağlık kontrolü:
-```
-GET http://localhost:8000/api/saglik
-```
+İçe aktarım sırasında uygulama kapalı olmalıdır.
 
-### Varsayılan Yönetici Hesabı
+Yerel Python ortamında varsayılan dosyayı aktarın:
 
-Uygulama ilk başlatıldığında otomatik olarak bir yönetici hesabı oluşturulur. Parola kod içinde bulunmaz ve `.env` dosyasındaki `VARSAYILAN_YONETICI_SIFRESI` değerinden alınır.
-
-- Kullanıcı adı: `yonetici`
-- Şifre: `.env` içinde yapılandırılan güçlü değer
-
-### Yedekleme ve Geri Yükleme
-
-Tek seferlik yedekleme:
-```
-python yedekle.py yedekle
-```
-
-Bir veritabanı yedeğini geri yükleme:
-```
-python yedekle.py geri-yukle veri_deposu_YYYYMMDD_HHMMSS.db
-```
-
-Zamanlanmış yedekleme Docker Compose içindeki `uyds_yedekleyici` servisi tarafından yürütülür. Geri yükleme öncesinde uygulama durdurulmalıdır.
-
-### Excel Verilerini İçe Aktarma
-
-Varsayılan `veriler/UYDS_SSS_Listesi.xlsx` dosyasını güvenli biçimde içe aktarın:
-```
+```text
 python excel_ice_aktar.py
 ```
 
-Farklı bir `.xlsx` dosyası kullanın:
-```
+Başka bir `.xlsx` dosyasını aktarın:
+
+```text
 python excel_ice_aktar.py veriler/yeni_sss_surumu.xlsx
 ```
 
-İçe aktarma uygulama kapalıyken çalıştırılmalıdır. Dosya MIME türü, OOXML yapısı, boyutu, makro ve formül içeriği bakımından denetlenir. Aynı dosyanın yeniden aktarımı yeni sürüm oluşturmaz; değişmiş dosyada önceki aktif kayıtlar arşivlenir, yeni veri sürümü etkinleştirilir ve işlem denetim günlüğüne kaydedilir. Standart `Kategori`, `Soru`, `Cevap`, `Kaynak Doküman` başlıkları ile mevcut UYDS kurumsal şeması desteklenir.
+Docker ile aktarım:
 
----
+```text
+docker compose build
+docker compose run --rm uyds_sohbet_botu_uygulamasi python excel_ice_aktar.py
+```
 
-## API Uç Noktaları
+Komut JSON biçiminde şu alanları döndürür:
 
-| Yöntem | Uç Nokta | Açıklama | Yetki |
+- `surum_numarasi`
+- `aktarilan_kayit_sayisi`
+- `olusturulan_parca_sayisi`
+- `arsivlenen_kayit_sayisi`
+- `yinelenen_dosya`
+- `dosya_ozeti`
+
+Aktarım tamamlandığında düz metin SQLite dosyası AES-256-GCM ile şifrelenir.
+
+## Uygulamayı Çalıştırma
+
+Docker:
+
+```text
+docker compose up --build
+```
+
+Yerel Python:
+
+```text
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+uvicorn uygulama.ana:uygulama --host 127.0.0.1 --port 8000
+```
+
+Linux veya macOS sanal ortam etkinleştirme:
+
+```text
+source .venv/bin/activate
+```
+
+Mevcut erişim adresleri:
+
+- Sağlık kontrolü: `http://localhost:8000/api/saglik`
+- Swagger arayüzü: `http://localhost:8000/docs`
+- OpenAPI şeması: `http://localhost:8000/openapi.json`
+
+Kök `/` rotası ve kullanıcı arayüzü henüz mevcut değildir.
+
+## API Durumu
+
+### Uygulanan rotalar
+
+| Yöntem | Rota | Açıklama | Yetki |
 |---|---|---|---|
-| `GET` | `/api/saglik` | Sistem sağlık kontrolü | Herkese açık |
-| `POST` | `/api/v1/kimlik-dogrulama/giris` | Kullanıcı girişi, JWT token alma | Herkese açık |
-| `POST` | `/api/v1/arama` | SSS araması ve yanıt üretimi | Kullanıcı |
-| `POST` | `/api/v1/geri-bildirim` | Yanıta puan ve yorum ekleme | Kullanıcı |
-| `GET` | `/api/v1/yonetici/bekleyen-bildirimler` | Onay bekleyen geri bildirimler | Yönetici |
-| `POST` | `/api/v1/yonetici/onay` | Geri bildirim onaylama veya reddetme | Yönetici |
-| `POST` | `/api/v1/yonetici/excel-yukle` | Excel veri seti yükleme | Yönetici |
-| `GET` | `/api/v1/analitik` | Sistem kullanım istatistikleri | Yönetici |
+| `GET` | `/api/saglik` | Uygulama sağlık durumu | Herkese açık |
 
----
+### Faz 7 ve sonrasında planlanan rotalar
 
-## Güvenlik Mimarisi
+| Yöntem | Rota | Açıklama |
+|---|---|---|
+| `POST` | `/api/v1/kimlik-dogrulama/giris` | JWT ile kullanıcı girişi |
+| `POST` | `/api/v1/arama` | Hibrit SSS araması ve kaynaklı yanıt |
+| `POST` | `/api/v1/geri-bildirim` | Yanıta puan ve yorum ekleme |
+| `GET` | `/api/v1/yonetici/bekleyen-bildirimler` | Onay kuyruğu |
+| `POST` | `/api/v1/yonetici/onay` | Geri bildirim kararı |
+| `POST` | `/api/v1/yonetici/excel-yukle` | Yetkili Excel yükleme |
+| `GET` | `/api/v1/analitik` | Kullanım istatistikleri |
 
-Uygulama aşağıdaki güvenlik katmanlarını içermektedir:
+## Yedekleme ve Geri Yükleme
 
-- **Kimlik Doğrulama:** Tüm korumalı uç noktalar JWT Bearer token ile erişim gerektirir. Token'lar yapılandırılabilir süre sonuna sahiptir.
-- **Yetkilendirme:** Kullanıcı (`KULLANICI`) ve yönetici (`YONETICI`) olmak üzere iki rol seviyesi tanımlanmıştır. Yönetici uç noktaları ek yetki kontrolüne tabidir.
-- **Kullanıcı Doğrulama:** Token çözümleme sonrası kullanıcının veritabanında varlığı ve hesap aktifliği kontrol edilir. Silinmiş veya devre dışı bırakılmış hesapların token'ları reddedilir.
-- **İstek Sınırlama:** IP tabanlı rate limiting, hizmet reddi (DoS) saldırılarına karşı koruma sağlar. Eşik değerleri `.env` üzerinden yapılandırılabilir. İstek gövdeleri bellekte biriktirilmeden akış sırasında ölçülür.
-- **Brute-force Koruması:** Kullanıcı ve IP giriş sayaçları SQLite üzerinde merkezi olarak tutulur; sayaçlar birden fazla uygulama süreci tarafından ortak kullanılır.
-- **Veritabanı Güvenliği:** Tüm SQL sorguları parametreli olarak çalıştırılır. SQLite uzantı yükleme (`enable_load_extension`) devre dışıdır.
-- **Docker İzolasyonu:** Konteyner root kullanıcısı yerine yetkisiz bir sistem kullanıcısı ile çalışır. Dosya sistemi izinleri asgari seviyede tutulur.
-- **Vektör İşlemleri:** Tüm vektör gömme işlemleri yerel olarak, çevrimdışı modda gerçekleştirilir. Hiçbir veri dış hizmetlere gönderilmez.
-- **Veri Sızıntısı Koruması:** `veriler/` dizini `.gitignore` ve `.dockerignore` ile hem sürüm kontrolünden hem de Docker imajından dışlanmıştır.
+Tek seferlik yedek:
 
----
+```text
+python yedekle.py yedekle
+```
+
+Bir yedeği geri yükleme:
+
+```text
+python yedekle.py geri-yukle veri_deposu_YYYYMMDD_HHMMSS.db
+```
+
+Zamanlanmış yedekleme:
+
+```text
+python yedekle.py zamanla --aralik-saat 24
+```
+
+Docker Compose içindeki `uyds_yedekleyici` servisi zamanlanmış yedeklemeyi otomatik yürütür. Geri yükleme ve elle Excel aktarımı öncesinde uygulama durdurulmalıdır.
+
+## Doğrulama
+
+Sözdizimi ve import derlemesi:
+
+```text
+python -m compileall -q uygulama excel_ice_aktar.py yedekle.py
+```
+
+Docker Compose yapılandırması:
+
+```text
+docker compose config --quiet
+```
+
+Faz 3 doğrulamalarında:
+
+- 2.398 benzersiz SSS kaydı aktarıldı.
+- 4.075 mantıksal metin parçası oluşturuldu.
+- Aktif kayıt ve FTS5 satır sayıları eşleşti.
+- Aynı dosyanın ikinci aktarımı yeni sürüm oluşturmadı.
+- Eski Faz 2 şeması veri kaybı olmadan yükseltildi.
+- Hatalı MIME, makro uzantısı ve formül içeriği reddedildi.
+- Parçalı büyük istek gövdesi 413 yanıtıyla reddedildi.
+- Merkezi brute-force sayacı süreçler arasında ve eşzamanlı erişimde doğrulandı.
+- Şifreli kapanış sonrasında düz metin veritabanı bırakılmadı.
+
+Kalıcı pytest ve benchmark paketi Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
-```
+```text
 HadesBot/
 ├── uygulama/
-│   ├── ana.py                    # FastAPI başlangıç ve yaşam döngüsü
-│   ├── cekirdek/                 # Çekirdek altyapı modülleri
-│   │   ├── konfigurasyon.py      # Ortam değişkenleri yönetimi
-│   │   ├── veritabani.py         # SQLite bağlantı ve bağlam yönetimi
-│   │   ├── guvenlik.py           # JWT, bcrypt, RBAC kimlik doğrulama
-│   │   ├── istek_sinirlayici.py     # Rate limiting yapılandırması
-│   │   ├── gunlukleyici.py          # JSON formatlı yapılandırılmış loglama
-│   │   ├── onbellek.py              # LRU bellek içi önbellek
-│   │   └── guvenlik_basliklari.py   # HTTP güvenlik başlıkları middleware'i
-│   ├── modeller/                 # Veri modelleri ve şemalar
-│   │   ├── veritabani_modelleri.py  # 8 tablo + FTS5 + tetikleyiciler
-│   │   └── semalar.py            # Pydantic istek/yanıt modelleri
-│   ├── servisler/                # Excel içe aktarma ve metin parçalama servisleri
-│   ├── api/                      # API rota tanımları (geliştirme aşamasında)
-│   ├── sablonlar/                # Jinja2 HTML şablonları (geliştirme aşamasında)
-│   └── statik/                   # CSS ve JavaScript (geliştirme aşamasında)
-├── veriler/                      # Kurumsal veri dizini (sürüm kontrolü dışında)
-├── testler/                      # Test dosyaları (geliştirme aşamasında)
+│   ├── ana.py
+│   ├── api/
+│   ├── cekirdek/
+│   │   ├── gunlukleyici.py
+│   │   ├── guvenlik.py
+│   │   ├── guvenlik_basliklari.py
+│   │   ├── istek_boyutu.py
+│   │   ├── istek_sinirlayici.py
+│   │   ├── konfigurasyon.py
+│   │   ├── onbellek.py
+│   │   └── veritabani.py
+│   ├── modeller/
+│   │   ├── semalar.py
+│   │   └── veritabani_modelleri.py
+│   ├── sablonlar/
+│   ├── servisler/
+│   │   ├── excel_yukleyici.py
+│   │   └── metin_parcalayici.py
+│   └── statik/
+├── excel_ice_aktar.py
+├── yedekle.py
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
 ├── .env.example
-├── .gitignore
-├── .dockerignore
+├── .env.dev
+├── .env.test
+├── .env.prod
 └── README.md
 ```
 
----
+Henüz oluşturulmamış `api/`, `sablonlar/`, `statik/` ve `testler/` içerikleri ilgili gelecek fazlarda eklenecektir.
 
-## Geliştirme Durumu
+## Bilinen Sınırlamalar
 
-| Faz | Açıklama | Durum |
-|---|---|---|
-| Faz 1 | Ortam kurulumu, Docker altyapısı, güvenlik, bağımlılıklar | Tamamlandı |
-| Faz 2 | SQLite veritabanı, FTS5, veri modelleri, önbellek | Tamamlandı |
-| Faz 3 | Excel içe aktarma, metin parçalama, sürümleme | Tamamlandı |
-| Faz 4 | Vektör gömmeleri, eş anlamlı terim haritası | Beklemede |
-| Faz 5 | Hibrit arama, RRF, Cross-Encoder yeniden sıralama | Beklemede |
-| Faz 6 | DeepSeek API, SSE akış, oturum hafızası | Beklemede |
-| Faz 7 | API uç noktaları, iş mantığı servisleri, API güvenliği | Beklemede |
-| Faz 8 | Geri bildirim döngüsü, yönetici onayı, analitik | Beklemede |
-| Faz 9 | Kurumsal Kurşuni ön yüz (HTML/CSS/JS) | Beklemede |
-| Faz 10 | Test, sızma testi, güvenlik taraması, dokümantasyon | Beklemede |
-
----
+- Yalnızca sağlık kontrolü rotası uygulanmıştır.
+- Vektör üretimi ve anlamsal arama henüz yoktur.
+- DeepSeek API çağrısı ve kaynak kontrollü yanıt üretimi henüz yoktur.
+- Kimlik doğrulama servisleri hazır olsa da HTTP giriş rotası henüz yoktur.
+- Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
+- Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
+- Kalıcı otomatik test paketi Faz 10’da oluşturulacaktır.
 
 ## Lisans
 
-Bu proje MIT Lisansı ile lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakınız.
+Bu proje MIT Lisansı ile lisanslanmıştır. Ayrıntılar `LICENSE` dosyasındadır.
