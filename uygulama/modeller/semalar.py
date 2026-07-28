@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel, Field, JsonValue
@@ -90,3 +91,28 @@ class BekleyenGeriBildirimListesi(BaseModel):
     bildirimler: list[BekleyenGeriBildirim]
     toplam: int
     sayfalama: Sayfalama
+
+
+@dataclass(frozen=True)
+class AramaAdayi:
+    sss_id: int
+    parca_id: int | None
+    aday_metni: str
+    kaynak_dokuman: str | None
+    kaynak_sayfa: str | None
+    kaynak_satir: int | None
+    fts_sirasi: int | None
+    vektor_sirasi: int | None
+    rrf_skoru: float
+    yeniden_siralama_skoru: float | None
+
+
+@dataclass(frozen=True)
+class AramaSonucu:
+    adaylar: tuple[AramaAdayi, ...]
+    gecen_sure_ms: float
+    fts_aday_sayisi: int
+    vektor_aday_sayisi: int
+    birlesik_aday_sayisi: int
+    gecersiz_vektor_sayisi: int
+    yeniden_siralama_etkin: bool

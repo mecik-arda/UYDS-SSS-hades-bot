@@ -14,7 +14,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 2 | SQLite, FTS5, veri modelleri ve şifreleme | Tamamlandı |
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
-| Faz 5 | Hibrit arama, RRF ve yeniden sıralama | Beklemede |
+| Faz 5 | Hibrit arama, RRF ve yeniden sıralama | Tamamlandı |
 | Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Beklemede |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Beklemede |
 | Faz 8 | Geri bildirim, yönetici onayı ve analitik | Beklemede |

@@ -92,6 +92,10 @@ class TerimHaritasi:
         return dogrulanmis_harita
 
     def _terimi_normalize_et(self, terim: str) -> str:
+        return terimi_normalize_et(terim)
+
+
+def terimi_normalize_et(terim: str) -> str:
         temiz_terim = re.sub(r"\s+", " ", terim.strip().casefold())
         if not temiz_terim:
             raise TerimHaritasiHatasi("Terim bos olamaz")

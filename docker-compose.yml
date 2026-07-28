@@ -46,6 +46,10 @@ services:
       - ISTEK_GOVDE_MAKS_BOYUT=${ISTEK_GOVDE_MAKS_BOYUT:-1048576}
       - DOSYA_YUKLEME_MAKS_BOYUT=${DOSYA_YUKLEME_MAKS_BOYUT:-52428800}
       - LOG_SEVIYESI=${LOG_SEVIYESI:-INFO}
+      - RRF_K=${RRF_K:-60}
+      - FTS_ADAY_SAYISI=${FTS_ADAY_SAYISI:-50}
+      - VEKTOR_ADAY_SAYISI=${VEKTOR_ADAY_SAYISI:-50}
+      - RRF_ADAY_SAYISI=${RRF_ADAY_SAYISI:-20}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/hazirlik')"]
       interval: 30s

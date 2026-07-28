@@ -32,6 +32,10 @@ class Konfigurasyon(BaseSettings):
     DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
     LOG_SEVIYESI: str = Field(default="INFO")
     ORTAM_PROFILI: str = Field(default="prod")
+    RRF_K: int = Field(default=60, gt=0)
+    FTS_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
+    VEKTOR_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
+    RRF_ADAY_SAYISI: int = Field(default=20, gt=0, le=100)
 
     model_config = SettingsConfigDict(
         env_file=".env",
