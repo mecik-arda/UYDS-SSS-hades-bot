@@ -80,6 +80,47 @@ def baglanti_olustur() -> sqlite3.Connection:
     return baglanti
 
 
+def veritabani_hazirligini_denetle() -> dict[str, object]:
+    gerekli_tablolar = {
+        "sss_kayitlari",
+        "sss_parcalari",
+        "sss_fts",
+        "veri_surumleri",
+        "veri_surumu_kayitlari",
+        "sistem_migrasyonlari",
+    }
+    baglanti = baglanti_olustur()
+    try:
+        mevcut_tablolar = {
+            satir["name"]
+            for satir in baglanti.execute(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type IN ('table', 'view')
+                """
+            ).fetchall()
+        }
+        eksik_tablolar = sorted(gerekli_tablolar - mevcut_tablolar)
+        if eksik_tablolar:
+            raise sqlite3.DatabaseError(
+                f"Eksik veritabani nesneleri: {', '.join(eksik_tablolar)}"
+            )
+        baglanti.execute("SELECT rowid FROM sss_fts LIMIT 1").fetchone()
+        yabanci_anahtarlar_etkin = bool(
+            baglanti.execute("PRAGMA foreign_keys").fetchone()[0]
+        )
+        if not yabanci_anahtarlar_etkin:
+            raise sqlite3.DatabaseError("Yabanci anahtar denetimi etkin degil")
+        return {
+            "durum": "hazir",
+            "veritabani": "erisilebilir",
+            "fts5": "erisilebilir",
+        }
+    finally:
+        baglanti.close()
+
+
 def veritabanini_sifrele() -> None:
     with _DOSYA_ISLEMI_KILIDI:
         veritabani_yolu, sifreli_yol = _veritabani_yollarini_al()

@@ -5,6 +5,12 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: uyds_asistani
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     ports:
       - "${UYGULAMA_PORT:-8000}:8000"
     volumes:
@@ -31,15 +37,22 @@ services:
       - DOSYA_YUKLEME_MAKS_BOYUT=${DOSYA_YUKLEME_MAKS_BOYUT:-52428800}
       - LOG_SEVIYESI=${LOG_SEVIYESI:-INFO}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/saglik')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/hazirlik')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
     restart: unless-stopped
+    stop_grace_period: 45s
 
   uyds_yedekleyici:
     image: hadesbot-uygulama:yerel
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
     command:
       - python
       - yedekle.py
@@ -55,3 +68,4 @@ services:
       uyds_sohbet_botu_uygulamasi:
         condition: service_healthy
     restart: unless-stopped
+    stop_grace_period: 30s

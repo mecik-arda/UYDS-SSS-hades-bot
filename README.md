@@ -40,15 +40,20 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - bcrypt tabanlı parola özetleme
 - JWT oluşturma, çözme ve RBAC bağımlılık altyapısı
 - Hassas değer maskeleyen yapılandırılmış günlükleme
-- Non-root Docker kullanıcısı ve konteyner sağlık kontrolü
+- Non-root Docker kullanıcısı, capability kaldırma ve `no-new-privileges`
+- Ayrı liveness ve veritabanı/FTS readiness kontrolleri
+- PID sınırı ve kontrollü kapanış süresi
 
 ### Veritabanı altyapısı
 
 - Bağlantı başına SQLite yönetimi
 - WAL, foreign key ve busy timeout ayarları
-- 11 normal tablo ve bir FTS5 sanal tablosu
+- 12 normal tablo ve bir FTS5 sanal tablosu
 - INSERT, UPDATE ve DELETE işlemlerinde FTS5 eşitleme tetikleyicileri
 - Tek seferlik ve kayıtlı şema migrasyonları
+- Durum, puan ve boolean alanları için veritabanı doğrulama kısıtları
+- Arama, sürüm, parça, vektör ve oturum sorgularına uygun indeksler
+- Veri sürümleri ile SSS kayıtlarını, kaynak sayfa ve satır anlık görüntüsüyle eşleyen kalıcı ilişki tablosu
 - AES-256-GCM ile doğrulanmış veritabanı şifreleme
 - PBKDF2-HMAC-SHA256 anahtar türetme
 - Temiz kapanışta WAL checkpoint, bütünlük kontrolü ve düz metin temizliği
@@ -64,7 +69,10 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - Formül ve formül enjeksiyonu reddi
 - SHA-256 ile aynı dosyanın yeniden aktarılmasını engelleme
 - Dosya içindeki birebir mükerrer kayıtları eleme
-- Eski aktif kayıtları arşivleyerek yeni veri sürümü oluşturma
+- Excel çalışma sayfası, satır numarası ve kayıt özeti izlenebilirliği
+- Değişmeyen kayıt kimliklerini ve parçalarını koruyan artımlı sürümleme
+- Yalnızca kaldırılan veya değişen kayıtları arşivleme
+- Süreçler arası `BEGIN IMMEDIATE` aktarım kilidi ve benzersiz dosya özeti
 - Denetim günlüğü ve veri sürümü geçmişi
 - Paragraf, satır ve cümle sınırlarını koruyan metin parçalama
 
@@ -75,10 +83,15 @@ flowchart TD
     A["UYDS Excel dosyası"] --> B["Dosya ve OOXML güvenlik doğrulaması"]
     B --> C["Sütun tespiti ve veri temizleme"]
     C --> D["Mükerrer dosya ve kayıt denetimi"]
-    D --> E["Veri sürümü oluşturma"]
-    E --> F["SQLite aktif ve arşiv kayıtları"]
-    F --> G["Mantıksal metin parçaları"]
-    F --> H["FTS5 tam metin indeksi"]
+    D --> E["Kayıt özeti ve kaynak satırı üretme"]
+    E --> F["Artımlı veri sürümü oluşturma"]
+    F --> J["Değişmeyen kayıt kimliklerini koruma"]
+    F --> K["Yeni ve kaldırılan kayıtları işleme"]
+    J --> L["Sürüm-kayıt eşleme geçmişi"]
+    K --> L
+    L --> M["SQLite aktif ve arşiv kayıtları"]
+    M --> G["Mantıksal metin parçaları"]
+    M --> H["FTS5 tam metin indeksi"]
     G --> I["Faz 4 vektör üretimine hazır veri"]
 ```
 
@@ -225,6 +238,8 @@ Komut JSON biçiminde şu alanları döndürür:
 - `aktarilan_kayit_sayisi`
 - `olusturulan_parca_sayisi`
 - `arsivlenen_kayit_sayisi`
+- `eklenen_kayit_sayisi`
+- `korunan_kayit_sayisi`
 - `yinelenen_dosya`
 - `dosya_ozeti`
 
@@ -256,6 +271,7 @@ source .venv/bin/activate
 Mevcut erişim adresleri:
 
 - Sağlık kontrolü: `http://localhost:8000/api/saglik`
+- Hazırlık kontrolü: `http://localhost:8000/api/hazirlik`
 - Swagger arayüzü: `http://localhost:8000/docs`
 - OpenAPI şeması: `http://localhost:8000/openapi.json`
 
@@ -267,7 +283,8 @@ Kök `/` rotası ve kullanıcı arayüzü henüz mevcut değildir.
 
 | Yöntem | Rota | Açıklama | Yetki |
 |---|---|---|---|
-| `GET` | `/api/saglik` | Uygulama sağlık durumu | Herkese açık |
+| `GET` | `/api/saglik` | Uygulama süreci liveness durumu | Herkese açık |
+| `GET` | `/api/hazirlik` | Veritabanı, şema ve FTS5 readiness durumu | Herkese açık |
 
 ### Faz 7 ve sonrasında planlanan rotalar
 
@@ -371,12 +388,13 @@ Henüz oluşturulmamış `api/`, `sablonlar/`, `statik/` ve `testler/` içerikle
 
 ## Bilinen Sınırlamalar
 
-- Yalnızca sağlık kontrolü rotası uygulanmıştır.
+- Yalnızca sağlık ve hazırlık kontrolü rotaları uygulanmıştır.
 - Vektör üretimi ve anlamsal arama henüz yoktur.
 - DeepSeek API çağrısı ve kaynak kontrollü yanıt üretimi henüz yoktur.
 - Kimlik doğrulama servisleri hazır olsa da HTTP giriş rotası henüz yoktur.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
+- Veritabanı çalışma sırasında düz metin SQLite olarak açıktır ve temiz kapanışta şifrelenir.
 - Kalıcı otomatik test paketi Faz 10’da oluşturulacaktır.
 
 ## Lisans

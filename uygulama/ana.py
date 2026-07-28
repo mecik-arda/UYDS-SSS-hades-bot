@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -15,7 +16,10 @@ from uygulama.cekirdek.istek_sinirlayici import istek_sinirlayici
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.cekirdek.guvenlik import sifre_hash_olustur
 from uygulama.cekirdek.guvenlik_basliklari import GuvenlikBasliklariMiddleware
-from uygulama.cekirdek.veritabani import veritabanini_sifrele
+from uygulama.cekirdek.veritabani import (
+    veritabani_hazirligini_denetle,
+    veritabanini_sifrele,
+)
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
 
 
@@ -78,3 +82,19 @@ async def saglik_kontrolu():
         "uygulama": "UYDS Akilli SSS Chatbot",
         "surum": "1.0.0",
     }
+
+
+@uygulama.get("/api/hazirlik")
+async def hazirlik_kontrolu():
+    try:
+        sonuc = await asyncio.to_thread(veritabani_hazirligini_denetle)
+        return sonuc
+    except Exception as hata:
+        gunlukleyici.error(f"Hazirlik denetimi basarisiz: {hata}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "durum": "hazir_degil",
+                "veritabani": "erisilemiyor",
+            },
+        )

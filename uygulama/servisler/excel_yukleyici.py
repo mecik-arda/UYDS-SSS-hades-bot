@@ -45,6 +45,9 @@ class SSSKaydi:
     modul: str | None
     kullanici_rolu: str | None
     arama_metni: str
+    kaynak_sayfa: str
+    kaynak_satir: int
+    kayit_ozeti: str
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,8 @@ class IceAktarimSonucu:
     aktarilan_kayit_sayisi: int
     olusturulan_parca_sayisi: int
     arsivlenen_kayit_sayisi: int
+    eklenen_kayit_sayisi: int
+    korunan_kayit_sayisi: int
     yinelenen_dosya: bool
     dosya_ozeti: str
 
@@ -117,9 +122,12 @@ class ExcelYukleyici:
                 kayitlar,
             )
         gunlukleyici.info(
-            "Excel ice aktarimi tamamlandi: surum=%s, kayit=%s, parca=%s, yinelenen=%s",
+            "Excel ice aktarimi tamamlandi: surum=%s, kayit=%s, eklenen=%s, korunan=%s, arsivlenen=%s, parca=%s, yinelenen=%s",
             sonuc.surum_numarasi,
             sonuc.aktarilan_kayit_sayisi,
+            sonuc.eklenen_kayit_sayisi,
+            sonuc.korunan_kayit_sayisi,
+            sonuc.arsivlenen_kayit_sayisi,
             sonuc.olusturulan_parca_sayisi,
             sonuc.yinelenen_dosya,
         )
@@ -229,6 +237,7 @@ class ExcelYukleyici:
 
     def _exceli_oku(self, dosya_yolu: Path) -> list[SSSKaydi]:
         baslik_satiri, esleme_turu = self._baslik_satirini_bul(dosya_yolu)
+        kaynak_sayfa = self._ilk_sayfa_adini_al(dosya_yolu)
         veri_cercevesi = pd.read_excel(
             dosya_yolu,
             sheet_name=0,
@@ -248,6 +257,7 @@ class ExcelYukleyici:
                 veri_cercevesi,
                 kolon_eslemesi,
                 baslik_satiri,
+                kaynak_sayfa,
             )
         kolon_eslemesi = self._kolonlari_esle(
             normalize_edilmis_kolonlar,
@@ -257,7 +267,20 @@ class ExcelYukleyici:
             veri_cercevesi,
             kolon_eslemesi,
             baslik_satiri,
+            kaynak_sayfa,
         )
+
+    def _ilk_sayfa_adini_al(self, dosya_yolu: Path) -> str:
+        calisma_kitabi = load_workbook(
+            dosya_yolu,
+            read_only=True,
+            data_only=True,
+            keep_links=False,
+        )
+        try:
+            return calisma_kitabi.sheetnames[0]
+        finally:
+            calisma_kitabi.close()
 
     def _baslik_satirini_bul(self, dosya_yolu: Path) -> tuple[int, str]:
         onizleme = pd.read_excel(
@@ -315,6 +338,7 @@ class ExcelYukleyici:
         veri_cercevesi: pd.DataFrame,
         kolonlar: dict[str, Any],
         baslik_satiri: int,
+        kaynak_sayfa: str,
     ) -> list[SSSKaydi]:
         kayitlar: list[SSSKaydi] = []
         hatali_satirlar: list[int] = []
@@ -338,6 +362,8 @@ class ExcelYukleyici:
                 harici_kod=None,
                 modul=kategori,
                 kullanici_rolu=None,
+                kaynak_sayfa=kaynak_sayfa,
+                kaynak_satir=excel_satiri,
             )
             self._benzersiz_kaydi_ekle(kayitlar, gorulen_ozetler, kayit)
         self._hatali_satirlari_dogrula(hatali_satirlar)
@@ -348,6 +374,7 @@ class ExcelYukleyici:
         veri_cercevesi: pd.DataFrame,
         kolonlar: dict[str, Any],
         baslik_satiri: int,
+        kaynak_sayfa: str,
     ) -> list[SSSKaydi]:
         kayitlar: list[SSSKaydi] = []
         hatali_satirlar: list[int] = []
@@ -396,6 +423,8 @@ class ExcelYukleyici:
                 harici_kod=harici_kod,
                 modul=modul,
                 kullanici_rolu=None,
+                kaynak_sayfa=kaynak_sayfa,
+                kaynak_satir=excel_satiri,
             )
             self._benzersiz_kaydi_ekle(kayitlar, gorulen_ozetler, kayit)
         self._hatali_satirlari_dogrula(hatali_satirlar)
@@ -410,6 +439,8 @@ class ExcelYukleyici:
         harici_kod: str | None,
         modul: str | None,
         kullanici_rolu: str | None,
+        kaynak_sayfa: str,
+        kaynak_satir: int,
     ) -> SSSKaydi:
         arama_metni = self._metni_temizle(
             " ".join(
@@ -425,6 +456,16 @@ class ExcelYukleyici:
                 if parca
             )
         )
+        kayit_ozeti = self._kayit_ozeti_olustur(
+            kategori,
+            soru,
+            cevap,
+            kaynak_dokuman,
+            harici_kod,
+            modul,
+            kullanici_rolu,
+            arama_metni,
+        )
         return SSSKaydi(
             kategori=kategori,
             soru=soru,
@@ -434,7 +475,40 @@ class ExcelYukleyici:
             modul=modul,
             kullanici_rolu=kullanici_rolu,
             arama_metni=arama_metni,
+            kaynak_sayfa=kaynak_sayfa,
+            kaynak_satir=kaynak_satir,
+            kayit_ozeti=kayit_ozeti,
         )
+
+    def _kayit_ozeti_olustur(
+        self,
+        kategori: str,
+        soru: str,
+        cevap: str,
+        kaynak_dokuman: str | None,
+        harici_kod: str | None,
+        modul: str | None,
+        kullanici_rolu: str | None,
+        arama_metni: str,
+    ) -> str:
+        ozet_verisi = {
+            "arama_metni": arama_metni,
+            "cevap": cevap,
+            "harici_kod": harici_kod,
+            "kategori": kategori,
+            "kaynak_dokuman": kaynak_dokuman,
+            "kullanici_rolu": kullanici_rolu,
+            "modul": modul,
+            "soru": soru,
+        }
+        return hashlib.sha256(
+            json.dumps(
+                ozet_verisi,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
 
     def _benzersiz_kaydi_ekle(
         self,
@@ -442,15 +516,8 @@ class ExcelYukleyici:
         gorulen_ozetler: set[str],
         kayit: SSSKaydi,
     ) -> None:
-        kayit_ozeti = hashlib.sha256(
-            json.dumps(
-                asdict(kayit),
-                ensure_ascii=False,
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest()
-        if kayit_ozeti not in gorulen_ozetler:
-            gorulen_ozetler.add(kayit_ozeti)
+        if kayit.kayit_ozeti not in gorulen_ozetler:
+            gorulen_ozetler.add(kayit.kayit_ozeti)
             kayitlar.append(kayit)
 
     def _hatali_satirlari_dogrula(self, hatali_satirlar: list[int]) -> None:
@@ -469,9 +536,12 @@ class ExcelYukleyici:
         kayitlar: list[SSSKaydi],
     ) -> IceAktarimSonucu:
         with baglam_yoneticisi() as baglanti:
+            baglanti.execute("BEGIN IMMEDIATE")
             mevcut_surum = baglanti.execute(
                 """
-                SELECT surum_numarasi, aktarilan_kayit_sayisi
+                SELECT
+                    surum_numarasi,
+                    aktarilan_kayit_sayisi
                 FROM veri_surumleri
                 WHERE dosya_ozeti = ?
                 """,
@@ -483,6 +553,8 @@ class ExcelYukleyici:
                     aktarilan_kayit_sayisi=mevcut_surum["aktarilan_kayit_sayisi"],
                     olusturulan_parca_sayisi=0,
                     arsivlenen_kayit_sayisi=0,
+                    eklenen_kayit_sayisi=0,
+                    korunan_kayit_sayisi=0,
                     yinelenen_dosya=True,
                     dosya_ozeti=dosya_ozeti,
                 )
@@ -490,71 +562,6 @@ class ExcelYukleyici:
                 "SELECT COALESCE(MAX(surum_numarasi), 0) FROM veri_surumleri"
             ).fetchone()[0]
             yeni_surum = int(onceki_surum) + 1
-            arsivlenen_kayit_sayisi = baglanti.execute(
-                """
-                UPDATE sss_kayitlari
-                SET aktif_mi = FALSE, durum = 'pasif'
-                WHERE durum = 'aktif' OR aktif_mi = TRUE
-                """
-            ).rowcount
-            baglanti.execute(
-                """
-                UPDATE veri_surumleri
-                SET durum = 'arsivlendi'
-                WHERE durum = 'aktif'
-                """
-            )
-            olusturulan_parca_sayisi = 0
-            for kayit in kayitlar:
-                imlec = baglanti.execute(
-                    """
-                    INSERT INTO sss_kayitlari (
-                        kategori,
-                        soru,
-                        cevap,
-                        kaynak_dokuman,
-                        surum_numarasi,
-                        aktif_mi,
-                        harici_kod,
-                        modul,
-                        kullanici_rolu,
-                        arama_metni,
-                        durum,
-                        icerik_surumu
-                    )
-                    VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, 'aktif', ?)
-                    """,
-                    (
-                        kayit.kategori,
-                        kayit.soru,
-                        kayit.cevap,
-                        kayit.kaynak_dokuman,
-                        yeni_surum,
-                        kayit.harici_kod,
-                        kayit.modul,
-                        kayit.kullanici_rolu,
-                        kayit.arama_metni,
-                        yeni_surum,
-                    ),
-                )
-                sss_id = imlec.lastrowid
-                parca_metni = (
-                    f"Kategori: {kayit.kategori}\n\n"
-                    f"Soru: {kayit.soru}\n\n"
-                    f"Cevap: {kayit.cevap}"
-                )
-                parcalar = self.metin_parcalayici.parcala(parca_metni)
-                baglanti.executemany(
-                    """
-                    INSERT INTO sss_parcalari (sss_id, parca_metni, parca_sira_no)
-                    VALUES (?, ?, ?)
-                    """,
-                    [
-                        (sss_id, parca, sira_numarasi)
-                        for sira_numarasi, parca in enumerate(parcalar, 1)
-                    ],
-                )
-                olusturulan_parca_sayisi += len(parcalar)
             baglanti.execute(
                 """
                 INSERT INTO veri_surumleri (
@@ -575,12 +582,216 @@ class ExcelYukleyici:
                     onceki_surum or None,
                 ),
             )
+            veri_surumu_id = baglanti.execute(
+                "SELECT last_insert_rowid()"
+            ).fetchone()[0]
+            baglanti.execute(
+                """
+                UPDATE veri_surumleri
+                SET durum = 'arsivlendi'
+                WHERE durum = 'aktif' AND id != ?
+                """,
+                (veri_surumu_id,),
+            )
+            mevcut_satirlar = baglanti.execute(
+                """
+                SELECT
+                    id,
+                    kategori,
+                    soru,
+                    cevap,
+                    kaynak_dokuman,
+                    harici_kod,
+                    modul,
+                    kullanici_rolu,
+                    arama_metni,
+                    kayit_ozeti
+                FROM sss_kayitlari
+                WHERE durum = 'aktif'
+                """
+            ).fetchall()
+            mevcut_kayitlar = {}
+            for mevcut_satir in mevcut_satirlar:
+                mevcut_ozet = mevcut_satir["kayit_ozeti"]
+                if not mevcut_ozet:
+                    mevcut_ozet = self._kayit_ozeti_olustur(
+                        mevcut_satir["kategori"],
+                        mevcut_satir["soru"],
+                        mevcut_satir["cevap"],
+                        mevcut_satir["kaynak_dokuman"],
+                        mevcut_satir["harici_kod"],
+                        mevcut_satir["modul"],
+                        mevcut_satir["kullanici_rolu"],
+                        mevcut_satir["arama_metni"],
+                    )
+                    baglanti.execute(
+                        """
+                        UPDATE sss_kayitlari
+                        SET kayit_ozeti = ?
+                        WHERE id = ?
+                        """,
+                        (mevcut_ozet, mevcut_satir["id"]),
+                    )
+                mevcut_kayitlar[mevcut_ozet] = mevcut_satir["id"]
+            yeni_kayitlar = {kayit.kayit_ozeti: kayit for kayit in kayitlar}
+            korunan_ozetler = set(mevcut_kayitlar) & set(yeni_kayitlar)
+            arsivlenen_ozetler = set(mevcut_kayitlar) - set(yeni_kayitlar)
+            eklenen_ozetler = set(yeni_kayitlar) - set(mevcut_kayitlar)
+            if arsivlenen_ozetler:
+                baglanti.executemany(
+                    """
+                    UPDATE sss_kayitlari
+                    SET aktif_mi = 0, durum = 'pasif'
+                    WHERE id = ?
+                    """,
+                    [
+                        (mevcut_kayitlar[kayit_ozeti],)
+                        for kayit_ozeti in arsivlenen_ozetler
+                    ],
+                )
+            for kayit in kayitlar:
+                if kayit.kayit_ozeti not in korunan_ozetler:
+                    continue
+                baglanti.execute(
+                    """
+                    UPDATE sss_kayitlari
+                    SET
+                        kaynak_sayfa = ?,
+                        kaynak_satir = ?,
+                        son_gorulen_surum = ?,
+                        aktarim_surumu_id = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        kayit.kaynak_sayfa,
+                        kayit.kaynak_satir,
+                        yeni_surum,
+                        veri_surumu_id,
+                        mevcut_kayitlar[kayit.kayit_ozeti],
+                    ),
+                )
+            olusturulan_parca_sayisi = 0
+            eklenen_kayit_kimlikleri = {}
+            for kayit in kayitlar:
+                if kayit.kayit_ozeti not in eklenen_ozetler:
+                    continue
+                imlec = baglanti.execute(
+                    """
+                    INSERT INTO sss_kayitlari (
+                        kategori,
+                        soru,
+                        cevap,
+                        kaynak_dokuman,
+                        surum_numarasi,
+                        aktif_mi,
+                        harici_kod,
+                        modul,
+                        kullanici_rolu,
+                        arama_metni,
+                        durum,
+                        icerik_surumu,
+                        kaynak_sayfa,
+                        kaynak_satir,
+                        kayit_ozeti,
+                        son_gorulen_surum,
+                        aktarim_surumu_id
+                    )
+                    VALUES (
+                        ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'aktif', ?,
+                        ?, ?, ?, ?, ?
+                    )
+                    """,
+                    (
+                        kayit.kategori,
+                        kayit.soru,
+                        kayit.cevap,
+                        kayit.kaynak_dokuman,
+                        yeni_surum,
+                        kayit.harici_kod,
+                        kayit.modul,
+                        kayit.kullanici_rolu,
+                        kayit.arama_metni,
+                        yeni_surum,
+                        kayit.kaynak_sayfa,
+                        kayit.kaynak_satir,
+                        kayit.kayit_ozeti,
+                        yeni_surum,
+                        veri_surumu_id,
+                    ),
+                )
+                sss_id = imlec.lastrowid
+                eklenen_kayit_kimlikleri[kayit.kayit_ozeti] = sss_id
+                parca_metni = (
+                    f"Kategori: {kayit.kategori}\n\n"
+                    f"Soru: {kayit.soru}\n\n"
+                    f"Cevap: {kayit.cevap}"
+                )
+                parcalar = self.metin_parcalayici.parcala(parca_metni)
+                baglanti.executemany(
+                    """
+                    INSERT INTO sss_parcalari (sss_id, parca_metni, parca_sira_no)
+                    VALUES (?, ?, ?)
+                    """,
+                    [
+                        (sss_id, parca, sira_numarasi)
+                        for sira_numarasi, parca in enumerate(parcalar, 1)
+                    ],
+                )
+                olusturulan_parca_sayisi += len(parcalar)
+            baglanti.executemany(
+                """
+                INSERT INTO veri_surumu_kayitlari (
+                    veri_surumu_id,
+                    sss_id,
+                    kaynak_sayfa,
+                    kaynak_satir,
+                    kayit_ozeti
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        veri_surumu_id,
+                        mevcut_kayitlar.get(
+                            kayit.kayit_ozeti,
+                            eklenen_kayit_kimlikleri.get(kayit.kayit_ozeti),
+                        ),
+                        kayit.kaynak_sayfa,
+                        kayit.kaynak_satir,
+                        kayit.kayit_ozeti,
+                    )
+                    for kayit in kayitlar
+                ],
+            )
+            arsivlenen_kayit_sayisi = len(arsivlenen_ozetler)
+            eklenen_kayit_sayisi = len(eklenen_ozetler)
+            korunan_kayit_sayisi = len(korunan_ozetler)
+            baglanti.execute(
+                """
+                UPDATE veri_surumleri
+                SET
+                    eklenen_kayit_sayisi = ?,
+                    korunan_kayit_sayisi = ?,
+                    arsivlenen_kayit_sayisi = ?,
+                    olusturulan_parca_sayisi = ?
+                WHERE id = ?
+                """,
+                (
+                    eklenen_kayit_sayisi,
+                    korunan_kayit_sayisi,
+                    arsivlenen_kayit_sayisi,
+                    olusturulan_parca_sayisi,
+                    veri_surumu_id,
+                ),
+            )
             denetim_detayi = json.dumps(
                 {
                     "surum_numarasi": yeni_surum,
                     "aktarilan_kayit_sayisi": len(kayitlar),
                     "olusturulan_parca_sayisi": olusturulan_parca_sayisi,
                     "arsivlenen_kayit_sayisi": arsivlenen_kayit_sayisi,
+                    "eklenen_kayit_sayisi": eklenen_kayit_sayisi,
+                    "korunan_kayit_sayisi": korunan_kayit_sayisi,
                     "dosya_ozeti": dosya_ozeti,
                 },
                 ensure_ascii=False,
@@ -598,6 +809,8 @@ class ExcelYukleyici:
             aktarilan_kayit_sayisi=len(kayitlar),
             olusturulan_parca_sayisi=olusturulan_parca_sayisi,
             arsivlenen_kayit_sayisi=arsivlenen_kayit_sayisi,
+            eklenen_kayit_sayisi=eklenen_kayit_sayisi,
+            korunan_kayit_sayisi=korunan_kayit_sayisi,
             yinelenen_dosya=False,
             dosya_ozeti=dosya_ozeti,
         )

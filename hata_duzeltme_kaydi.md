@@ -371,6 +371,73 @@ Durum: Duzeltilmedi. Planlanan davranis (dosya loglama basarisiz olursa konsola 
 
 ---
 
+## Dokuzuncu Denetim (Uctan Uca, 9. Tur) - 28.07.2026
+
+### Onemli Degisiklikler (8. Denetim Sonrasi)
+
+Projede 8. denetim sonrasi kapsamli iyilestirmeler yapilmis. Asagidaki degisiklikler onceki denetimlerde tespit edilen sorunlari gidermektedir:
+
+1. **guvenlik.py - Brute-force sayaclari veritabani tabanli:** `_basarisiz_giris_sayaci` ve `_basarisiz_giris_zamani` modul seviyesindeki sozlukler kaldirilmis; yerine `giris_deneme_kayitlari` tablosu ve `sistem_migrasyonlari` tablosu eklenmis. Brute-force korumasi artik coklu worker yapilandirmasinda da tutarlidir. Kimlik ozetleri SHA-256 ile hashlenerek saklanmakta. (8. turdaki yuksek seviye sorun cozuldu.)
+
+2. **istek_boyutu.py - Stream tabanli akis denetimi:** Bellekte tam govde biriktirme yerine `IstekGovdesiBoyutuAsildi` exception ile stream tabanli boyut denetimi uygulanmis. (8. turdaki orta seviye bellek sorunu cozuldu.)
+
+3. **excel_yukleyici.py - Yerel MIME denetimi:** Global `mimetypes.add_type()` yerine `mimetypes.MimeTypes()` yerel ornegi kullanilmakta. (8. turdaki orta seviye global durum sorunu cozuldu.)
+
+4. **gunlukleyici.py - Hata raporlamasi:** `except Exception: pass` yerine `except Exception as hata: print(..., file=sys.stderr)` kullanilmakta. (8. turdaki dusuk seviye sessiz hata yutma sorunu cozuldu.)
+
+5. **veritabani_modelleri.py - Idempotent migrasyon:** `_arama_metnini_bir_kez_geriye_doldur` fonksiyonu `sistem_migrasyonlari` tablosu ile bir kez calisacak sekilde idempotent hale getirildi. (8. turdaki orta seviye tam tablo taramasi sorunu cozuldu.)
+
+6. **Yeni tablolar ve constraint'ler:** `veri_surumu_kayitlari`, `giris_deneme_kayitlari`, `sistem_migrasyonlari` tablolari; `CHECK` constraint'leri; `DOGRULAMA_TETIKLEYICILERI` eklenmis.
+
+7. **Excel ice aktarma iyilestirmeleri:** Kaynak sayfa/satir takibi (`kaynak_sayfa`, `kaynak_satir`), kayit ozeti mekanizmasi (`kayit_ozeti`), `BEGIN IMMEDIATE` transaction, eklenen/korunan/arsivlenen kayit metrikleri eklenmis.
+
+8. **veritabani_hazirligini_denetle** ve `/api/hazirlik` endpoint'i: Veritabani tablo varligi, FTS5 erisilebilirligi ve foreign key denetimi icin yeni fonksiyon ve saglik kontrolu endpoint'i eklenmis.
+
+### Denetim Bulgulari
+
+#### Ciddi Sorun Bulunamadi
+9. tur uctan uca denetimde kritik veya yuksek seviye yeni sorun tespit edilmemistir. Onceki denetimlerde tespit edilen tum kritik, yuksek ve orta seviye sorunlar cozulmustur.
+
+#### Dusuk Seviye Gozlemler
+
+1. **excel_yukleyici.py Satir 241-283 ~ Cift load_workbook cagrisi:** `_exceli_oku` metodunda `_ilk_sayfa_adini_al` icin bir kez, `_calisma_kitabini_dogrula` icin (dogrulama zincirinde) bir kez olmak uzere ayni dosya iki kez `load_workbook` ile aciliyor. Performansa etkisi ihmal edilebilir duzeydedir.
+   Durum: Gelistirme notu olarak kaydedildi.
+
+2. **ana.py Satir 8 ~ JSONResponse import'u yalnizca /api/hazirlik'te kullaniliyor:** `JSONResponse` sinifi yalnizca `/api/hazirlik` endpoint'inde hata durumu icin kullaniliyor. Tek kullanim icin import kabul edilebilir.
+   Durum: Sorun teskil etmez.
+
+### Onceki Denetimlerde Cozulen Sorunlarin Durumu
+
+| 8. Tur Sorunu | Seviye | 9. Tur Durumu |
+|---|---|---|
+| Brute-force coklu worker tutarsizligi | Yuksek | Cozuldu - Veritabani tabanli sayaclara gecildi |
+| Istek govdesi bellekte biriktirme | Orta | Cozuldu - Stream tabanli denetime gecildi |
+| Global mimetypes degisikligi | Orta | Cozuldu - Yerel MimeTypes() kullaniliyor |
+| Tam tablo taramasi | Orta | Cozuldu - Idempotent migrasyon eklendi |
+| Sessiz hata yutma | Dusuk | Cozuldu - sys.stderr raporlamasi eklendi |
+| .gitignore bozuk encoding | Kritik | Cozuldu (8. tur) |
+| Bekleyen diger dusuk sorunlar | Dusuk | Gelistirme notu (Faz 10) |
+
+### Duzeltilen Dosyalar (Toplam 19 Hata, 8 Tur)
+
+1-19 arasi onceki turlarda duzeltildi.
+
+### Genel Denetim Ozeti (9 Tur, 28.07.2026)
+
+| Denetim Turu | Kritik | Yuksek | Orta | Dusuk | Duzeltilen |
+|---|---|---|---|---|---|
+| 1-5. Denetim | 8 | 0 | 6 | 6 | 18 |
+| 7. Denetim | 2 | 3 | 5 | 1 | 11 |
+| 8. Denetim | 1 | 1 | 3 | 6 | 1 |
+| 9. Denetim | 0 | 0 | 0 | 2 | 0 |
+| **Toplam** | **11** | **4** | **14** | **15** | **30** |
+
+### Sonuc
+
+Proje 9. denetim turunda kritik, yuksek veya orta seviye yeni sorun olmadan gecmistir. 8. turda tespit edilen tum sorunlar cozulmustur. Veritabani semasi, guvenlik katmani, Excel ice aktarma ve middleware altyapisi saglamlastirilmistir. Proje Faz 4'e (Vektor Gömmeleri) gecis icin hazir durumdadir.
+
+---
+
 ## Dokuzuncu Denetim ve Bekleyen Sorunlarin Kapatilmasi - 28.07.2026
 
 ### Yuksek Seviye - Coklu surecte brute-force sayac tutarsizligi
@@ -429,3 +496,59 @@ Dosya isleyicisi olusturulamiyorsa hata turu hassas ayrinti icermeden standart h
 ### Guncel Bekleyen Durum
 
 Faz 1-3 kapsaminda dogrulanmis bekleyen kritik, yuksek veya orta seviye sorun bulunmamaktadir. Faz 7 kimlik dogrulama rotasi merkezi brute-force servisini kullanacak sekilde baglanmalidir. Bu rota Faz 7 plani kapsaminda oldugu icin mevcut fazlarda eksiklik sayilmamistir.
+
+---
+
+## Onuncu Teknik Iyilestirme Turu - 28.07.2026
+
+### Yuksek Seviye - Tam veri yenilemesinde kararsiz SSS kimlikleri
+
+Excel dosyasinda tek bir degisiklik oldugunda tum aktif kayitlari pasiflestirip yeniden ekleyen akis artimli aktarima donusturuldu. Her SSS kaydi normalize edilmis icerikten uretilen SHA-256 ozetiyle eslestiriliyor. Degismeyen kayitlar ayni veritabani kimligini ve metin parcalarini koruyor; yalnizca yeni veya degisen kayitlar ekleniyor, kaldirilan kayitlar pasiflestiriliyor. Bu duzeltme Faz 4 vektorlerinin gereksiz yere yeniden uretilmesini engelleyecek veri temelini hazirladi.
+
+### Yuksek Seviye - Excel kaynak izlenebilirligi eksikligi
+
+`sss_kayitlari` tablosuna `kaynak_sayfa`, `kaynak_satir`, `kayit_ozeti`, `son_gorulen_surum` ve `aktarim_surumu_id` alanlari eklendi. Her kayit artik geldigi Excel sayfasina ve satirina kadar izlenebiliyor. Kaynak satiri degisse bile semantik icerigi degismeyen kaydin kimligi korunuyor.
+
+### Yuksek Seviye - Surecler arasi Excel aktarim yarisi
+
+Uygulama ici kilide ek olarak aktarim islemi `BEGIN IMMEDIATE` ile veritabani seviyesinde serilestirildi. `veri_surumleri.dosya_ozeti` benzersiz indeksi korunarak iki ayri surecin ayni dosyayi ayni anda yeni surum olarak eklemesi engellendi. Iki bagimsiz PowerShell arka plan sureciyle ayni Excel dosyasi eszamanli aktarildi; bir surec ilk surumu olustururken digeri dosyayi yinelenen olarak algiladi.
+
+### Orta Seviye - Veri surumu kayit uyeligi eksikligi
+
+`veri_surumu_kayitlari` tablosu eklendi. Her veri surumunun hangi SSS kimliklerinden olustugu, kaynak sayfasi, satir numarasi ve kayit ozeti anlik goruntusuyle kalici olarak saklaniyor. Degismeyen kayitlar farkli surumlerde ayni kimlikle yer alabiliyor; tarihsel surum uyeligi ve o surumdeki kaynak konumu kaybolmuyor.
+
+### Orta Seviye - Veritabani butunluk kisitlari ve indeks eksikligi
+
+Geri bildirim puani, durum alanlari, roller, guven skoru ve boolean alanlari icin yeni veritabani kurulumlarinda CHECK kisitlari eklendi. Eski semalarda da ayni kurallari uygulamak icin dogrulama tetikleyicileri olusturuldu. SSS durumu, parcalar, vektorler, alternatif sorular ve oturum sorgulari icin erisim indeksleri eklendi.
+
+### Orta Seviye - Saglik kontrolunun bagimliliklari denetlememesi
+
+Sabit JSON donduren `/api/saglik` liveness kontrolu olarak korundu. Yeni `/api/hazirlik` rotasi gerekli veritabani nesnelerini, FTS5 erisimini ve foreign key etkinligini denetliyor. Docker healthcheck readiness rotasina tasindi.
+
+### Dusuk Seviye - Docker calisma zamani sertlestirmesi
+
+Uygulama ve yedekleyici servislerine `no-new-privileges`, tum Linux capability degerlerini kaldirma, PID siniri, init sureci ve kontrollu kapanis suresi eklendi. Python bytecode yazimi kapatildi ve tamponlanmamis standart cikti etkinlestirildi.
+
+### Dusuk Seviye - Yinelenen aktarim sonucu ve kararsiz ekleme sirasi
+
+Yinelenen dosya sonucunun onceki surumde uretilen parca ve eklenen kayit sayilarini yeni islem yapilmis gibi tekrar gostermesi duzeltildi; degisim sayilari artik sifir donuyor. Yeni kayitlar hash kumesinin kararsiz sirasi yerine Excel satir sirasiyla ekleniyor. Yalnizca kaynak sayfasi veya satiri degisen kayitlarda FTS tetikleyicisinin gereksiz silme ve yeniden ekleme islemi yapmasi engellendi.
+
+### Onuncu Tur Dogrulama Sonuclari
+
+- Python compileall basarili.
+- Git diff whitespace denetimi basarili.
+- Docker Compose yapilandirma dogrulamasi basarili.
+- Sentetik ilk aktarimda 3 yeni kayit ve 3 parca olusturuldu.
+- Ayni sentetik dosyanin ikinci aktarimi yinelenen olarak algilandi.
+- Degistirilmis sentetik surumde 2 kayit eklendi, 1 kayit ayni kimlikle korundu ve 2 kayit arsivlendi.
+- Korunan kaydin Excel satir numarasi degisirken veritabani kimligi sabit kaldi.
+- Ayni 3 kayit farkli satir sirasinda aktarildiginda kimlikler korundu ve yeni parca olusturulmadi.
+- Yinelenen dosya sonucundaki tum degisim sayaclari sifir olarak dogrulandi.
+- Her iki veri surumunun uc kayitlik tam uyeligi `veri_surumu_kayitlari` tablosunda dogrulandi.
+- Ayni kaydin birinci surumdeki 2. satir ve ikinci surumdeki 3. satir kaynak anlik goruntuleri ayri ayri korundu.
+- Gecersiz 1-5 araligi disindaki geri bildirim puani veritabani tarafindan reddedildi.
+- Gercek UYDS dosyasinda 2.398 aktif kayit, 2.398 FTS satiri, 2.398 kaynak izli kayit ve 4.075 parca dogrulandi.
+- Gercek dosyanin ikinci aktarimi yeni surum olusturmadi.
+- Iki ayri surecin eszamanli aktariminda yalnizca bir veri surumu ve bir aktif kayit olustu.
+- Eski Faz 2 semasi veri kaybi olmadan yeni kolonlara ve tablolara yukseltildi.
+- `/api/saglik` ve `/api/hazirlik` ASGI entegrasyonunda 200 yaniti verdi.

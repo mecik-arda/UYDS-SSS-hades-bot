@@ -8,15 +8,21 @@ CREATE TABLE IF NOT EXISTS sss_kayitlari (
     soru TEXT NOT NULL,
     cevap TEXT NOT NULL,
     kaynak_dokuman TEXT,
-    surum_numarasi INTEGER DEFAULT 1,
-    aktif_mi BOOLEAN DEFAULT TRUE,
+    surum_numarasi INTEGER NOT NULL DEFAULT 1,
+    aktif_mi INTEGER NOT NULL DEFAULT 1 CHECK (aktif_mi IN (0, 1)),
     olusturulma_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
     harici_kod TEXT,
     modul TEXT,
     kullanici_rolu TEXT,
     arama_metni TEXT,
-    durum TEXT NOT NULL DEFAULT 'aktif',
-    icerik_surumu INTEGER NOT NULL DEFAULT 1
+    durum TEXT NOT NULL DEFAULT 'aktif' CHECK (durum IN ('aktif', 'pasif')),
+    icerik_surumu INTEGER NOT NULL DEFAULT 1,
+    kaynak_sayfa TEXT,
+    kaynak_satir INTEGER,
+    kayit_ozeti TEXT,
+    son_gorulen_surum INTEGER,
+    aktarim_surumu_id INTEGER,
+    FOREIGN KEY (aktarim_surumu_id) REFERENCES veri_surumleri(id) ON DELETE SET NULL
 )
 """
 
@@ -60,9 +66,10 @@ CREATE TABLE IF NOT EXISTS geri_bildirimler (
     sss_id INTEGER,
     kullanici_sorusu TEXT NOT NULL,
     verilen_cevap TEXT NOT NULL,
-    puan INTEGER NOT NULL,
+    puan INTEGER NOT NULL CHECK (puan BETWEEN 1 AND 5),
     yorum TEXT,
-    durum TEXT DEFAULT 'BEKLEMEDE',
+    durum TEXT NOT NULL DEFAULT 'BEKLEMEDE'
+        CHECK (durum IN ('BEKLEMEDE', 'ONAYLANDI', 'REDDEDILDI')),
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sss_id) REFERENCES sss_kayitlari(id) ON DELETE SET NULL
 )
@@ -73,8 +80,9 @@ CREATE TABLE IF NOT EXISTS kullanicilar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kullanici_adi TEXT UNIQUE NOT NULL,
     sifre_hash TEXT NOT NULL,
-    rol TEXT NOT NULL DEFAULT 'KULLANICI',
-    aktif_mi BOOLEAN DEFAULT TRUE
+    rol TEXT NOT NULL DEFAULT 'KULLANICI'
+        CHECK (rol IN ('KULLANICI', 'YONETICI')),
+    aktif_mi INTEGER NOT NULL DEFAULT 1 CHECK (aktif_mi IN (0, 1))
 )
 """
 
@@ -88,6 +96,24 @@ CREATE TABLE IF NOT EXISTS veri_surumleri (
     dosya_ozeti TEXT,
     onceki_surum_numarasi INTEGER,
     durum TEXT NOT NULL DEFAULT 'aktif'
+        CHECK (durum IN ('aktif', 'arsivlendi')),
+    eklenen_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
+    korunan_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
+    arsivlenen_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
+    olusturulan_parca_sayisi INTEGER NOT NULL DEFAULT 0
+)
+"""
+
+VERI_SURUMU_KAYITLARI_TABLOSU = """
+CREATE TABLE IF NOT EXISTS veri_surumu_kayitlari (
+    veri_surumu_id INTEGER NOT NULL,
+    sss_id INTEGER NOT NULL,
+    kaynak_sayfa TEXT NOT NULL,
+    kaynak_satir INTEGER NOT NULL,
+    kayit_ozeti TEXT NOT NULL,
+    PRIMARY KEY (veri_surumu_id, sss_id),
+    FOREIGN KEY (veri_surumu_id) REFERENCES veri_surumleri(id) ON DELETE CASCADE,
+    FOREIGN KEY (sss_id) REFERENCES sss_kayitlari(id) ON DELETE CASCADE
 )
 """
 
@@ -98,7 +124,8 @@ CREATE TABLE IF NOT EXISTS alternatif_sorular (
     soru TEXT NOT NULL,
     vektor_verisi BLOB,
     kaynak TEXT NOT NULL,
-    durum TEXT NOT NULL DEFAULT 'beklemede',
+    durum TEXT NOT NULL DEFAULT 'beklemede'
+        CHECK (durum IN ('beklemede', 'onaylandi', 'reddedildi')),
     olusturulma_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sss_id) REFERENCES sss_kayitlari(id) ON DELETE CASCADE
 )
@@ -111,8 +138,10 @@ CREATE TABLE IF NOT EXISTS asistan_sorgulari (
     kullanici_sorusu TEXT NOT NULL,
     yeniden_yazilmis_soru TEXT,
     cevap_metni TEXT,
-    guven_skoru REAL,
-    cevaplandi_mi INTEGER NOT NULL DEFAULT 0,
+    guven_skoru REAL CHECK (
+        guven_skoru IS NULL OR guven_skoru BETWEEN 0.0 AND 1.0
+    ),
+    cevaplandi_mi INTEGER NOT NULL DEFAULT 0 CHECK (cevaplandi_mi IN (0, 1)),
     olusturulma_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP
 )
 """
@@ -173,6 +202,13 @@ END
 FTS_GUNCELLEME_TETIKLEYICI = """
 CREATE TRIGGER sss_fts_guncelleme_tetik
 AFTER UPDATE ON sss_kayitlari
+WHEN OLD.soru IS NOT NEW.soru
+    OR OLD.cevap IS NOT NEW.cevap
+    OR OLD.kategori IS NOT NEW.kategori
+    OR OLD.harici_kod IS NOT NEW.harici_kod
+    OR OLD.modul IS NOT NEW.modul
+    OR OLD.arama_metni IS NOT NEW.arama_metni
+    OR OLD.durum IS NOT NEW.durum
 BEGIN
     DELETE FROM sss_fts WHERE rowid = OLD.id;
     INSERT INTO sss_fts(rowid, soru, cevap, kategori, harici_kod, modul, arama_metni)
@@ -202,6 +238,7 @@ TABLO_SORGULARI = [
     GERI_BILDIRIMLER_TABLOSU,
     KULLANICILAR_TABLOSU,
     VERI_SURUMLERI_TABLOSU,
+    VERI_SURUMU_KAYITLARI_TABLOSU,
     ALTERNATIF_SORULAR_TABLOSU,
     ASISTAN_SORGULARI_TABLOSU,
     SISTEM_GUNLUKLERI_TABLOSU,
@@ -216,13 +253,108 @@ SSS_KAYITLARI_EK_KOLONLARI = {
     "arama_metni": "TEXT",
     "durum": "TEXT NOT NULL DEFAULT 'aktif'",
     "icerik_surumu": "INTEGER NOT NULL DEFAULT 1",
+    "kaynak_sayfa": "TEXT",
+    "kaynak_satir": "INTEGER",
+    "kayit_ozeti": "TEXT",
+    "son_gorulen_surum": "INTEGER",
+    "aktarim_surumu_id": "INTEGER REFERENCES veri_surumleri(id) ON DELETE SET NULL",
 }
 
 VERI_SURUMLERI_EK_KOLONLARI = {
     "dosya_ozeti": "TEXT",
     "onceki_surum_numarasi": "INTEGER",
     "durum": "TEXT NOT NULL DEFAULT 'aktif'",
+    "eklenen_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
+    "korunan_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
+    "arsivlenen_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
+    "olusturulan_parca_sayisi": "INTEGER NOT NULL DEFAULT 0",
 }
+
+VERI_SURUMU_KAYITLARI_EK_KOLONLARI = {
+    "kaynak_sayfa": "TEXT",
+    "kaynak_satir": "INTEGER",
+    "kayit_ozeti": "TEXT",
+}
+
+INDEX_SORGULARI = [
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS veri_surumleri_dosya_ozeti_benzersiz
+    ON veri_surumleri(dosya_ozeti)
+    WHERE dosya_ozeti IS NOT NULL
+    """,
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS sss_kayitlari_aktif_ozet_benzersiz
+    ON sss_kayitlari(kayit_ozeti)
+    WHERE durum = 'aktif' AND kayit_ozeti IS NOT NULL
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS sss_kayitlari_durum_surum
+    ON sss_kayitlari(durum, son_gorulen_surum)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS veri_surumu_kayitlari_sss_surum
+    ON veri_surumu_kayitlari(sss_id, veri_surumu_id)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS sss_parcalari_sss_id
+    ON sss_parcalari(sss_id)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS sss_vektorleri_sss_parca_model
+    ON sss_vektorleri(sss_id, parca_id, model_adi)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS alternatif_sorular_durum_sss
+    ON alternatif_sorular(durum, sss_id)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS asistan_sorgulari_oturum_tarih
+    ON asistan_sorgulari(oturum_id, olusturulma_tarihi)
+    """,
+]
+
+DOGRULAMA_TETIKLEYICILERI = [
+    """
+    CREATE TRIGGER IF NOT EXISTS sss_kayitlari_dogrula_ekle
+    BEFORE INSERT ON sss_kayitlari
+    WHEN NEW.aktif_mi NOT IN (0, 1)
+        OR NEW.durum NOT IN ('aktif', 'pasif')
+        OR (NEW.durum = 'aktif' AND NEW.aktif_mi != 1)
+        OR (NEW.durum = 'pasif' AND NEW.aktif_mi != 0)
+    BEGIN
+        SELECT RAISE(ABORT, 'Gecersiz SSS kaydi durumu');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS sss_kayitlari_dogrula_guncelle
+    BEFORE UPDATE ON sss_kayitlari
+    WHEN NEW.aktif_mi NOT IN (0, 1)
+        OR NEW.durum NOT IN ('aktif', 'pasif')
+        OR (NEW.durum = 'aktif' AND NEW.aktif_mi != 1)
+        OR (NEW.durum = 'pasif' AND NEW.aktif_mi != 0)
+    BEGIN
+        SELECT RAISE(ABORT, 'Gecersiz SSS kaydi durumu');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS geri_bildirim_dogrula_ekle
+    BEFORE INSERT ON geri_bildirimler
+    WHEN NEW.puan NOT BETWEEN 1 AND 5
+        OR NEW.durum NOT IN ('BEKLEMEDE', 'ONAYLANDI', 'REDDEDILDI')
+    BEGIN
+        SELECT RAISE(ABORT, 'Gecersiz geri bildirim');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS geri_bildirim_dogrula_guncelle
+    BEFORE UPDATE ON geri_bildirimler
+    WHEN NEW.puan NOT BETWEEN 1 AND 5
+        OR NEW.durum NOT IN ('BEKLEMEDE', 'ONAYLANDI', 'REDDEDILDI')
+    BEGIN
+        SELECT RAISE(ABORT, 'Gecersiz geri bildirim');
+    END
+    """,
+]
 
 TETIKLEYICI_SORGULARI = [
     FTS_INSERT_TETIKLEYICI,
@@ -325,15 +457,16 @@ def tablolari_olustur() -> None:
             "veri_surumleri",
             VERI_SURUMLERI_EK_KOLONLARI,
         )
-        _arama_metnini_bir_kez_geriye_doldur(baglanti)
-        baglanti.execute(
-            """
-            CREATE UNIQUE INDEX IF NOT EXISTS
-            veri_surumleri_dosya_ozeti_benzersiz
-            ON veri_surumleri(dosya_ozeti)
-            WHERE dosya_ozeti IS NOT NULL
-            """
+        _eksik_kolonlari_ekle(
+            baglanti,
+            "veri_surumu_kayitlari",
+            VERI_SURUMU_KAYITLARI_EK_KOLONLARI,
         )
+        _arama_metnini_bir_kez_geriye_doldur(baglanti)
+        for sorgu in INDEX_SORGULARI:
+            baglanti.execute(sorgu)
+        for sorgu in DOGRULAMA_TETIKLEYICILERI:
+            baglanti.execute(sorgu)
         _fts_tablosunu_hazirla(baglanti)
     gunlukleyici.info(
         "Veritabani tablolari, genisletmeleri ve FTS tetikleyicileri hazirlandi"
