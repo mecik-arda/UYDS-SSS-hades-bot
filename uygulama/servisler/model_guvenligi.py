@@ -122,7 +122,7 @@ def _model_yapilandirmasini_dogrula(model_yolu: Path) -> None:
         model_yapilandirmasi = json.loads(
             (model_yolu / "config.json").read_text(encoding="utf-8")
         )
-        tokenizer_yapilandirmasi = json.loads(
+        simgelestirici_yapilandirmasi = json.loads(
             (model_yolu / "tokenizer_config.json").read_text(encoding="utf-8")
         )
     except (OSError, UnicodeError, json.JSONDecodeError) as hata:
@@ -144,7 +144,7 @@ def _model_yapilandirmasini_dogrula(model_yolu: Path) -> None:
         raise ModelGuvenlikHatasi("Model uzaktan kod eslemesi iceremez")
     if model_yapilandirmasi.get("trust_remote_code"):
         raise ModelGuvenlikHatasi("Model uzaktan kod calistirma izni iceremez")
-    if tokenizer_yapilandirmasi.get("tokenizer_class") not in {
+    if simgelestirici_yapilandirmasi.get("tokenizer_class") not in {
         "PreTrainedTokenizerFast",
         "XLMRobertaTokenizer",
         "XLMRobertaTokenizerFast",

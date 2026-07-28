@@ -134,7 +134,10 @@ def _giris_kimlikleri(kullanici_adi: str, ip_adresi: str | None) -> list[str]:
     ]
 
 
-def brute_force_kontrol(kullanici_adi: str, ip_adresi: str | None = None) -> None:
+def kaba_kuvvet_girisimini_kontrol_et(
+    kullanici_adi: str,
+    ip_adresi: str | None = None,
+) -> None:
     simdi = datetime.now(timezone.utc)
     kilitli_kimlik_var = False
     with baglam_yoneticisi() as baglanti:
