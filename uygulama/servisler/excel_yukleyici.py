@@ -4,6 +4,7 @@ import mimetypes
 import re
 import unicodedata
 import zipfile
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from threading import Lock
@@ -48,6 +49,7 @@ class SSSKaydi:
     kaynak_sayfa: str
     kaynak_satir: int
     kayit_ozeti: str
+    kayit_anahtari: str
 
 
 @dataclass(frozen=True)
@@ -57,12 +59,47 @@ class IceAktarimSonucu:
     olusturulan_parca_sayisi: int
     arsivlenen_kayit_sayisi: int
     eklenen_kayit_sayisi: int
+    guncellenen_kayit_sayisi: int
     korunan_kayit_sayisi: int
     yinelenen_dosya: bool
     dosya_ozeti: str
 
     def sozluge_donustur(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class KuruCalistirmaSonucu:
+    toplam_kayit_sayisi: int
+    eklenen_kayit_sayisi: int
+    guncellenen_kayit_sayisi: int
+    korunan_kayit_sayisi: int
+    arsivlenen_kayit_sayisi: int
+    yinelenen_dosya: bool
+    dosya_ozeti: str
+
+    def sozluge_donustur(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class SurumGeriAlmaSonucu:
+    hedef_surum_numarasi: int
+    yeni_surum_numarasi: int
+    etkinlestirilen_kayit_sayisi: int
+    korunan_kayit_sayisi: int
+    arsivlenen_kayit_sayisi: int
+
+    def sozluge_donustur(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class DegisiklikPlani:
+    korunan_kayitlar: tuple[tuple[Any, SSSKaydi], ...]
+    guncellenen_kayitlar: tuple[tuple[Any, SSSKaydi], ...]
+    eklenen_kayitlar: tuple[SSSKaydi, ...]
+    arsivlenen_satirlar: tuple[Any, ...]
 
 
 class ExcelDogrulamaHatasi(ValueError):
@@ -122,10 +159,11 @@ class ExcelYukleyici:
                 kayitlar,
             )
         gunlukleyici.info(
-            "Excel ice aktarimi tamamlandi: surum=%s, kayit=%s, eklenen=%s, korunan=%s, arsivlenen=%s, parca=%s, yinelenen=%s",
+            "Excel ice aktarimi tamamlandi: surum=%s, kayit=%s, eklenen=%s, guncellenen=%s, korunan=%s, arsivlenen=%s, parca=%s, yinelenen=%s",
             sonuc.surum_numarasi,
             sonuc.aktarilan_kayit_sayisi,
             sonuc.eklenen_kayit_sayisi,
+            sonuc.guncellenen_kayit_sayisi,
             sonuc.korunan_kayit_sayisi,
             sonuc.arsivlenen_kayit_sayisi,
             sonuc.olusturulan_parca_sayisi,
@@ -466,6 +504,12 @@ class ExcelYukleyici:
             kullanici_rolu,
             arama_metni,
         )
+        kayit_anahtari = self._kayit_anahtari_olustur(
+            kategori,
+            soru,
+            harici_kod,
+            modul,
+        )
         return SSSKaydi(
             kategori=kategori,
             soru=soru,
@@ -478,6 +522,7 @@ class ExcelYukleyici:
             kaynak_sayfa=kaynak_sayfa,
             kaynak_satir=kaynak_satir,
             kayit_ozeti=kayit_ozeti,
+            kayit_anahtari=kayit_anahtari,
         )
 
     def _kayit_ozeti_olustur(
@@ -510,6 +555,28 @@ class ExcelYukleyici:
             ).encode("utf-8")
         ).hexdigest()
 
+    def _kayit_anahtari_olustur(
+        self,
+        kategori: str,
+        soru: str,
+        harici_kod: str | None,
+        modul: str | None,
+    ) -> str:
+        anahtar_verisi = {
+            "harici_kod": self._adi_normalize_et(harici_kod or ""),
+            "kategori": self._adi_normalize_et(kategori),
+            "modul": self._adi_normalize_et(modul or ""),
+            "soru": self._adi_normalize_et(soru),
+        }
+        return hashlib.sha256(
+            json.dumps(
+                anahtar_verisi,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+
     def _benzersiz_kaydi_ekle(
         self,
         kayitlar: list[SSSKaydi],
@@ -529,6 +596,349 @@ class ExcelYukleyici:
             f"Zorunlu alanlari eksik satirlar: {gosterilenler}{devam_metni}"
         )
 
+    def kuru_calistir(
+        self,
+        dosya_yolu: str | Path,
+        bildirilen_mime_tipi: str | None = None,
+    ) -> KuruCalistirmaSonucu:
+        with _ICE_AKTARIM_KILIDI:
+            guvenli_dosya_yolu = self.dosyayi_dogrula(
+                dosya_yolu,
+                bildirilen_mime_tipi,
+            )
+            dosya_ozeti = self._dosya_ozetini_hesapla(guvenli_dosya_yolu)
+            tablolari_olustur()
+            kayitlar = self._exceli_oku(guvenli_dosya_yolu)
+            if not kayitlar:
+                raise ExcelDogrulamaHatasi(
+                    "Excel dosyasinda analiz edilebilir kayit bulunamadi"
+                )
+            with baglam_yoneticisi() as baglanti:
+                yinelenen_dosya = bool(
+                    baglanti.execute(
+                        """
+                        SELECT 1
+                        FROM veri_surumleri
+                        WHERE dosya_ozeti = ?
+                        """,
+                        (dosya_ozeti,),
+                    ).fetchone()
+                )
+                degisiklik_plani = self._degisiklik_planini_olustur(
+                    baglanti,
+                    kayitlar,
+                )
+        return KuruCalistirmaSonucu(
+            toplam_kayit_sayisi=len(kayitlar),
+            eklenen_kayit_sayisi=len(degisiklik_plani.eklenen_kayitlar),
+            guncellenen_kayit_sayisi=len(
+                degisiklik_plani.guncellenen_kayitlar
+            ),
+            korunan_kayit_sayisi=len(degisiklik_plani.korunan_kayitlar),
+            arsivlenen_kayit_sayisi=len(
+                degisiklik_plani.arsivlenen_satirlar
+            ),
+            yinelenen_dosya=yinelenen_dosya,
+            dosya_ozeti=dosya_ozeti,
+        )
+
+    def surumu_geri_al(self, hedef_surum_numarasi: int) -> SurumGeriAlmaSonucu:
+        if hedef_surum_numarasi < 1:
+            raise ValueError("Hedef surum numarasi en az 1 olmalidir")
+        with _ICE_AKTARIM_KILIDI:
+            tablolari_olustur()
+            with baglam_yoneticisi() as baglanti:
+                baglanti.execute("BEGIN IMMEDIATE")
+                hedef_surum = baglanti.execute(
+                    """
+                    SELECT id, surum_numarasi
+                    FROM veri_surumleri
+                    WHERE surum_numarasi = ?
+                    """,
+                    (hedef_surum_numarasi,),
+                ).fetchone()
+                if hedef_surum is None:
+                    raise ValueError("Geri alinacak veri surumu bulunamadi")
+                hedef_kayitlar = baglanti.execute(
+                    """
+                    SELECT
+                        sss_id,
+                        kaynak_sayfa,
+                        kaynak_satir,
+                        kayit_ozeti
+                    FROM veri_surumu_kayitlari
+                    WHERE veri_surumu_id = ?
+                    ORDER BY sss_id
+                    """,
+                    (hedef_surum["id"],),
+                ).fetchall()
+                if not hedef_kayitlar:
+                    raise ValueError("Hedef veri surumunde kayit bulunamadi")
+                mevcut_aktif_kimlikler = {
+                    satir["id"]
+                    for satir in baglanti.execute(
+                        """
+                        SELECT id
+                        FROM sss_kayitlari
+                        WHERE durum = 'aktif'
+                        """
+                    ).fetchall()
+                }
+                hedef_kimlikler = {satir["sss_id"] for satir in hedef_kayitlar}
+                onceki_surum = int(
+                    baglanti.execute(
+                        "SELECT COALESCE(MAX(surum_numarasi), 0) FROM veri_surumleri"
+                    ).fetchone()[0]
+                )
+                yeni_surum = onceki_surum + 1
+                korunan_kayit_sayisi = len(
+                    mevcut_aktif_kimlikler & hedef_kimlikler
+                )
+                etkinlestirilen_kayit_sayisi = len(
+                    hedef_kimlikler - mevcut_aktif_kimlikler
+                )
+                arsivlenen_kayit_sayisi = len(
+                    mevcut_aktif_kimlikler - hedef_kimlikler
+                )
+                baglanti.execute(
+                    """
+                    UPDATE sss_kayitlari
+                    SET aktif_mi = 0, durum = 'pasif'
+                    WHERE durum = 'aktif'
+                    """
+                )
+                baglanti.execute(
+                    """
+                    UPDATE veri_surumleri
+                    SET durum = 'arsivlendi'
+                    WHERE durum = 'aktif'
+                    """
+                )
+                baglanti.execute(
+                    """
+                    INSERT INTO veri_surumleri (
+                        dosya_adi,
+                        surum_numarasi,
+                        aktarilan_kayit_sayisi,
+                        onceki_surum_numarasi,
+                        durum,
+                        eklenen_kayit_sayisi,
+                        guncellenen_kayit_sayisi,
+                        korunan_kayit_sayisi,
+                        arsivlenen_kayit_sayisi,
+                        olusturulan_parca_sayisi
+                    )
+                    VALUES (?, ?, ?, ?, 'aktif', ?, 0, ?, ?, 0)
+                    """,
+                    (
+                        f"surum_{hedef_surum_numarasi}_geri_alma",
+                        yeni_surum,
+                        len(hedef_kayitlar),
+                        onceki_surum or None,
+                        etkinlestirilen_kayit_sayisi,
+                        korunan_kayit_sayisi,
+                        arsivlenen_kayit_sayisi,
+                    ),
+                )
+                yeni_veri_surumu_id = baglanti.execute(
+                    "SELECT last_insert_rowid()"
+                ).fetchone()[0]
+                baglanti.executemany(
+                    """
+                    UPDATE sss_kayitlari
+                    SET
+                        aktif_mi = 1,
+                        durum = 'aktif',
+                        son_gorulen_surum = ?,
+                        aktarim_surumu_id = ?
+                    WHERE id = ?
+                    """,
+                    [
+                        (
+                            yeni_surum,
+                            yeni_veri_surumu_id,
+                            satir["sss_id"],
+                        )
+                        for satir in hedef_kayitlar
+                    ],
+                )
+                baglanti.executemany(
+                    """
+                    INSERT INTO veri_surumu_kayitlari (
+                        veri_surumu_id,
+                        sss_id,
+                        kaynak_sayfa,
+                        kaynak_satir,
+                        kayit_ozeti
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            yeni_veri_surumu_id,
+                            satir["sss_id"],
+                            satir["kaynak_sayfa"],
+                            satir["kaynak_satir"],
+                            satir["kayit_ozeti"],
+                        )
+                        for satir in hedef_kayitlar
+                    ],
+                )
+                denetim_detayi = json.dumps(
+                    {
+                        "hedef_surum_numarasi": hedef_surum_numarasi,
+                        "yeni_surum_numarasi": yeni_surum,
+                        "etkinlestirilen_kayit_sayisi": (
+                            etkinlestirilen_kayit_sayisi
+                        ),
+                        "korunan_kayit_sayisi": korunan_kayit_sayisi,
+                        "arsivlenen_kayit_sayisi": arsivlenen_kayit_sayisi,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+                baglanti.execute(
+                    """
+                    INSERT INTO sistem_gunlukleri (islem_turu, detay)
+                    VALUES ('VERI_SURUMU_GERI_ALMA', ?)
+                    """,
+                    (denetim_detayi,),
+                )
+        return SurumGeriAlmaSonucu(
+            hedef_surum_numarasi=hedef_surum_numarasi,
+            yeni_surum_numarasi=yeni_surum,
+            etkinlestirilen_kayit_sayisi=etkinlestirilen_kayit_sayisi,
+            korunan_kayit_sayisi=korunan_kayit_sayisi,
+            arsivlenen_kayit_sayisi=arsivlenen_kayit_sayisi,
+        )
+
+    def _degisiklik_planini_olustur(
+        self,
+        baglanti,
+        kayitlar: list[SSSKaydi],
+    ) -> DegisiklikPlani:
+        mevcut_satirlar = [
+            dict(satir)
+            for satir in baglanti.execute(
+                """
+                SELECT
+                    id,
+                    kategori,
+                    soru,
+                    cevap,
+                    kaynak_dokuman,
+                    harici_kod,
+                    modul,
+                    kullanici_rolu,
+                    arama_metni,
+                    kayit_ozeti,
+                    kayit_anahtari,
+                    icerik_surumu,
+                    revizyon_numarasi
+                FROM sss_kayitlari
+                WHERE durum = 'aktif'
+                """
+            ).fetchall()
+        ]
+        for mevcut_satir in mevcut_satirlar:
+            if not mevcut_satir["kayit_ozeti"]:
+                mevcut_satir["kayit_ozeti"] = self._kayit_ozeti_olustur(
+                    mevcut_satir["kategori"],
+                    mevcut_satir["soru"],
+                    mevcut_satir["cevap"],
+                    mevcut_satir["kaynak_dokuman"],
+                    mevcut_satir["harici_kod"],
+                    mevcut_satir["modul"],
+                    mevcut_satir["kullanici_rolu"],
+                    mevcut_satir["arama_metni"],
+                )
+            if not mevcut_satir["kayit_anahtari"]:
+                mevcut_satir["kayit_anahtari"] = self._kayit_anahtari_olustur(
+                    mevcut_satir["kategori"],
+                    mevcut_satir["soru"],
+                    mevcut_satir["harici_kod"],
+                    mevcut_satir["modul"],
+                )
+        mevcut_ozet_haritasi = {
+            satir["kayit_ozeti"]: satir for satir in mevcut_satirlar
+        }
+        korunan_kayitlar = tuple(
+            (mevcut_ozet_haritasi[kayit.kayit_ozeti], kayit)
+            for kayit in kayitlar
+            if kayit.kayit_ozeti in mevcut_ozet_haritasi
+        )
+        korunan_mevcut_kimlikleri = {
+            satir["id"] for satir, _ in korunan_kayitlar
+        }
+        korunan_yeni_ozetleri = {
+            kayit.kayit_ozeti for _, kayit in korunan_kayitlar
+        }
+        kalan_mevcut_satirlar = [
+            satir
+            for satir in mevcut_satirlar
+            if satir["id"] not in korunan_mevcut_kimlikleri
+        ]
+        kalan_yeni_kayitlar = [
+            kayit
+            for kayit in kayitlar
+            if kayit.kayit_ozeti not in korunan_yeni_ozetleri
+        ]
+        mevcut_anahtar_gruplari = defaultdict(list)
+        yeni_anahtar_gruplari = defaultdict(list)
+        for satir in kalan_mevcut_satirlar:
+            mevcut_anahtar_gruplari[satir["kayit_anahtari"]].append(satir)
+        for kayit in kalan_yeni_kayitlar:
+            yeni_anahtar_gruplari[kayit.kayit_anahtari].append(kayit)
+        guncellenen_kayitlar = []
+        guncellenen_mevcut_kimlikleri = set()
+        guncellenen_yeni_ozetleri = set()
+        for kayit in kalan_yeni_kayitlar:
+            mevcut_grup = mevcut_anahtar_gruplari[kayit.kayit_anahtari]
+            yeni_grup = yeni_anahtar_gruplari[kayit.kayit_anahtari]
+            if len(mevcut_grup) != 1 or len(yeni_grup) != 1:
+                continue
+            mevcut_satir = mevcut_grup[0]
+            guncellenen_kayitlar.append((mevcut_satir, kayit))
+            guncellenen_mevcut_kimlikleri.add(mevcut_satir["id"])
+            guncellenen_yeni_ozetleri.add(kayit.kayit_ozeti)
+        eklenen_kayitlar = tuple(
+            kayit
+            for kayit in kalan_yeni_kayitlar
+            if kayit.kayit_ozeti not in guncellenen_yeni_ozetleri
+        )
+        arsivlenen_satirlar = tuple(
+            satir
+            for satir in kalan_mevcut_satirlar
+            if satir["id"] not in guncellenen_mevcut_kimlikleri
+        )
+        return DegisiklikPlani(
+            korunan_kayitlar=korunan_kayitlar,
+            guncellenen_kayitlar=tuple(guncellenen_kayitlar),
+            eklenen_kayitlar=eklenen_kayitlar,
+            arsivlenen_satirlar=arsivlenen_satirlar,
+        )
+
+    def _degisen_alanlari_bul(
+        self,
+        mevcut_satir: dict[str, Any],
+        kayit: SSSKaydi,
+    ) -> list[str]:
+        alanlar = (
+            "kategori",
+            "soru",
+            "cevap",
+            "kaynak_dokuman",
+            "harici_kod",
+            "modul",
+            "kullanici_rolu",
+            "arama_metni",
+        )
+        return [
+            alan
+            for alan in alanlar
+            if mevcut_satir.get(alan) != getattr(kayit, alan)
+        ]
+
     def _kayitlari_aktar(
         self,
         dosya_adi: str,
@@ -541,19 +951,26 @@ class ExcelYukleyici:
                 """
                 SELECT
                     surum_numarasi,
-                    aktarilan_kayit_sayisi
+                    aktarilan_kayit_sayisi,
+                    durum
                 FROM veri_surumleri
                 WHERE dosya_ozeti = ?
                 """,
                 (dosya_ozeti,),
             ).fetchone()
             if mevcut_surum:
+                if mevcut_surum["durum"] != "aktif":
+                    raise ExcelDogrulamaHatasi(
+                        "Dosya daha once arsivlenmis bir surum olarak aktarildi; "
+                        "yeniden etkinlestirmek icin --surum-geri-al kullanin"
+                    )
                 return IceAktarimSonucu(
                     surum_numarasi=mevcut_surum["surum_numarasi"],
                     aktarilan_kayit_sayisi=mevcut_surum["aktarilan_kayit_sayisi"],
                     olusturulan_parca_sayisi=0,
                     arsivlenen_kayit_sayisi=0,
                     eklenen_kayit_sayisi=0,
+                    guncellenen_kayit_sayisi=0,
                     korunan_kayit_sayisi=0,
                     yinelenen_dosya=True,
                     dosya_ozeti=dosya_ozeti,
@@ -593,51 +1010,15 @@ class ExcelYukleyici:
                 """,
                 (veri_surumu_id,),
             )
-            mevcut_satirlar = baglanti.execute(
-                """
-                SELECT
-                    id,
-                    kategori,
-                    soru,
-                    cevap,
-                    kaynak_dokuman,
-                    harici_kod,
-                    modul,
-                    kullanici_rolu,
-                    arama_metni,
-                    kayit_ozeti
-                FROM sss_kayitlari
-                WHERE durum = 'aktif'
-                """
-            ).fetchall()
-            mevcut_kayitlar = {}
-            for mevcut_satir in mevcut_satirlar:
-                mevcut_ozet = mevcut_satir["kayit_ozeti"]
-                if not mevcut_ozet:
-                    mevcut_ozet = self._kayit_ozeti_olustur(
-                        mevcut_satir["kategori"],
-                        mevcut_satir["soru"],
-                        mevcut_satir["cevap"],
-                        mevcut_satir["kaynak_dokuman"],
-                        mevcut_satir["harici_kod"],
-                        mevcut_satir["modul"],
-                        mevcut_satir["kullanici_rolu"],
-                        mevcut_satir["arama_metni"],
-                    )
-                    baglanti.execute(
-                        """
-                        UPDATE sss_kayitlari
-                        SET kayit_ozeti = ?
-                        WHERE id = ?
-                        """,
-                        (mevcut_ozet, mevcut_satir["id"]),
-                    )
-                mevcut_kayitlar[mevcut_ozet] = mevcut_satir["id"]
-            yeni_kayitlar = {kayit.kayit_ozeti: kayit for kayit in kayitlar}
-            korunan_ozetler = set(mevcut_kayitlar) & set(yeni_kayitlar)
-            arsivlenen_ozetler = set(mevcut_kayitlar) - set(yeni_kayitlar)
-            eklenen_ozetler = set(yeni_kayitlar) - set(mevcut_kayitlar)
-            if arsivlenen_ozetler:
+            degisiklik_plani = self._degisiklik_planini_olustur(
+                baglanti,
+                kayitlar,
+            )
+            pasiflestirilecek_satirlar = [
+                mevcut_satir
+                for mevcut_satir, _ in degisiklik_plani.guncellenen_kayitlar
+            ] + list(degisiklik_plani.arsivlenen_satirlar)
+            if pasiflestirilecek_satirlar:
                 baglanti.executemany(
                     """
                     UPDATE sss_kayitlari
@@ -645,19 +1026,20 @@ class ExcelYukleyici:
                     WHERE id = ?
                     """,
                     [
-                        (mevcut_kayitlar[kayit_ozeti],)
-                        for kayit_ozeti in arsivlenen_ozetler
+                        (mevcut_satir["id"],)
+                        for mevcut_satir in pasiflestirilecek_satirlar
                     ],
                 )
-            for kayit in kayitlar:
-                if kayit.kayit_ozeti not in korunan_ozetler:
-                    continue
+            kayit_kimlikleri = {}
+            for mevcut_satir, kayit in degisiklik_plani.korunan_kayitlar:
                 baglanti.execute(
                     """
                     UPDATE sss_kayitlari
                     SET
                         kaynak_sayfa = ?,
                         kaynak_satir = ?,
+                        kayit_ozeti = ?,
+                        kayit_anahtari = ?,
                         son_gorulen_surum = ?,
                         aktarim_surumu_id = ?
                     WHERE id = ?
@@ -665,16 +1047,53 @@ class ExcelYukleyici:
                     (
                         kayit.kaynak_sayfa,
                         kayit.kaynak_satir,
+                        kayit.kayit_ozeti,
+                        kayit.kayit_anahtari,
                         yeni_surum,
                         veri_surumu_id,
-                        mevcut_kayitlar[kayit.kayit_ozeti],
+                        mevcut_satir["id"],
                     ),
                 )
+                kayit_kimlikleri[kayit.kayit_ozeti] = mevcut_satir["id"]
             olusturulan_parca_sayisi = 0
-            eklenen_kayit_kimlikleri = {}
+            eklenecek_kayitlar = [
+                (kayit, mevcut_satir, "guncelleme")
+                for mevcut_satir, kayit in degisiklik_plani.guncellenen_kayitlar
+            ] + [
+                (kayit, None, "ekleme")
+                for kayit in degisiklik_plani.eklenen_kayitlar
+            ]
+            eklenecek_harita = {
+                kayit.kayit_ozeti: (kayit, mevcut_satir, degisiklik_turu)
+                for kayit, mevcut_satir, degisiklik_turu in eklenecek_kayitlar
+            }
             for kayit in kayitlar:
-                if kayit.kayit_ozeti not in eklenen_ozetler:
+                if kayit.kayit_ozeti not in eklenecek_harita:
                     continue
+                _, mevcut_satir, degisiklik_turu = eklenecek_harita[
+                    kayit.kayit_ozeti
+                ]
+                onceki_kayit_id = (
+                    mevcut_satir["id"] if mevcut_satir is not None else None
+                )
+                revizyon_numarasi = (
+                    int(mevcut_satir["revizyon_numarasi"] or 1) + 1
+                    if mevcut_satir is not None
+                    else 1
+                )
+                icerik_surumu = (
+                    int(mevcut_satir["icerik_surumu"] or 1) + 1
+                    if mevcut_satir is not None
+                    else 1
+                )
+                degisen_alanlar = (
+                    json.dumps(
+                        self._degisen_alanlari_bul(mevcut_satir, kayit),
+                        ensure_ascii=False,
+                    )
+                    if mevcut_satir is not None
+                    else None
+                )
                 imlec = baglanti.execute(
                     """
                     INSERT INTO sss_kayitlari (
@@ -693,12 +1112,17 @@ class ExcelYukleyici:
                         kaynak_sayfa,
                         kaynak_satir,
                         kayit_ozeti,
+                        kayit_anahtari,
+                        onceki_kayit_id,
+                        revizyon_numarasi,
+                        degisiklik_turu,
+                        degisen_alanlar,
                         son_gorulen_surum,
                         aktarim_surumu_id
                     )
                     VALUES (
                         ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'aktif', ?,
-                        ?, ?, ?, ?, ?
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                     )
                     """,
                     (
@@ -711,16 +1135,21 @@ class ExcelYukleyici:
                         kayit.modul,
                         kayit.kullanici_rolu,
                         kayit.arama_metni,
-                        yeni_surum,
+                        icerik_surumu,
                         kayit.kaynak_sayfa,
                         kayit.kaynak_satir,
                         kayit.kayit_ozeti,
+                        kayit.kayit_anahtari,
+                        onceki_kayit_id,
+                        revizyon_numarasi,
+                        degisiklik_turu,
+                        degisen_alanlar,
                         yeni_surum,
                         veri_surumu_id,
                     ),
                 )
                 sss_id = imlec.lastrowid
-                eklenen_kayit_kimlikleri[kayit.kayit_ozeti] = sss_id
+                kayit_kimlikleri[kayit.kayit_ozeti] = sss_id
                 parca_metni = (
                     f"Kategori: {kayit.kategori}\n\n"
                     f"Soru: {kayit.soru}\n\n"
@@ -752,10 +1181,7 @@ class ExcelYukleyici:
                 [
                     (
                         veri_surumu_id,
-                        mevcut_kayitlar.get(
-                            kayit.kayit_ozeti,
-                            eklenen_kayit_kimlikleri.get(kayit.kayit_ozeti),
-                        ),
+                        kayit_kimlikleri[kayit.kayit_ozeti],
                         kayit.kaynak_sayfa,
                         kayit.kaynak_satir,
                         kayit.kayit_ozeti,
@@ -763,14 +1189,20 @@ class ExcelYukleyici:
                     for kayit in kayitlar
                 ],
             )
-            arsivlenen_kayit_sayisi = len(arsivlenen_ozetler)
-            eklenen_kayit_sayisi = len(eklenen_ozetler)
-            korunan_kayit_sayisi = len(korunan_ozetler)
+            arsivlenen_kayit_sayisi = len(
+                degisiklik_plani.arsivlenen_satirlar
+            )
+            eklenen_kayit_sayisi = len(degisiklik_plani.eklenen_kayitlar)
+            guncellenen_kayit_sayisi = len(
+                degisiklik_plani.guncellenen_kayitlar
+            )
+            korunan_kayit_sayisi = len(degisiklik_plani.korunan_kayitlar)
             baglanti.execute(
                 """
                 UPDATE veri_surumleri
                 SET
                     eklenen_kayit_sayisi = ?,
+                    guncellenen_kayit_sayisi = ?,
                     korunan_kayit_sayisi = ?,
                     arsivlenen_kayit_sayisi = ?,
                     olusturulan_parca_sayisi = ?
@@ -778,6 +1210,7 @@ class ExcelYukleyici:
                 """,
                 (
                     eklenen_kayit_sayisi,
+                    guncellenen_kayit_sayisi,
                     korunan_kayit_sayisi,
                     arsivlenen_kayit_sayisi,
                     olusturulan_parca_sayisi,
@@ -791,6 +1224,7 @@ class ExcelYukleyici:
                     "olusturulan_parca_sayisi": olusturulan_parca_sayisi,
                     "arsivlenen_kayit_sayisi": arsivlenen_kayit_sayisi,
                     "eklenen_kayit_sayisi": eklenen_kayit_sayisi,
+                    "guncellenen_kayit_sayisi": guncellenen_kayit_sayisi,
                     "korunan_kayit_sayisi": korunan_kayit_sayisi,
                     "dosya_ozeti": dosya_ozeti,
                 },
@@ -810,6 +1244,7 @@ class ExcelYukleyici:
             olusturulan_parca_sayisi=olusturulan_parca_sayisi,
             arsivlenen_kayit_sayisi=arsivlenen_kayit_sayisi,
             eklenen_kayit_sayisi=eklenen_kayit_sayisi,
+            guncellenen_kayit_sayisi=guncellenen_kayit_sayisi,
             korunan_kayit_sayisi=korunan_kayit_sayisi,
             yinelenen_dosya=False,
             dosya_ozeti=dosya_ozeti,
@@ -823,6 +1258,8 @@ class ExcelYukleyici:
         return ozetleyici.hexdigest()
 
     def _adi_normalize_et(self, deger: Any) -> str:
+        if deger is None:
+            return ""
         metin = unicodedata.normalize("NFKD", str(deger).strip().casefold())
         aksansiz_metin = "".join(
             karakter for karakter in metin if not unicodedata.combining(karakter)

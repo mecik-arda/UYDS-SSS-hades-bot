@@ -20,8 +20,15 @@ CREATE TABLE IF NOT EXISTS sss_kayitlari (
     kaynak_sayfa TEXT,
     kaynak_satir INTEGER,
     kayit_ozeti TEXT,
+    kayit_anahtari TEXT,
+    onceki_kayit_id INTEGER,
+    revizyon_numarasi INTEGER NOT NULL DEFAULT 1,
+    degisiklik_turu TEXT NOT NULL DEFAULT 'ekleme'
+        CHECK (degisiklik_turu IN ('ekleme', 'guncelleme', 'geri_alma')),
+    degisen_alanlar TEXT,
     son_gorulen_surum INTEGER,
     aktarim_surumu_id INTEGER,
+    FOREIGN KEY (onceki_kayit_id) REFERENCES sss_kayitlari(id) ON DELETE SET NULL,
     FOREIGN KEY (aktarim_surumu_id) REFERENCES veri_surumleri(id) ON DELETE SET NULL
 )
 """
@@ -98,6 +105,7 @@ CREATE TABLE IF NOT EXISTS veri_surumleri (
     durum TEXT NOT NULL DEFAULT 'aktif'
         CHECK (durum IN ('aktif', 'arsivlendi')),
     eklenen_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
+    guncellenen_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
     korunan_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
     arsivlenen_kayit_sayisi INTEGER NOT NULL DEFAULT 0,
     olusturulan_parca_sayisi INTEGER NOT NULL DEFAULT 0
@@ -256,6 +264,11 @@ SSS_KAYITLARI_EK_KOLONLARI = {
     "kaynak_sayfa": "TEXT",
     "kaynak_satir": "INTEGER",
     "kayit_ozeti": "TEXT",
+    "kayit_anahtari": "TEXT",
+    "onceki_kayit_id": "INTEGER REFERENCES sss_kayitlari(id) ON DELETE SET NULL",
+    "revizyon_numarasi": "INTEGER NOT NULL DEFAULT 1",
+    "degisiklik_turu": "TEXT NOT NULL DEFAULT 'ekleme'",
+    "degisen_alanlar": "TEXT",
     "son_gorulen_surum": "INTEGER",
     "aktarim_surumu_id": "INTEGER REFERENCES veri_surumleri(id) ON DELETE SET NULL",
 }
@@ -265,6 +278,7 @@ VERI_SURUMLERI_EK_KOLONLARI = {
     "onceki_surum_numarasi": "INTEGER",
     "durum": "TEXT NOT NULL DEFAULT 'aktif'",
     "eklenen_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
+    "guncellenen_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
     "korunan_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
     "arsivlenen_kayit_sayisi": "INTEGER NOT NULL DEFAULT 0",
     "olusturulan_parca_sayisi": "INTEGER NOT NULL DEFAULT 0",
@@ -290,6 +304,14 @@ INDEX_SORGULARI = [
     """
     CREATE INDEX IF NOT EXISTS sss_kayitlari_durum_surum
     ON sss_kayitlari(durum, son_gorulen_surum)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS sss_kayitlari_anahtar_durum
+    ON sss_kayitlari(kayit_anahtari, durum)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS sss_kayitlari_onceki_kayit
+    ON sss_kayitlari(onceki_kayit_id)
     """,
     """
     CREATE INDEX IF NOT EXISTS veri_surumu_kayitlari_sss_surum
@@ -319,6 +341,9 @@ DOGRULAMA_TETIKLEYICILERI = [
     BEFORE INSERT ON sss_kayitlari
     WHEN NEW.aktif_mi NOT IN (0, 1)
         OR NEW.durum NOT IN ('aktif', 'pasif')
+        OR NEW.degisiklik_turu NOT IN ('ekleme', 'guncelleme', 'geri_alma')
+        OR NEW.icerik_surumu < 1
+        OR NEW.revizyon_numarasi < 1
         OR (NEW.durum = 'aktif' AND NEW.aktif_mi != 1)
         OR (NEW.durum = 'pasif' AND NEW.aktif_mi != 0)
     BEGIN
@@ -330,6 +355,9 @@ DOGRULAMA_TETIKLEYICILERI = [
     BEFORE UPDATE ON sss_kayitlari
     WHEN NEW.aktif_mi NOT IN (0, 1)
         OR NEW.durum NOT IN ('aktif', 'pasif')
+        OR NEW.degisiklik_turu NOT IN ('ekleme', 'guncelleme', 'geri_alma')
+        OR NEW.icerik_surumu < 1
+        OR NEW.revizyon_numarasi < 1
         OR (NEW.durum = 'aktif' AND NEW.aktif_mi != 1)
         OR (NEW.durum = 'pasif' AND NEW.aktif_mi != 0)
     BEGIN
@@ -355,6 +383,13 @@ DOGRULAMA_TETIKLEYICILERI = [
     END
     """,
 ]
+
+DOGRULAMA_TETIKLEYICI_ADLARI = (
+    "sss_kayitlari_dogrula_ekle",
+    "sss_kayitlari_dogrula_guncelle",
+    "geri_bildirim_dogrula_ekle",
+    "geri_bildirim_dogrula_guncelle",
+)
 
 TETIKLEYICI_SORGULARI = [
     FTS_INSERT_TETIKLEYICI,
@@ -443,6 +478,34 @@ def _arama_metnini_bir_kez_geriye_doldur(baglanti) -> None:
     )
 
 
+def _icerik_surumlerini_bir_kez_duzelt(baglanti) -> None:
+    migrasyon_adi = "faz3_icerik_surumu_semantigi_v1"
+    migrasyon_var_mi = baglanti.execute(
+        """
+        SELECT 1
+        FROM sistem_migrasyonlari
+        WHERE migrasyon_adi = ?
+        """,
+        (migrasyon_adi,),
+    ).fetchone()
+    if migrasyon_var_mi:
+        return
+    baglanti.execute(
+        """
+        UPDATE sss_kayitlari
+        SET icerik_surumu = revizyon_numarasi
+        WHERE icerik_surumu != revizyon_numarasi
+        """
+    )
+    baglanti.execute(
+        """
+        INSERT INTO sistem_migrasyonlari (migrasyon_adi)
+        VALUES (?)
+        """,
+        (migrasyon_adi,),
+    )
+
+
 def tablolari_olustur() -> None:
     with baglam_yoneticisi() as baglanti:
         for sorgu in TABLO_SORGULARI:
@@ -463,8 +526,11 @@ def tablolari_olustur() -> None:
             VERI_SURUMU_KAYITLARI_EK_KOLONLARI,
         )
         _arama_metnini_bir_kez_geriye_doldur(baglanti)
+        _icerik_surumlerini_bir_kez_duzelt(baglanti)
         for sorgu in INDEX_SORGULARI:
             baglanti.execute(sorgu)
+        for tetikleyici_adi in DOGRULAMA_TETIKLEYICI_ADLARI:
+            baglanti.execute(f"DROP TRIGGER IF EXISTS {tetikleyici_adi}")
         for sorgu in DOGRULAMA_TETIKLEYICILERI:
             baglanti.execute(sorgu)
         _fts_tablosunu_hazirla(baglanti)

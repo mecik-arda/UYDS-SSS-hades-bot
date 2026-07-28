@@ -552,3 +552,92 @@ Yinelenen dosya sonucunun onceki surumde uretilen parca ve eklenen kayit sayilar
 - Iki ayri surecin eszamanli aktariminda yalnizca bir veri surumu ve bir aktif kayit olustu.
 - Eski Faz 2 semasi veri kaybi olmadan yeni kolonlara ve tablolara yukseltildi.
 - `/api/saglik` ve `/api/hazirlik` ASGI entegrasyonunda 200 yaniti verdi.
+
+---
+
+## On Birinci Teknik Iyilestirme Turu - 28.07.2026
+
+### Yuksek Seviye - Icerik degisikliginde revizyon baginin kaybolmasi
+
+Icerik ozeti degisen bir SSS kaydi daha once yeni ve bagimsiz bir kayit olarak ekleniyordu. `kayit_anahtari`, `onceki_kayit_id`, `revizyon_numarasi`, `degisiklik_turu` ve `degisen_alanlar` alanlari eklendi. Eski ve yeni tarafta tekil kalan mantiksal anahtarlar revizyon olarak baglaniyor. Birebir icerik eslesmesi kimlik koruma icin her zaman oncelikli tutuluyor.
+
+Gercek UYDS dosyasinda mantiksal anahtarlar analiz edildi ve 36 cakisan grup bulundu. Yanlis kayitlari birbirine baglamamak icin belirsiz gruplar otomatik revizyon olarak eslestirilmiyor; yalnizca tekil veya diger kayitlari birebir eslesmeyle elenmis guvenli gruplar revizyon zincirine aliniyor.
+
+### Orta Seviye - Excel aktarimi oncesi etki raporunun bulunmamasi
+
+`--kuru-calistir` secenegi eklendi. Dosya guvenlik ve sema kontrollerinden gecirildikten sonra eklenecek, guncellenecek, korunacak ve arsivlenecek kayit sayilari raporlaniyor. Kuru calisma bilgi tabani kayitlarini veya veri surumu gecmisini degistirmiyor.
+
+### Orta Seviye - Veri surumunun uygulama seviyesinde geri alinamamasi
+
+`--surum-geri-al SURUM` secenegi eklendi. Hedef surumun kayit uyeligi ve kaynak anlik goruntuleri yeni bir veri surumu olarak kopyalaniyor. Mevcut aktif uyelik atomik islemde pasiflestiriliyor, hedef kayitlar etkinlestiriliyor, FTS5 tetikleyicileri calistiriliyor ve `VERI_SURUMU_GERI_ALMA` denetim kaydi olusturuluyor.
+
+### Orta Seviye - Yedegin kaynak dosyayla eslestirilememesi
+
+Her yedegin yaninda atomik `.manifest.json` dosyasi olusturulmaya baslandi. Manifest SHA-256, dosya boyutu, UTC zaman damgasi ve SQLite yedeklerinde aktif kayit, FTS5, veri surumu ve quick check bilgilerini sakliyor. Geri yukleme oncesinde manifest dosya adi, boyut ve SHA-256 degerleri dogrulaniyor. Bozulmus yedek geri yukleme baslamadan reddediliyor.
+
+### Dusuk Seviye - Ayni saniyedeki yedek adlarinin cakisma riski
+
+Yedek adlarina mikrosaniye degeri eklendi. Saklama politikasi bir yedegi sildiginde ona ait manifest dosyasi da birlikte kaldiriliyor.
+
+### Orta Seviye - Arsivlenmis dosyanin sessizce yinelenen sayilmasi
+
+Geri alma sonrasinda daha once yuklenmis ancak artik arsivlenmis bir Excel dosyasi tekrar aktarilmak istendiginde islem sessizce yinelenen sonucu veriyordu. Dosya ozeti arsivlenmis bir surume aitse artik acik hata donuluyor ve kullanici `--surum-geri-al` islemine yonlendiriliyor. Aktif surumun ayni dosyasi icin degisiklik yapmayan yinelenen davranisi korunuyor.
+
+### On Birinci Tur Dogrulama Sonuclari
+
+- Sentetik kuru calisma 2 yeni kayit raporladi ve veri tablolarina kayit yazmadi.
+- Tek cevap degisikligi 1 guncelleme, 1 yeni ve 1 korunan kayit olarak dogru siniflandirildi.
+- Guncellenen kayit onceki kimlige baglandi, revizyon numarasi 2 oldu ve degisen alanlarda cevap ile arama metni yer aldi.
+- Surum 1 yeni Surum 3 olarak geri alindi; aktif kayit ve FTS5 sayisi 2 olarak eslesti.
+- Geri alma islemi sistem gunlugune kaydedildi.
+- Gercek UYDS dosyasinin 2.398 kaydi ve 4.075 parcasi yeniden dogrulandi.
+- Gercek dosyada tek cevap degisikligi 1 guncelleme, 2.397 korunan ve 0 yeni kayit olarak raporlandi.
+- Gercek revizyon sonrasi aktif kayit ve FTS5 sayilari 2.398 olarak eslesti.
+- Yedek manifestindeki SHA-256, dosya boyutu, aktif kayit, FTS5 ve veri surumu bilgileri dogrulandi.
+- Yedekten geri yukleme sonrasi aktif kayit ve FTS5 sayilari geri kazanildi.
+- Sonuna veri eklenerek bozulan yedek manifest dogrulamasinda reddedildi.
+- Arsivlenmis bir Excel dosyasinin yeniden aktarimi durduruldu ve surum geri alma komutuna yonlendirildi.
+- Eski Faz 2 semasi revizyon kolonlari ve guncellenen kayit sayaci eklenirken mevcut kaydi korudu.
+
+---
+
+## On Ikinci Hata Duzeltme Turu - 28.07.2026
+
+### Orta Seviye - Icerik surumunun veri aktarim surumuyle karistirilmasi
+
+Yeni ve revize edilen SSS kayitlarinin `icerik_surumu` alani global veri aktarim surumuyle dolduruluyordu. Yeni mantiksal kayitlar artik 1 ile basliyor; revizyonlar onceki kaydin icerik surumunu bir artiriyor. Degisiklik plani sorgusuna onceki icerik surumu eklendi.
+
+Mevcut veriler icin tek seferlik `faz3_icerik_surumu_semantigi_v1` migrasyonu eklendi. Migrasyon eski degerleri revizyon numarasiyla uyumlu hale getiriyor. Birden kucuk icerik ve revizyon surumlerinin eklenmesi veya guncellenmesi veritabani tetikleyicileriyle engellendi. Dogrulama tetikleyicileri her sema hazirliginda guvenli bicimde yenilenerek yeni kurallarin mevcut veritabanlarinda da etkinlesmesi saglandi.
+
+### Dusuk Seviye - Yedekleme ayarlarinin modul yuklenirken donusturulmesi
+
+`MAKSIMUM_YEDEK_SAYISI` ve `YEDEKLEME_ARALIGI_SAAT` degerlerinin modul govdesindeki erken sayisal donusumu kaldirildi. `yedekle.py` artik ilgisiz bir komut veya modul ice aktarimi sirasinda bozuk yedekleme ayari nedeniyle kapanmiyor. Degerler yalnizca kullanilacaklari anda okunuyor; gecersiz, sifir, negatif, sonsuz ve sayi olmayan degerler degisken adini belirten acik hatalarla reddediliyor. Hatali uretim ayarlarini gizlememek icin sessiz varsayilana donus uygulanmadi.
+
+### Dusuk Seviye - Bos ad degerinin anlamsiz metne donusmesi
+
+Ad normalizasyon yardimcisi `None` degerini artik `"none"` metnine degil bos metne donusturuyor. Mevcut cagri noktalari zaten bos degerleri filtrelese de yardimci fonksiyon gelecekteki kullanimlar icin guvenli hale getirildi.
+
+### Denetimde Degisiklik Gerektirmeyen Bulgular
+
+`kayit_anahtari` benzersizlik kisiti degildir. Gercek UYDS dosyasinda bulunan 36 belirsiz grup nedeniyle coklu anahtarlarda aktarimi durdurmak gecerli veriyi reddedecekti. Birebir icerik ozeti eslesmesi ve yalnizca tekil mantiksal gruplarda revizyon baglama davranisi korundu.
+
+`LOG_SEVIYESI` Pydantic alan dogrulayicisindan gecmektedir. Ortam dosyasinin bulunmamasi dogrulamayi atlamaz ve gecerli `INFO` varsayilani kullanilir. Bu nedenle gunlukleyicide sessiz geri donus eklenmedi.
+
+Excel hucrelerinde `@` baslangicini reddeden formul enjeksiyonu korumasi kaldirilmadi. Mesru bir is gereksinimi kanitlanmadan guvenlik politikasini gevsetmek uygun bulunmadi.
+
+### On Ikinci Tur Dogrulama Sonuclari
+
+- Python compileall basarili.
+- Git diff whitespace denetimi basarili.
+- Bozuk yedekleme ortam degiskenleriyle `yedekle.py` modul ice aktarimi basarili.
+- Gecersiz tamsayi, sayi olmayan deger ve sonlu olmayan zaman araligi ilgili islem basladiginda acik hatayla reddedildi.
+- Sentetik ilk kayit `icerik_surumu=1` ve `revizyon_numarasi=1` olarak olusturuldu.
+- Sentetik cevap revizyonu `icerik_surumu=2` ve `revizyon_numarasi=2` olarak onceki kayda baglandi.
+- Tek seferlik migrasyon hatali 99 icerik surumunu revizyon numarasi olan 2 degerine getirdi.
+- Veritabani dogrulama tetikleyicisi sifir icerik surumunu reddetti.
+- Eski tanimli bir dogrulama tetikleyicisinin sema hazirliginda yeni kuralla degistirildigi dogrulandi.
+- `None` ad normalizasyonu bos metin dondurdu.
+- Uygulama gecici veritabaniyla baslatildi; `/api/saglik` ve `/api/hazirlik` rotalari 200 yaniti verdi.
+- Gercek UYDS dosyasi temiz veritabanina aktarildi; 2.398 aktif kayit, 4.075 parca, 2.398 FTS satiri ve 2.398 aktif surum uyeligi dogrulandi.
+- Gercek dosyanin tekrar aktarimi yinelenen olarak algilandi, kuru calisma 2.398 kaydi korunan olarak raporladi ve Surum 1 geri alma akisi kayip olmadan yeni Surum 2'yi olusturdu.
+- Yedek, SHA-256 manifesti ve geri yukleme akisi bagimsiz gecici veritabaninda basarili oldu.

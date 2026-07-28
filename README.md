@@ -71,8 +71,12 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - Dosya içindeki birebir mükerrer kayıtları eleme
 - Excel çalışma sayfası, satır numarası ve kayıt özeti izlenebilirliği
 - Değişmeyen kayıt kimliklerini ve parçalarını koruyan artımlı sürümleme
+- Tekil mantıksal anahtarlarda önceki kayıt bağlantısı ve alan bazlı revizyon geçmişi
+- Yeni kayıtta 1 ile başlayan ve her içerik revizyonunda bağımsız artan içerik sürümü
 - Yalnızca kaldırılan veya değişen kayıtları arşivleme
 - Süreçler arası `BEGIN IMMEDIATE` aktarım kilidi ve benzersiz dosya özeti
+- Veri yazmadan eklenen, güncellenen, korunan ve kaldırılan kayıtları raporlayan kuru çalışma
+- Geçmiş veri üyeliğini yeni ve denetlenebilir bir sürüm olarak etkinleştiren geri alma
 - Denetim günlüğü ve veri sürümü geçmişi
 - Paragraf, satır ve cümle sınırlarını koruyan metin parçalama
 
@@ -84,7 +88,8 @@ flowchart TD
     B --> C["Sütun tespiti ve veri temizleme"]
     C --> D["Mükerrer dosya ve kayıt denetimi"]
     D --> E["Kayıt özeti ve kaynak satırı üretme"]
-    E --> F["Artımlı veri sürümü oluşturma"]
+    E --> N["Mantıksal anahtar ve revizyon karşılaştırması"]
+    N --> F["Artımlı veri sürümü oluşturma"]
     F --> J["Değişmeyen kayıt kimliklerini koruma"]
     F --> K["Yeni ve kaldırılan kayıtları işleme"]
     J --> L["Sürüm-kayıt eşleme geçmişi"]
@@ -225,6 +230,20 @@ Başka bir `.xlsx` dosyasını aktarın:
 python excel_ice_aktar.py veriler/yeni_sss_surumu.xlsx
 ```
 
+Veritabanındaki aktif veriyi değiştirmeden aktarım farklarını inceleyin:
+
+```text
+python excel_ice_aktar.py veriler/yeni_sss_surumu.xlsx --kuru-calistir
+```
+
+Geçmiş bir veri sürümünü yeni ve denetlenebilir bir sürüm olarak etkinleştirin:
+
+```text
+python excel_ice_aktar.py --surum-geri-al 3
+```
+
+Daha önce aktarılmış ancak artık arşivlenmiş bir Excel dosyası yeniden verilirse aktarım açık bir hatayla durur. Aynı veriyi yeniden etkinleştirmek için dosyayı tekrar yüklemek yerine ilgili sürüm numarasıyla `--surum-geri-al` kullanılmalıdır.
+
 Docker ile aktarım:
 
 ```text
@@ -239,9 +258,12 @@ Komut JSON biçiminde şu alanları döndürür:
 - `olusturulan_parca_sayisi`
 - `arsivlenen_kayit_sayisi`
 - `eklenen_kayit_sayisi`
+- `guncellenen_kayit_sayisi`
 - `korunan_kayit_sayisi`
 - `yinelenen_dosya`
 - `dosya_ozeti`
+
+Kuru çalışma çıktısı toplam, eklenen, güncellenen, korunan ve arşivlenen kayıt sayılarını; dosyanın daha önce görülüp görülmediğini ve SHA-256 özetini döndürür. Geri alma çıktısı hedef ve yeni sürüm numaralarıyla etkinleştirilen, korunan ve arşivlenen kayıt sayılarını döndürür.
 
 Aktarım tamamlandığında düz metin SQLite dosyası AES-256-GCM ile şifrelenir.
 
@@ -309,7 +331,7 @@ python yedekle.py yedekle
 Bir yedeği geri yükleme:
 
 ```text
-python yedekle.py geri-yukle veri_deposu_YYYYMMDD_HHMMSS.db
+python yedekle.py geri-yukle veri_deposu_YYYYMMDD_HHMMSS_ffffff.db
 ```
 
 Zamanlanmış yedekleme:
@@ -317,6 +339,8 @@ Zamanlanmış yedekleme:
 ```text
 python yedekle.py zamanla --aralik-saat 24
 ```
+
+Her yedek dosyasının yanında `.manifest.json` uzantılı bir bütünlük manifesti oluşturulur. Manifest; SHA-256 dosya özeti, dosya boyutu, UTC oluşturulma zamanı ve düz metin SQLite yedeklerinde aktif kayıt sayısı, FTS5 satır sayısı, veri sürümü ile `quick_check` sonucunu içerir. Geri yükleme öncesinde manifest varsa dosya adı, boyut ve SHA-256 özeti zorunlu olarak doğrulanır. Eski manifestsiz yedekler geriye dönük uyumluluk için kabul edilir.
 
 Docker Compose içindeki `uyds_yedekleyici` servisi zamanlanmış yedeklemeyi otomatik yürütür. Geri yükleme ve elle Excel aktarımı öncesinde uygulama durdurulmalıdır.
 
@@ -340,6 +364,11 @@ Faz 3 doğrulamalarında:
 - 4.075 mantıksal metin parçası oluşturuldu.
 - Aktif kayıt ve FTS5 satır sayıları eşleşti.
 - Aynı dosyanın ikinci aktarımı yeni sürüm oluşturmadı.
+- Kuru çalışma bilgi tabanına veya veri sürümü geçmişine kayıt eklemedi.
+- Tek cevap değişikliği 1 revizyon ve 2.397 korunan kayıt olarak sınıflandırıldı.
+- Revizyon kaydı önceki SSS kimliği, revizyon numarası ve değişen alanlarla bağlandı.
+- Geçmiş veri sürümü yeni bir sürüm olarak geri alındı ve FTS5 üyeliği eşleşti.
+- Yedek manifesti, gerçek geri yükleme ve bozuk yedek reddi doğrulandı.
 - Eski Faz 2 şeması veri kaybı olmadan yükseltildi.
 - Hatalı MIME, makro uzantısı ve formül içeriği reddedildi.
 - Parçalı büyük istek gövdesi 413 yanıtıyla reddedildi.
@@ -395,6 +424,7 @@ Henüz oluşturulmamış `api/`, `sablonlar/`, `statik/` ve `testler/` içerikle
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
 - Veritabanı çalışma sırasında düz metin SQLite olarak açıktır ve temiz kapanışta şifrelenir.
+- Mantıksal anahtarı birden fazla aktif kayda karşılık gelen belirsiz gruplar otomatik revizyon zincirine bağlanmaz; yanlış eşleşmeyi önlemek için ekleme ve arşivleme olarak işlenir.
 - Kalıcı otomatik test paketi Faz 10’da oluşturulacaktır.
 
 ## Lisans

@@ -1,4 +1,7 @@
 import argparse
+import hashlib
+import json
+import math
 import os
 import shutil
 import sqlite3
@@ -10,8 +13,38 @@ VERILER_DIZINI = Path("veriler")
 YEDEK_DIZINI = VERILER_DIZINI / "yedekler"
 VERITABANI_YOLU = VERILER_DIZINI / "veri_deposu.db"
 SIFRELI_VERITABANI_YOLU = VERILER_DIZINI / "veri_deposu.db.enc"
-MAKSIMUM_YEDEK_SAYISI = int(os.getenv("MAKSIMUM_YEDEK_SAYISI", "10"))
-YEDEKLEME_ARALIGI_SAAT = float(os.getenv("YEDEKLEME_ARALIGI_SAAT", "24"))
+
+
+def pozitif_tamsayi_ortam_degiskenini_oku(
+    degisken_adi: str,
+    varsayilan_deger: int,
+) -> int:
+    ham_deger = os.getenv(degisken_adi)
+    if ham_deger is None:
+        return varsayilan_deger
+    try:
+        deger = int(ham_deger)
+    except ValueError as hata:
+        raise ValueError(f"{degisken_adi} pozitif bir tam sayi olmalidir") from hata
+    if deger < 1:
+        raise ValueError(f"{degisken_adi} en az 1 olmalidir")
+    return deger
+
+
+def pozitif_ondalik_ortam_degiskenini_oku(
+    degisken_adi: str,
+    varsayilan_deger: float,
+) -> float:
+    ham_deger = os.getenv(degisken_adi)
+    if ham_deger is None:
+        return varsayilan_deger
+    try:
+        deger = float(ham_deger)
+    except ValueError as hata:
+        raise ValueError(f"{degisken_adi} pozitif bir sayi olmalidir") from hata
+    if not math.isfinite(deger) or deger <= 0:
+        raise ValueError(f"{degisken_adi} sifirdan buyuk olmalidir")
+    return deger
 
 
 def veritabani_butunlugunu_dogrula(veritabani_yolu: Path) -> None:
@@ -22,6 +55,110 @@ def veritabani_butunlugunu_dogrula(veritabani_yolu: Path) -> None:
         baglanti.close()
     if sonuc is None or sonuc[0] != "ok":
         raise sqlite3.DatabaseError("Veritabani butunluk denetimi basarisiz")
+
+
+def dosya_ozetini_hesapla(dosya_yolu: Path) -> str:
+    ozetleyici = hashlib.sha256()
+    with dosya_yolu.open("rb") as dosya:
+        for parca in iter(lambda: dosya.read(1024 * 1024), b""):
+            ozetleyici.update(parca)
+    return ozetleyici.hexdigest()
+
+
+def manifest_yolunu_al(yedek_yolu: Path) -> Path:
+    return Path(f"{yedek_yolu}.manifest.json")
+
+
+def veritabani_manifest_bilgilerini_al(
+    veritabani_yolu: Path,
+) -> dict[str, int | str | None]:
+    baglanti = sqlite3.connect(str(veritabani_yolu))
+    try:
+        tablo_adlari = {
+            satir[0]
+            for satir in baglanti.execute(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table'
+                """
+            ).fetchall()
+        }
+        aktif_kayit_sayisi = (
+            baglanti.execute(
+                """
+                SELECT COUNT(*)
+                FROM sss_kayitlari
+                WHERE durum = 'aktif'
+                """
+            ).fetchone()[0]
+            if "sss_kayitlari" in tablo_adlari
+            else None
+        )
+        fts_kayit_sayisi = (
+            baglanti.execute("SELECT COUNT(*) FROM sss_fts").fetchone()[0]
+            if "sss_fts" in tablo_adlari
+            else None
+        )
+        veri_surumu = (
+            baglanti.execute(
+                "SELECT MAX(surum_numarasi) FROM veri_surumleri"
+            ).fetchone()[0]
+            if "veri_surumleri" in tablo_adlari
+            else None
+        )
+        butunluk = baglanti.execute("PRAGMA quick_check").fetchone()[0]
+    finally:
+        baglanti.close()
+    return {
+        "aktif_kayit_sayisi": aktif_kayit_sayisi,
+        "fts_kayit_sayisi": fts_kayit_sayisi,
+        "veri_surumu": veri_surumu,
+        "butunluk": butunluk,
+    }
+
+
+def yedek_manifesti_olustur(yedek_yolu: Path) -> Path:
+    manifest = {
+        "manifest_surumu": 1,
+        "dosya_adi": yedek_yolu.name,
+        "dosya_boyutu": yedek_yolu.stat().st_size,
+        "sha256": dosya_ozetini_hesapla(yedek_yolu),
+        "olusturulma_tarihi": datetime.now(timezone.utc).isoformat(),
+        "veritabani": (
+            veritabani_manifest_bilgilerini_al(yedek_yolu)
+            if yedek_yolu.suffix == ".db"
+            else None
+        ),
+    }
+    manifest_yolu = manifest_yolunu_al(yedek_yolu)
+    gecici_manifest_yolu = Path(f"{manifest_yolu}.yaziliyor")
+    gecici_manifest_yolu.write_text(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    os.replace(gecici_manifest_yolu, manifest_yolu)
+    return manifest_yolu
+
+
+def yedek_manifestini_dogrula(yedek_yolu: Path) -> None:
+    manifest_yolu = manifest_yolunu_al(yedek_yolu)
+    if not manifest_yolu.exists():
+        return
+    manifest = json.loads(manifest_yolu.read_text(encoding="utf-8"))
+    if manifest.get("manifest_surumu") != 1:
+        raise ValueError("Yedek manifest surumu desteklenmiyor")
+    if manifest.get("dosya_adi") != yedek_yolu.name:
+        raise ValueError("Yedek manifest dosya adi eslesmiyor")
+    if manifest.get("dosya_boyutu") != yedek_yolu.stat().st_size:
+        raise ValueError("Yedek dosya boyutu manifest ile eslesmiyor")
+    if manifest.get("sha256") != dosya_ozetini_hesapla(yedek_yolu):
+        raise ValueError("Yedek dosya ozeti manifest ile eslesmiyor")
 
 
 def veritabani_dosyasini_adiyla_yedekle(kaynak: Path, hedef_adi: str) -> None:
@@ -65,16 +202,22 @@ def yedek_dosyalari() -> list[Path]:
 
 
 def eski_yedekleri_temizle() -> None:
-    if MAKSIMUM_YEDEK_SAYISI < 1:
-        raise ValueError("MAKSIMUM_YEDEK_SAYISI en az 1 olmalidir")
+    maksimum_yedek_sayisi = pozitif_tamsayi_ortam_degiskenini_oku(
+        "MAKSIMUM_YEDEK_SAYISI",
+        10,
+    )
     mevcut_yedekler = yedek_dosyalari()
-    while len(mevcut_yedekler) > MAKSIMUM_YEDEK_SAYISI:
-        mevcut_yedekler.pop(0).unlink()
+    while len(mevcut_yedekler) > maksimum_yedek_sayisi:
+        eski_yedek = mevcut_yedekler.pop(0)
+        eski_yedek.unlink()
+        eski_manifest = manifest_yolunu_al(eski_yedek)
+        if eski_manifest.exists():
+            eski_manifest.unlink()
 
 
 def yedekle() -> list[Path]:
     YEDEK_DIZINI.mkdir(parents=True, exist_ok=True)
-    zaman_damgasi = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    zaman_damgasi = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     olusturulan_yedekler: list[Path] = []
 
     if VERITABANI_YOLU.exists():
@@ -95,6 +238,8 @@ def yedekle() -> list[Path]:
         dosya_yedekle(es_anlamlilar_yolu, es_anlamlilar_yedek_adi)
         olusturulan_yedekler.append(YEDEK_DIZINI / es_anlamlilar_yedek_adi)
 
+    for yedek_yolu in olusturulan_yedekler:
+        yedek_manifesti_olustur(yedek_yolu)
     eski_yedekleri_temizle()
     return olusturulan_yedekler
 
@@ -113,6 +258,7 @@ def guvenli_yedek_yolunu_al(yedek_adi: str) -> Path:
 
 def veritabanini_geri_yukle(yedek_adi: str) -> Path:
     yedek_yolu = guvenli_yedek_yolunu_al(yedek_adi)
+    yedek_manifestini_dogrula(yedek_yolu)
     VERILER_DIZINI.mkdir(parents=True, exist_ok=True)
 
     if yedek_yolu.name.endswith(".db.enc"):
@@ -143,7 +289,7 @@ def veritabanini_geri_yukle(yedek_adi: str) -> Path:
 
 
 def zamanli_yedeklemeyi_baslat(aralik_saat: float) -> None:
-    if aralik_saat <= 0:
+    if not math.isfinite(aralik_saat) or aralik_saat <= 0:
         raise ValueError("Yedekleme araligi sifirdan buyuk olmalidir")
     bekleme_suresi = aralik_saat * 60 * 60
     while True:
@@ -163,7 +309,7 @@ def komut_satiri_ayristiricisini_olustur() -> argparse.ArgumentParser:
     zamanla_komutu.add_argument(
         "--aralik-saat",
         type=float,
-        default=YEDEKLEME_ARALIGI_SAAT,
+        default=None,
     )
     return ayristirici
 
@@ -179,7 +325,15 @@ def ana() -> None:
         geri_yuklenen_yol = veritabanini_geri_yukle(argumanlar.yedek_adi)
         print(f"Geri yukleme tamamlandi: {geri_yuklenen_yol}")
         return
-    zamanli_yedeklemeyi_baslat(argumanlar.aralik_saat)
+    aralik_saat = (
+        argumanlar.aralik_saat
+        if argumanlar.aralik_saat is not None
+        else pozitif_ondalik_ortam_degiskenini_oku(
+            "YEDEKLEME_ARALIGI_SAAT",
+            24,
+        )
+    )
+    zamanli_yedeklemeyi_baslat(aralik_saat)
 
 
 if __name__ == "__main__":
