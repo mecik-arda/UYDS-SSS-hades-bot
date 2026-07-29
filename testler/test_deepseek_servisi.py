@@ -80,6 +80,7 @@ class TestDeepSeekServisi:
             "Bearer test_deepseek_anahtari"
         )
         govde = json.loads(istekler[0].content)
+        assert govde["model"] == "deepseek-v4-pro"
         assert govde["stream"] is True
         assert govde["thinking"] == {"type": "disabled"}
         assert govde["messages"][1]["content"] == "Önceki soru"

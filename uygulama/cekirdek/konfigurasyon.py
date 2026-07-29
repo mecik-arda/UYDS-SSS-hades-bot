@@ -11,7 +11,7 @@ class Konfigurasyon(BaseSettings):
     DEEPSEEK_API_ADRESI: str = Field(
         default="https://api.deepseek.com/chat/completions"
     )
-    DEEPSEEK_MODEL_ADI: str = Field(default="deepseek-v4-flash", min_length=1)
+    DEEPSEEK_MODEL_ADI: str = Field(default="deepseek-v4-pro", min_length=1)
     DEEPSEEK_ZAMAN_ASIMI_SANIYE: float = Field(default=120.0, gt=0, le=600)
     DEEPSEEK_YENIDEN_DENEME_SAYISI: int = Field(default=2, ge=0, le=5)
     DEEPSEEK_YENIDEN_DENEME_TABAN_SANIYE: float = Field(
