@@ -1,8 +1,10 @@
+import hashlib
 import sqlite3
 
 import numpy as np
 import pytest
 
+from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur
 from uygulama.servisler.hibrit_arama import HibritArama, _FtsSonucu, _VektorSonucu
 
@@ -13,7 +15,9 @@ class _SahteVektorServisi:
         self.vektor_boyutu = 384
 
     def metni_vektore_donustur(self, metin):
-        rng = np.random.RandomState(hash(metin) % 2**31)
+        metin_ozeti = hashlib.sha256(metin.encode("utf-8")).digest()
+        tohum = int.from_bytes(metin_ozeti[:4], "little")
+        rng = np.random.RandomState(tohum)
         vektor = rng.randn(self.vektor_boyutu).astype(np.float32)
         norm = np.linalg.norm(vektor)
         return (vektor / norm).astype(np.float32)
@@ -102,6 +106,60 @@ class TestFtsArama:
         sonuc = hibrit.fts_ile_ara('"xyzbulunmayankelime"')
         assert sonuc == []
 
+    def test_bm25_alan_agirliklari_siralamayi_degistirir(
+        self,
+        ornek_veritabani,
+        monkeypatch,
+    ):
+        baglanti = sqlite3.connect(str(ornek_veritabani))
+        soru_kaydi = baglanti.execute(
+            """
+            INSERT INTO sss_kayitlari (
+                kategori,
+                soru,
+                cevap,
+                kaynak_dokuman,
+                durum,
+                aktif_mi,
+                arama_metni
+            )
+            VALUES ('test', 'hedef', 'diger', 'test', 'aktif', 1, '')
+            """
+        ).lastrowid
+        cevap_kaydi = baglanti.execute(
+            """
+            INSERT INTO sss_kayitlari (
+                kategori,
+                soru,
+                cevap,
+                kaynak_dokuman,
+                durum,
+                aktif_mi,
+                arama_metni
+            )
+            VALUES ('test', 'diger', 'hedef', 'test', 'aktif', 1, '')
+            """
+        ).lastrowid
+        baglanti.commit()
+        baglanti.close()
+        monkeypatch.setattr(konfigurasyon, "FTS_SORU_AGIRLIGI", 10.0)
+        monkeypatch.setattr(konfigurasyon, "FTS_CEVAP_AGIRLIGI", 0.1)
+        monkeypatch.setattr(konfigurasyon, "FTS_KATEGORI_AGIRLIGI", 0.0)
+        monkeypatch.setattr(konfigurasyon, "FTS_HARICI_KOD_AGIRLIGI", 0.0)
+        monkeypatch.setattr(konfigurasyon, "FTS_MODUL_AGIRLIGI", 0.0)
+        monkeypatch.setattr(
+            konfigurasyon,
+            "FTS_ARAMA_METNI_AGIRLIGI",
+            0.0,
+        )
+        hibrit = HibritArama(_SahteVektorServisi())
+        soru_oncelikli = hibrit.fts_ile_ara('"hedef"')
+        assert soru_oncelikli[0].sss_id == soru_kaydi
+        monkeypatch.setattr(konfigurasyon, "FTS_SORU_AGIRLIGI", 0.1)
+        monkeypatch.setattr(konfigurasyon, "FTS_CEVAP_AGIRLIGI", 10.0)
+        cevap_oncelikli = hibrit.fts_ile_ara('"hedef"')
+        assert cevap_oncelikli[0].sss_id == cevap_kaydi
+
 
 class TestVektorArama:
     def test_vektor_arama_sonuc_dondurur(self, vektorlu_veritabani):
@@ -131,10 +189,44 @@ class TestVektorArama:
         assert gecersiz > 0
 
     def test_bos_vektor_tablosu_bos_doner(self, ornek_veritabani):
-        hibrit = HibritArama(_SahteVektorServisi())
+        class _CagrilamazVektorServisi(_SahteVektorServisi):
+            def metni_vektore_donustur(self, metin):
+                raise AssertionError("Bos tabloda sorgu vektoru uretilmemeli")
+
+        hibrit = HibritArama(_CagrilamazVektorServisi())
         sonuc, gecersiz = hibrit.vektor_ile_ara("fatura")
         assert sonuc == []
         assert gecersiz == 0
+
+    def test_guncelligini_yitirmis_metin_ozeti_atlanir(
+        self,
+        vektorlu_veritabani,
+    ):
+        baglanti = sqlite3.connect(str(vektorlu_veritabani))
+        baglanti.execute(
+            "UPDATE sss_vektorleri SET metin_ozeti = ? WHERE parca_id = ?",
+            ("gecersiz_ozet", 3),
+        )
+        baglanti.commit()
+        baglanti.close()
+        hibrit = HibritArama(_SahteVektorServisi())
+        sonuc, gecersiz = hibrit.vektor_ile_ara("fatura")
+        assert gecersiz == 1
+        assert all(kayit.parca_id != 3 for kayit in sonuc)
+
+    def test_birim_normdan_uzak_vektor_atlanir(self, vektorlu_veritabani):
+        sifir_vektor = np.zeros(384, dtype="<f4").tobytes(order="C")
+        baglanti = sqlite3.connect(str(vektorlu_veritabani))
+        baglanti.execute(
+            "UPDATE sss_vektorleri SET vektor_verisi = ? WHERE parca_id = ?",
+            (sifir_vektor, 3),
+        )
+        baglanti.commit()
+        baglanti.close()
+        hibrit = HibritArama(_SahteVektorServisi())
+        sonuc, gecersiz = hibrit.vektor_ile_ara("fatura")
+        assert gecersiz == 1
+        assert all(kayit.parca_id != 3 for kayit in sonuc)
 
 
 class TestRrfHarmanlama:

@@ -10,6 +10,7 @@ data/
 *.sqlite3
 .env
 __pycache__/
+.codex_pytest_temp/
 *.pyc
 .venv/
 venv/

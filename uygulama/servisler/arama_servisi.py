@@ -36,6 +36,11 @@ class AramaServisi:
         return AramaSonucu(
             adaylar=tuple(zenginlestirilmis),
             gecen_sure_ms=round(gecen_sure_ms, 3),
+            genisletilmis_fts_sorgusu=genisletilmis.fts_sorgusu,
+            genisletilen_terim_sayisi=(
+                genisletilmis.genisletilen_terim_sayisi
+            ),
+            kullanilan_grup_sayisi=genisletilmis.kullanilan_grup_sayisi,
             fts_aday_sayisi=len(fts_sonuclari),
             vektor_aday_sayisi=len(vektor_sonuclari),
             birlesik_aday_sayisi=len(rrf_sonuclari),

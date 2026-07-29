@@ -1,5 +1,6 @@
 __pycache__
 .pytest_cache
+.codex_pytest_temp
 .skills
 .faz4_test*
 *.pyc

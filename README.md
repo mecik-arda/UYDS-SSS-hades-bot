@@ -1,12 +1,12 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-Sürüm 1.0.0 | Faz 1-4 tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-4 ve Faz 5 çekirdek arama tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlamak, anlamsal olarak aranabilir hale getirmek ve sonraki fazlarda kaynak kontrollü bir destek asistanına dönüştürmek amacıyla geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı ve yerel anlamsal vektör üretimini içerir. Vektörlerin arama sonuçlarıyla birleştirilmesi, hibrit sıralama, DeepSeek yanıt üretimi, kullanıcı API’leri ve web arayüzü henüz uygulanmamıştır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi ve RRF tabanlı hibrit aramayı içerir. Cross-Encoder model seçimi, DeepSeek yanıt üretimi, kullanıcı API’leri ve web arayüzü henüz uygulanmamıştır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -14,7 +14,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 2 | SQLite, FTS5, veri modelleri ve şifreleme | Tamamlandı |
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
-| Faz 5 | Hibrit arama, RRF ve yeniden sıralama | Tamamlandı |
+| Faz 5 | Sorgu genişletme, hibrit arama ve RRF | Çekirdek tamamlandı; Cross-Encoder modeli ertelendi |
 | Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Beklemede |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Beklemede |
 | Faz 8 | Geri bildirim, yönetici onayı ve analitik | Beklemede |
@@ -95,6 +95,17 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - BLOB uzunluğu, vektör boyutu ve parça-model benzersizliği için veritabanı koruması
 - Doğrulanan kurum içi terim ve eş anlamlı haritası
 
+### Hibrit arama
+
+- Türkçe sorgu normalizasyonu ve kurum içi eş anlamlılarla sorgu genişletme
+- SQLite FTS5 BM25 ile yapılandırılabilir kelime arama adayları
+- Yerel vektörler üzerinde kosinüs benzerliği ve SSS düzeyinde parça gruplama
+- FTS ve vektör sıralarını Reciprocal Rank Fusion ile birleştirme
+- Kaynak doküman, sayfa, satır ve aday metni taşıyan arama sonuçları
+- Cross-Encoder entegrasyonu için `YenidenSiralayiciProtokolu`
+- Yapılandırılabilir FTS alan ağırlıkları ve sonuç başına sorgu genişletme teşhisleri
+- Sentetik veritabanlarıyla çalışan 40 birim ve servis entegrasyon testi
+
 ## Mevcut Veri Akışı
 
 ```mermaid
@@ -120,8 +131,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 
 ## Planlanan Özellikler
 
-- FTS5 ve kosinüs benzerliğini birleştiren hibrit arama
-- Reciprocal Rank Fusion ve Cross-Encoder yeniden sıralama
+- Türkçe retrieval benchmarkı sonrasında Cross-Encoder model seçimi ve gerçek yeniden sıralama
 - DeepSeek API ile yalnızca seçilen kaynaklardan yanıt üretimi
 - Düşük güvenli ve cevapsız sorularda yanıt reddetme
 - Server-Sent Events ile canlı yanıt akışı
@@ -147,7 +157,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 | İstek sınırlama | SlowAPI | Aktif |
 | Konteyner | Docker ve Docker Compose | Aktif |
 | Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
-| Yeniden sıralama | Cross-Encoder | Faz 5 için planlandı |
+| Yeniden sıralama | Cross-Encoder | Entegrasyon sözleşmesi hazır; model seçimi ertelendi |
 | LLM istemcisi | HTTPX ve DeepSeek API | Faz 6 için planlandı |
 | Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
 
@@ -163,7 +173,7 @@ Yerel çalıştırma:
 - Python 3.11
 - Proje bağımlılıkları için izole sanal ortam
 
-DeepSeek API anahtarı mevcut Faz 1-4 kapsamı için gerekli değildir. Anahtar, Faz 6 entegrasyonu devreye alındığında zorunlu olacaktır.
+DeepSeek API anahtarı mevcut Faz 1-5 çekirdek arama kapsamı için gerekli değildir. Anahtar, Faz 6 entegrasyonu devreye alındığında zorunlu olacaktır.
 
 ## Kurulum
 
@@ -234,6 +244,16 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `ISTEK_GOVDE_MAKS_BOYUT` | Genel istek gövdesi sınırı | `1048576` |
 | `DOSYA_YUKLEME_MAKS_BOYUT` | Excel yükleme sınırı | `52428800` |
 | `LOG_SEVIYESI` | Günlük seviyesi | `INFO` |
+| `RRF_K` | Reciprocal Rank Fusion sabiti | `60` |
+| `FTS_ADAY_SAYISI` | FTS5 tarafından alınacak azami aday | `50` |
+| `VEKTOR_ADAY_SAYISI` | Vektör aramasından alınacak azami aday | `50` |
+| `RRF_ADAY_SAYISI` | Harmanlama sonrasında korunacak azami aday | `20` |
+| `FTS_SORU_AGIRLIGI` | BM25 soru alanı ağırlığı | `1.0` |
+| `FTS_CEVAP_AGIRLIGI` | BM25 cevap alanı ağırlığı | `1.0` |
+| `FTS_KATEGORI_AGIRLIGI` | BM25 kategori alanı ağırlığı | `1.0` |
+| `FTS_HARICI_KOD_AGIRLIGI` | BM25 harici kod alanı ağırlığı | `1.0` |
+| `FTS_MODUL_AGIRLIGI` | BM25 modül alanı ağırlığı | `1.0` |
+| `FTS_ARAMA_METNI_AGIRLIGI` | BM25 birleşik arama metni ağırlığı | `1.0` |
 | `MAKSIMUM_YEDEK_SAYISI` | Saklanacak yedek sayısı | `10` |
 | `YEDEKLEME_ARALIGI_SAAT` | Zamanlanmış yedek aralığı | `24` |
 
@@ -486,7 +506,7 @@ Faz 4 doğrulamalarında:
 - Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
 - Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
 
-Kalıcı pytest ve benchmark paketi Faz 10 kapsamında eklenecektir.
+Faz 5 için kalıcı pytest paketi mevcuttur. Retrieval benchmarkı, başarı metrikleri ve geniş güvenlik doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -536,7 +556,8 @@ Henüz oluşturulmamış `api/`, `sablonlar/`, `statik/` ve `testler/` içerikle
 ## Bilinen Sınırlamalar
 
 - Yalnızca sağlık ve hazırlık kontrolü rotaları uygulanmıştır.
-- Vektör üretimi hazırdır; FTS5 ile vektörleri birleştiren anlamsal arama Faz 5 kapsamındadır.
+- FTS5 BM25 ile yerel vektör benzerliğini RRF üzerinden birleştiren Faz 5 çekirdek hibrit arama hazırdır.
+- Cross-Encoder model seçimi, Türkçe retrieval benchmarkı ile ölçülmek üzere ertelenmiştir.
 - DeepSeek API çağrısı ve kaynak kontrollü yanıt üretimi henüz yoktur.
 - Kimlik doğrulama servisleri hazır olsa da HTTP giriş rotası henüz yoktur.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.

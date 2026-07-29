@@ -111,6 +111,9 @@ class AramaAdayi:
 class AramaSonucu:
     adaylar: tuple[AramaAdayi, ...]
     gecen_sure_ms: float
+    genisletilmis_fts_sorgusu: str
+    genisletilen_terim_sayisi: int
+    kullanilan_grup_sayisi: int
     fts_aday_sayisi: int
     vektor_aday_sayisi: int
     birlesik_aday_sayisi: int

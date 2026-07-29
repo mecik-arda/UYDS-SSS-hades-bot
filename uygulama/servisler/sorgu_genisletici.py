@@ -1,7 +1,11 @@
 import re
 from dataclasses import dataclass
 
-from uygulama.servisler.terim_haritasi import TerimHaritasi, terimi_normalize_et
+from uygulama.servisler.terim_haritasi import (
+    TerimHaritasi,
+    TerimHaritasiHatasi,
+    sorguyu_normalize_et,
+)
 
 MAKS_GENISLETME_TERIMI = 15
 _DOLGU_KELIMELERI = frozenset({
@@ -19,6 +23,7 @@ _DOLGU_KELIMELERI = frozenset({
 _FTS_OZEL_KARAKTERLERI = re.compile(r'["()\-*]')
 _SINIR_ONCESI = r"(?<!\w)"
 _SINIR_SONRASI = r"(?!\w)"
+_ESLESME_ANAHTARI_CEVIRISI = str.maketrans({"ı": "i"})
 
 
 @dataclass(frozen=True)
@@ -42,9 +47,20 @@ class SorguGenisletici:
                 tum_terimler.append((terim, ana_terim))
         tum_terimler.sort(key=lambda x: len(x[0]), reverse=True)
         self._sirali_terimler = tum_terimler
+        self._yedek_sirali_terimler = [
+            (self._eslesme_anahtarini_olustur(terim), ana_terim)
+            for terim, ana_terim in tum_terimler
+        ]
 
     def genislet(self, ham_soru: str) -> GenisletilmisSorgu:
-        normalize_soru = terimi_normalize_et(ham_soru) if ham_soru.strip() else ""
+        try:
+            normalize_soru = (
+                sorguyu_normalize_et(ham_soru)
+                if ham_soru.strip()
+                else ""
+            )
+        except TerimHaritasiHatasi as hata:
+            raise SorguGenisletmeHatasi("Sorgu gecersiz") from hata
         if not normalize_soru:
             raise SorguGenisletmeHatasi("Sorgu bos veya gecersiz")
         eslesen_araliklar = self._araliklari_bul(normalize_soru)
@@ -86,7 +102,29 @@ class SorguGenisletici:
     def _araliklari_bul(self, metin: str) -> list[tuple[int, int, str]]:
         sonuc = []
         isgal_edilen_konumlar = set()
-        for terim, ana_terim in self._sirali_terimler:
+        self._eslesmeleri_ekle(
+            metin,
+            self._sirali_terimler,
+            isgal_edilen_konumlar,
+            sonuc,
+        )
+        if len(sonuc) < MAKS_GENISLETME_TERIMI:
+            self._eslesmeleri_ekle(
+                self._eslesme_anahtarini_olustur(metin),
+                self._yedek_sirali_terimler,
+                isgal_edilen_konumlar,
+                sonuc,
+            )
+        return sonuc
+
+    def _eslesmeleri_ekle(
+        self,
+        metin: str,
+        sirali_terimler: list[tuple[str, str]],
+        isgal_edilen_konumlar: set[int],
+        sonuc: list[tuple[int, int, str]],
+    ) -> None:
+        for terim, ana_terim in sirali_terimler:
             desen = _SINIR_ONCESI + re.escape(terim) + _SINIR_SONRASI
             for eslesme in re.finditer(desen, metin):
                 baslangic = eslesme.start()
@@ -96,8 +134,7 @@ class SorguGenisletici:
                     isgal_edilen_konumlar.update(aralik)
                     sonuc.append((baslangic, bitis, ana_terim))
                     if len(sonuc) >= MAKS_GENISLETME_TERIMI:
-                        return sonuc
-        return sonuc
+                        return
 
     def _anlamli_kelimeleri_cikar(
         self,
@@ -147,3 +184,6 @@ class SorguGenisletici:
             genisletilen_terim_sayisi=0,
             kullanilan_grup_sayisi=0,
         )
+
+    def _eslesme_anahtarini_olustur(self, metin: str) -> str:
+        return metin.translate(_ESLESME_ANAHTARI_CEVIRISI)

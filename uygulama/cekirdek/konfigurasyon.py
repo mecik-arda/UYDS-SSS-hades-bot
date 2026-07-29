@@ -36,6 +36,12 @@ class Konfigurasyon(BaseSettings):
     FTS_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
     VEKTOR_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
     RRF_ADAY_SAYISI: int = Field(default=20, gt=0, le=100)
+    FTS_SORU_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
+    FTS_CEVAP_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
+    FTS_KATEGORI_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
+    FTS_HARICI_KOD_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
+    FTS_MODUL_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
+    FTS_ARAMA_METNI_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
 
     model_config = SettingsConfigDict(
         env_file=".env",

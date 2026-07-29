@@ -50,6 +50,12 @@ services:
       - FTS_ADAY_SAYISI=${FTS_ADAY_SAYISI:-50}
       - VEKTOR_ADAY_SAYISI=${VEKTOR_ADAY_SAYISI:-50}
       - RRF_ADAY_SAYISI=${RRF_ADAY_SAYISI:-20}
+      - FTS_SORU_AGIRLIGI=${FTS_SORU_AGIRLIGI:-1.0}
+      - FTS_CEVAP_AGIRLIGI=${FTS_CEVAP_AGIRLIGI:-1.0}
+      - FTS_KATEGORI_AGIRLIGI=${FTS_KATEGORI_AGIRLIGI:-1.0}
+      - FTS_HARICI_KOD_AGIRLIGI=${FTS_HARICI_KOD_AGIRLIGI:-1.0}
+      - FTS_MODUL_AGIRLIGI=${FTS_MODUL_AGIRLIGI:-1.0}
+      - FTS_ARAMA_METNI_AGIRLIGI=${FTS_ARAMA_METNI_AGIRLIGI:-1.0}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/hazirlik')"]
       interval: 30s

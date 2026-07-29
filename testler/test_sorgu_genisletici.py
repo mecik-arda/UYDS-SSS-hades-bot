@@ -112,3 +112,35 @@ class TestSorguGenisleticiDoluHarita:
         assert "korunacak" in sonuc.fts_sorgusu
         assert sonuc.genisletilen_terim_sayisi == 0
         assert sonuc.kullanilan_grup_sayisi == 0
+
+    @pytest.mark.parametrize("soru", ("İZİN", "IZIN"))
+    def test_turkce_buyuk_i_es_anlamli_grubuyla_eslesir(self, soru):
+        turkce_harita = _SahteTerimHaritasi({
+            "izin": ("musaade",),
+        })
+        genisletici = SorguGenisletici(turkce_harita)
+        sonuc = genisletici.genislet(soru)
+        assert '"izin"' in sonuc.fts_sorgusu
+        assert '"musaade"' in sonuc.fts_sorgusu
+        assert sonuc.kullanilan_grup_sayisi == 1
+
+    def test_turkce_tam_eslesme_yedek_eslesmeden_once_kullanilir(self):
+        turkce_harita = _SahteTerimHaritasi({
+            "izin": ("musaade",),
+            "ızın": ("ozel terim",),
+        })
+        genisletici = SorguGenisletici(turkce_harita)
+        sonuc = genisletici.genislet("IZIN")
+        assert '"ozel terim"' in sonuc.fts_sorgusu
+        assert '"musaade"' not in sonuc.fts_sorgusu
+
+    def test_iki_yuz_bir_karakterlik_sorgu_kabul_edilir(self, bos_harita):
+        genisletici = SorguGenisletici(bos_harita)
+        soru = "a" * 201
+        sonuc = genisletici.genislet(soru)
+        assert soru in sonuc.fts_sorgusu
+
+    def test_iki_bin_karakteri_asan_sorgu_reddedilir(self, bos_harita):
+        genisletici = SorguGenisletici(bos_harita)
+        with pytest.raises(SorguGenisletmeHatasi):
+            genisletici.genislet("a" * 2001)

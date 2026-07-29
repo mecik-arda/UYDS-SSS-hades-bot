@@ -1,4 +1,6 @@
+import hashlib
 import sqlite3
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -34,7 +36,9 @@ class _SahteVektorServisi(VektorServisi):
         self.vektor_boyutu = 384
 
     def metni_vektore_donustur(self, metin):
-        rng = np.random.RandomState(hash(metin) % 2**31)
+        metin_ozeti = hashlib.sha256(metin.encode("utf-8")).digest()
+        tohum = int.from_bytes(metin_ozeti[:4], "little")
+        rng = np.random.RandomState(tohum)
         vektor = rng.randn(self.vektor_boyutu).astype(np.float32)
         norm = np.linalg.norm(vektor)
         return (vektor / norm).astype(np.float32)
@@ -144,3 +148,42 @@ class TestAramaServisi:
         sonuc = arama_servisi.ara("fatura")
         for aday in sonuc.adaylar:
             assert aday.yeniden_siralama_skoru is None
+
+    def test_sorgu_genisletme_teshisleri_sonuca_tasinir(self, arama_servisi):
+        sonuc = arama_servisi.ara("fatura")
+        assert '"harcama belgesi"' in sonuc.genisletilmis_fts_sorgusu
+        assert sonuc.genisletilen_terim_sayisi == 3
+        assert sonuc.kullanilan_grup_sayisi == 1
+
+    def test_yeniden_siralayici_etkin_dali_sonucu_gunceller(
+        self,
+        dolu_veritabani,
+        harita,
+    ):
+        class _SahteYenidenSiralayici:
+            def yeniden_sirala(self, soru, adaylar):
+                siralanmis_adaylar = sorted(
+                    adaylar,
+                    key=lambda aday: aday.sss_id,
+                    reverse=True,
+                )
+                return [
+                    replace(aday, yeniden_siralama_skoru=0.75)
+                    for aday in siralanmis_adaylar
+                ]
+
+        servis = AramaServisi(
+            _SahteVektorServisi(),
+            harita,
+            _SahteYenidenSiralayici(),
+        )
+        sonuc = servis.ara("fatura")
+        assert sonuc.yeniden_siralama_etkin is True
+        assert all(
+            aday.yeniden_siralama_skoru == 0.75
+            for aday in sonuc.adaylar
+        )
+        assert [aday.sss_id for aday in sonuc.adaylar] == sorted(
+            (aday.sss_id for aday in sonuc.adaylar),
+            reverse=True,
+        )

@@ -7,6 +7,9 @@ from typing import Any
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
 
 AZAMI_TERIM_DOSYASI_BOYUTU = 1024 * 1024
+AZAMI_SORGU_UZUNLUGU = 2000
+AZAMI_TERIM_UZUNLUGU = 200
+_TURKCE_KUCUK_HARF_CEVIRISI = str.maketrans({"I": "ı", "İ": "i"})
 
 
 class TerimHaritasiHatasi(ValueError):
@@ -96,11 +99,40 @@ class TerimHaritasi:
 
 
 def terimi_normalize_et(terim: str) -> str:
-        temiz_terim = re.sub(r"\s+", " ", terim.strip().casefold())
-        if not temiz_terim:
-            raise TerimHaritasiHatasi("Terim bos olamaz")
-        if any(unicodedata.category(karakter).startswith("C") for karakter in temiz_terim):
-            raise TerimHaritasiHatasi("Terim kontrol karakteri iceremez")
-        if len(temiz_terim) > 200:
-            raise TerimHaritasiHatasi("Terim 200 karakteri asamaz")
-        return temiz_terim
+    return _metni_normalize_et(
+        terim,
+        AZAMI_TERIM_UZUNLUGU,
+        "Terim",
+    )
+
+
+def sorguyu_normalize_et(sorgu: str) -> str:
+    return _metni_normalize_et(
+        sorgu,
+        AZAMI_SORGU_UZUNLUGU,
+        "Sorgu",
+    )
+
+
+def _metni_normalize_et(
+    metin: str,
+    azami_uzunluk: int,
+    alan_adi: str,
+) -> str:
+    birlesik_metin = unicodedata.normalize("NFC", metin)
+    kucuk_metin = birlesik_metin.translate(
+        _TURKCE_KUCUK_HARF_CEVIRISI
+    ).casefold()
+    temiz_metin = re.sub(r"\s+", " ", kucuk_metin.strip())
+    if not temiz_metin:
+        raise TerimHaritasiHatasi("Terim bos olamaz")
+    if any(
+        unicodedata.category(karakter).startswith("C")
+        for karakter in temiz_metin
+    ):
+        raise TerimHaritasiHatasi(f"{alan_adi} kontrol karakteri iceremez")
+    if len(temiz_metin) > azami_uzunluk:
+        raise TerimHaritasiHatasi(
+            f"{alan_adi} {azami_uzunluk} karakteri asamaz"
+        )
+    return temiz_metin

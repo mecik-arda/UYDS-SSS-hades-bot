@@ -54,13 +54,22 @@ class HibritArama:
                 """
                 SELECT
                     fts.rowid AS sss_id,
-                    bm25(sss_fts) AS bm25_skoru
+                    bm25(sss_fts, ?, ?, ?, ?, ?, ?) AS bm25_skoru
                 FROM sss_fts AS fts
                 WHERE sss_fts MATCH ?
                 ORDER BY bm25_skoru
                 LIMIT ?
                 """,
-                (fts_sorgusu, konfigurasyon.FTS_ADAY_SAYISI),
+                (
+                    konfigurasyon.FTS_SORU_AGIRLIGI,
+                    konfigurasyon.FTS_CEVAP_AGIRLIGI,
+                    konfigurasyon.FTS_KATEGORI_AGIRLIGI,
+                    konfigurasyon.FTS_HARICI_KOD_AGIRLIGI,
+                    konfigurasyon.FTS_MODUL_AGIRLIGI,
+                    konfigurasyon.FTS_ARAMA_METNI_AGIRLIGI,
+                    fts_sorgusu,
+                    konfigurasyon.FTS_ADAY_SAYISI,
+                ),
             ).fetchall()
         sonuc = []
         for sira, satir in enumerate(satirlar, 1):
