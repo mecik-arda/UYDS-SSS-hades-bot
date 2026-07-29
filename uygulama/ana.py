@@ -20,6 +20,9 @@ from uygulama.api.rotalar.kimlik_dogrulama import (
 from uygulama.api.rotalar.sss import router as sss_router
 from uygulama.api.rotalar.yonetici import router as yonetici_router
 from uygulama.cekirdek.gunlukleyici import gunlukleyici
+from uygulama.cekirdek.dagitim_guvenligi import (
+    tek_worker_dagitimini_dogrula,
+)
 from uygulama.cekirdek.hata_yonetimi import (
     IstekKimligiMiddleware,
     hata_yonetimini_kaydet,
@@ -27,7 +30,10 @@ from uygulama.cekirdek.hata_yonetimi import (
 from uygulama.cekirdek.istek_boyutu import IstekGovdesiBoyutMiddleware
 from uygulama.cekirdek.istek_sinirlayici import istek_sinirlayici
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
-from uygulama.cekirdek.guvenlik import sifre_hash_olustur
+from uygulama.cekirdek.guvenlik import (
+    sifre_hash_olustur,
+    suresi_dolmus_guvenlik_kayitlarini_temizle,
+)
 from uygulama.cekirdek.guvenlik_basliklari import GuvenlikBasliklariMiddleware
 from uygulama.cekirdek.veritabani import (
     veritabani_hazirligini_denetle,
@@ -36,16 +42,63 @@ from uygulama.cekirdek.veritabani import (
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
 
 
+async def guvenlik_bakimini_yurut() -> None:
+    bakim_sonucu = await asyncio.to_thread(
+        suresi_dolmus_guvenlik_kayitlarini_temizle
+    )
+    gunlukleyici.info(
+        "Suresi dolmus guvenlik kayitlari temizlendi: "
+        f"yenileme={bakim_sonucu.silinen_yenileme_belirteci_sayisi}, "
+        f"erisim={bakim_sonucu.silinen_erisim_karaliste_sayisi}, "
+        f"nonce={bakim_sonucu.silinen_yonetici_nonce_sayisi}"
+    )
+
+
+async def periyodik_guvenlik_bakimini_calistir(
+    durdurma_olayi: asyncio.Event,
+) -> None:
+    bekleme_saniyesi = (
+        konfigurasyon.GUVENLIK_BAKIM_ARALIGI_SAAT * 60 * 60
+    )
+    while True:
+        try:
+            await asyncio.wait_for(
+                durdurma_olayi.wait(),
+                timeout=bekleme_saniyesi,
+            )
+            return
+        except TimeoutError:
+            pass
+        try:
+            await guvenlik_bakimini_yurut()
+        except Exception as hata:
+            gunlukleyici.error(
+                "Periyodik guvenlik bakimi basarisiz: "
+                f"{type(hata).__name__}"
+            )
+
+
 @asynccontextmanager
 async def uygulama_omru(uygulama: FastAPI):
     gunlukleyici.info("UYDS Asistani baslatiliyor")
+    bakim_gorevi = None
+    bakim_durdurma_olayi = asyncio.Event()
     try:
+        tek_worker_dagitimini_dogrula(
+            konfigurasyon.UYGULAMA_WORKER_SAYISI
+        )
         tablolari_olustur()
+        await guvenlik_bakimini_yurut()
         varsayilan_yonetici_sifre_hash = await asyncio.to_thread(
             sifre_hash_olustur,
             konfigurasyon.VARSAYILAN_YONETICI_SIFRESI,
         )
         varsayilan_yonetici_olustur(varsayilan_yonetici_sifre_hash)
+        bakim_gorevi = asyncio.create_task(
+            periyodik_guvenlik_bakimini_calistir(
+                bakim_durdurma_olayi
+            )
+        )
         gunlukleyici.info("Veritabani baslatma islemleri tamamlandi")
     except Exception as hata:
         gunlukleyici.error(f"Baslatma islemleri sirasinda hata olustu: {hata}")
@@ -54,6 +107,9 @@ async def uygulama_omru(uygulama: FastAPI):
         yield
     finally:
         gunlukleyici.info("UYDS Asistani kapatiliyor")
+        if bakim_gorevi is not None:
+            bakim_durdurma_olayi.set()
+            await bakim_gorevi
         bagimlilik_onbelleklerini_temizle()
         await asyncio.to_thread(veritabanini_sifrele)
 

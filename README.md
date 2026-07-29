@@ -44,7 +44,8 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Hassas değer maskeleyen yapılandırılmış günlükleme
 - Non-root Docker kullanıcısı, salt-okunur kök dosya sistemi, capability kaldırma ve `no-new-privileges`
 - Salt-okunur model bağlama noktası ve yalnızca veri dizininde kalıcı yazma yetkisi
-- Haftalık Python ve Docker bağımlılık güncellemeleri için Dependabot politikası
+- Haftalık Python, Docker ve GitHub Actions bağımlılık güncellemeleri için Dependabot politikası
+- Her push ve pull request için test, Ruff, Bandit, `pip-audit`, sır kalıbı ve Docker build denetimi çalıştıran GitHub Actions iş akışı
 - Güvenlik düzeltmeleri güncel bağımlılıklar, CPU odaklı PyTorch ve PyJWT ile sınırlandırılmış çalışma zamanı
 - Ayrı liveness ve veritabanı/FTS readiness kontrolleri
 - PID sınırı ve kontrollü kapanış süresi
@@ -124,7 +125,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Satır enjeksiyonuna dayanıklı SSE veri çerçeveleme
 - TTL, mesaj sayısı ve toplam oturum sayısı sınırlı bellek içi konuşma hafızası
 - API anahtarı veya sağlayıcı hata ayrıntısını kullanıcı akışına taşımayan hata yönetimi
-- Sentetik veritabanı ve sahte HTTP taşıyıcısıyla çalışan 77 birim ve servis entegrasyon testi
+- Sentetik veritabanı ve sahte HTTP taşıyıcısıyla çalışan 89 birim, sözleşme ve servis entegrasyon testi
 
 ### Faz 7 API ve kimlik güvenliği
 
@@ -140,6 +141,9 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Girdi değerlerini geri yansıtmayan merkezi doğrulama ve hata yanıtları
 - Her yanıtta izlenebilir ancak tahmin edilemez istek kimliği
 - Salt okunur `/run/secrets` bağlama noktası üzerinden yeniden başlatmasız DeepSeek anahtar rotasyonu
+- Süresi dolan refresh ailelerini, erişim karalistesini ve yönetici nonce kayıtlarını başlangıçta ve yapılandırılabilir aralıklarla temizleyen güvenlik bakımı
+- Bellek içi oturum sahipliğini korumak için standart dağıtımda çoklu worker yapılandırmasını başlangıçta reddetme
+- Faz 7 rotalarını ve kritik yönetici HMAC başlıklarını koruyan OpenAPI sözleşme testleri
 
 ## Mevcut Veri Akışı
 
@@ -293,6 +297,8 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `OTURUM_TTL_DAKIKA` | Hareketsiz oturum yaşam süresi | `30` |
 | `OTURUM_MAKS_SAYI` | Bellekte tutulacak toplam oturum sınırı | `1000` |
 | `ESZAMANLI_AKIS_MAKS_SAYI` | Aynı anda işlenebilecek SSE akış sayısı | `10` |
+| `UYGULAMA_WORKER_SAYISI` | Bellek içi oturum sahipliği için zorunlu worker sayısı | `1` |
+| `GUVENLIK_BAKIM_ARALIGI_SAAT` | Süresi dolmuş güvenlik kayıtlarının bakım aralığı | `6` |
 | `ISTEK_GOVDE_MAKS_BOYUT` | Genel istek gövdesi sınırı | `1048576` |
 | `DOSYA_YUKLEME_MAKS_BOYUT` | Excel yükleme sınırı | `52428800` |
 | `LOG_SEVIYESI` | Günlük seviyesi | `INFO` |
@@ -570,7 +576,7 @@ Faz 4 doğrulamalarında:
 - Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
 - Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
 
-Faz 1-7 için kalıcı pytest paketi mevcuttur. Toplam 77 test hem yerel ortamda hem güncel üretim imajından oluşturulan geçici Python 3.11 denetim konteynerinde geçmektedir. Ruff, Bandit, `pip check` ve `pip-audit` denetimleri temizdir. Ağ erişimi kapalı Trivy v0.70.0 taramasında Debian tabanı ve Python paketleri için düzeltmesi bulunan kritik veya yüksek zafiyet bulunmamıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
+Faz 1-7 için kalıcı pytest paketi mevcuttur. Toplam 89 test hem yerel ortamda hem güncel üretim imajından oluşturulan geçici Python 3.11 denetim konteynerinde geçmektedir. Ruff, Bandit, `pip check` ve `pip-audit` denetimleri temizdir. Ağ erişimi kapalı Trivy v0.70.0 taramasında Debian tabanı ve Python paketleri için düzeltmesi bulunan kritik veya yüksek zafiyet bulunmamıştır. GitHub Actions iş akışı aynı test, statik analiz, bağımlılık ve Docker build denetimlerini her push ve pull request için tekrarlar. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -583,6 +589,7 @@ HadesBot/
 │   │   ├── gunlukleyici.py
 │   │   ├── guvenlik.py
 │   │   ├── guvenlik_basliklari.py
+│   │   ├── dagitim_guvenligi.py
 │   │   ├── istek_boyutu.py
 │   │   ├── istek_sinirlayici.py
 │   │   ├── konfigurasyon.py
@@ -639,7 +646,7 @@ HadesBot/
 - Gerçek DeepSeek sağlayıcı bağlantısı yalnızca sentetik içerikle doğrulanmıştır; açık kurumsal veri paylaşım onayı olmadan gerçek UYDS metinleri dış sağlayıcıya gönderilmemiştir.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
-- Bellek içi oturum sahipliği tek worker dağıtımı içindir; çok worker kullanımı kalıcı paylaşımlı oturum deposu gerektirir.
+- Bellek içi oturum sahipliği tek worker dağıtımı içindir; standart ortam değişkenleriyle çok worker başlatma girişimi reddedilir. Gerçek çok-worker desteği kalıcı paylaşımlı oturum deposu gerektirir.
 - Veritabanı çalışma sırasında düz metin SQLite olarak açıktır ve temiz kapanışta şifrelenir.
 - Mantıksal anahtarı birden fazla aktif kayda karşılık gelen belirsiz gruplar otomatik revizyon zincirine bağlanmaz; yanlış eşleşmeyi önlemek için ekleme ve arşivleme olarak işlenir.
 - Faz 10’da retrieval benchmarkı, penetrasyon testi ve başarı metrikleri genişletilecektir.

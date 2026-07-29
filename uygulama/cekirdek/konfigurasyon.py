@@ -67,6 +67,8 @@ class Konfigurasyon(BaseSettings):
     OTURUM_TTL_DAKIKA: int = Field(default=30, gt=0, le=1440)
     OTURUM_MAKS_SAYI: int = Field(default=1000, gt=0, le=100000)
     ESZAMANLI_AKIS_MAKS_SAYI: int = Field(default=10, gt=0, le=1000)
+    UYGULAMA_WORKER_SAYISI: int = Field(default=1, ge=1, le=1)
+    GUVENLIK_BAKIM_ARALIGI_SAAT: int = Field(default=6, gt=0, le=168)
     ISTEK_GOVDE_MAKS_BOYUT: int = Field(default=1048576, gt=0)
     DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
     LOG_SEVIYESI: str = Field(default="INFO")

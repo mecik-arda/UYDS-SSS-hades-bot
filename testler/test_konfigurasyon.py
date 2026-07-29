@@ -59,3 +59,13 @@ def test_gelistirmede_yerel_http_adresi_kabul_edilir():
 def test_deepseek_adresinde_riskli_bilesenler_reddedilir(adres):
     with pytest.raises(ValidationError):
         konfigurasyon_olustur(DEEPSEEK_API_ADRESI=adres)
+
+
+def test_coklu_worker_yapilandirmasi_reddedilir():
+    with pytest.raises(ValidationError):
+        konfigurasyon_olustur(UYGULAMA_WORKER_SAYISI=2)
+
+
+def test_gecersiz_guvenlik_bakim_araligi_reddedilir():
+    with pytest.raises(ValidationError):
+        konfigurasyon_olustur(GUVENLIK_BAKIM_ARALIGI_SAAT=0)

@@ -162,6 +162,42 @@ class TestDeepSeekServisi:
         with pytest.raises(DeepSeekYapilandirmaHatasi):
             akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
 
+    def test_anahtar_dosyasi_yeniden_baslatmadan_dondurulur(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        kullanilan_anahtarlar = []
+
+        def yanitla(istek: httpx.Request) -> httpx.Response:
+            kullanilan_anahtarlar.append(istek.headers["authorization"])
+            return httpx.Response(200, text="data: [DONE]\n\n")
+
+        anahtar_dosyasi = tmp_path / "deepseek-api-anahtari"
+        anahtar_dosyasi.write_text("ilk-test-anahtari", encoding="utf-8")
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_API_ANAHTAR_DOSYASI",
+            str(anahtar_dosyasi),
+        )
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_API_ANAHTARI",
+            "kullanilmamasi-gereken-anahtar",
+        )
+        istemci = httpx.AsyncClient(transport=httpx.MockTransport(yanitla))
+        servis = DeepSeekServisi(istemci=istemci)
+
+        akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
+        anahtar_dosyasi.write_text("ikinci-test-anahtari", encoding="utf-8")
+        akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
+        asyncio.run(istemci.aclose())
+
+        assert kullanilan_anahtarlar == [
+            "Bearer ilk-test-anahtari",
+            "Bearer ikinci-test-anahtari",
+        ]
+
     def test_bozuk_akis_verisi_reddedilir(self, monkeypatch):
         def yanitla(istek: httpx.Request) -> httpx.Response:
             return httpx.Response(200, text="data: {bozuk}\n\n")

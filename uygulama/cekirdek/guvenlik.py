@@ -51,6 +51,55 @@ class YenilemeBelirteci:
     sona_erme_tarihi: datetime
 
 
+@dataclass(frozen=True)
+class GuvenlikBakimSonucu:
+    silinen_yenileme_belirteci_sayisi: int
+    silinen_erisim_karaliste_sayisi: int
+    silinen_yonetici_nonce_sayisi: int
+
+
+def suresi_dolmus_guvenlik_kayitlarini_temizle(
+    simdi: datetime | None = None,
+) -> GuvenlikBakimSonucu:
+    denetim_zamani = simdi or datetime.now(timezone.utc)
+    if denetim_zamani.tzinfo is None:
+        denetim_zamani = denetim_zamani.replace(tzinfo=timezone.utc)
+    zaman_metni = denetim_zamani.isoformat()
+    with baglam_yoneticisi() as baglanti:
+        baglanti.execute("BEGIN IMMEDIATE")
+        yenileme_imleci = baglanti.execute(
+            """
+            DELETE FROM yenileme_belirtecleri
+            WHERE aile_id IN (
+                SELECT aile_id
+                FROM yenileme_belirtecleri
+                GROUP BY aile_id
+                HAVING MAX(sona_erme_tarihi) <= ?
+            )
+            """,
+            (zaman_metni,),
+        )
+        erisim_imleci = baglanti.execute(
+            """
+            DELETE FROM gecersiz_erisim_belirtecleri
+            WHERE sona_erme_tarihi <= ?
+            """,
+            (zaman_metni,),
+        )
+        nonce_imleci = baglanti.execute(
+            """
+            DELETE FROM yonetici_imza_nonce_kayitlari
+            WHERE sona_erme_tarihi <= ?
+            """,
+            (zaman_metni,),
+        )
+    return GuvenlikBakimSonucu(
+        silinen_yenileme_belirteci_sayisi=max(yenileme_imleci.rowcount, 0),
+        silinen_erisim_karaliste_sayisi=max(erisim_imleci.rowcount, 0),
+        silinen_yonetici_nonce_sayisi=max(nonce_imleci.rowcount, 0),
+    )
+
+
 def sifre_hash_olustur(duz_metin_sifre: str) -> str:
     sifre_baytlari = duz_metin_sifre.encode("utf-8")
     if len(sifre_baytlari) > 72:

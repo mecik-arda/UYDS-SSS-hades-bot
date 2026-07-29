@@ -20,3 +20,11 @@ updates:
       time: "06:30"
       timezone: Europe/Istanbul
     open-pull-requests-limit: 3
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 3
