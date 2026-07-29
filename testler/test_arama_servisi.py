@@ -10,6 +10,7 @@ from uygulama.modeller.veritabani_modelleri import tablolari_olustur
 from uygulama.servisler.arama_servisi import AramaServisi
 from uygulama.servisler.terim_haritasi import TerimHaritasi
 from uygulama.servisler.vektor_servisi import VektorServisi
+from uygulama.servisler.yeniden_siralayici import YenidenSiralamaHatasi
 
 
 class _SahteTerimHaritasi(TerimHaritasi):
@@ -201,3 +202,25 @@ class TestAramaServisi:
             (aday.sss_id for aday in sonuc.adaylar),
             reverse=True,
         )
+
+    def test_yeniden_siralama_hatasinda_rrf_sirasi_korunur(
+        self,
+        dolu_veritabani,
+        harita,
+    ):
+        class _HataliYenidenSiralayici:
+            def yeniden_sirala(self, soru, adaylar):
+                raise YenidenSiralamaHatasi("model kullanilamiyor")
+
+        temel_servis = AramaServisi(_SahteVektorServisi(), harita)
+        temel_sonuc = temel_servis.ara("fatura")
+        servis = AramaServisi(
+            _SahteVektorServisi(),
+            harita,
+            _HataliYenidenSiralayici(),
+        )
+        sonuc = servis.ara("fatura")
+        assert sonuc.yeniden_siralama_etkin is False
+        assert [aday.sss_id for aday in sonuc.adaylar] == [
+            aday.sss_id for aday in temel_sonuc.adaylar
+        ]

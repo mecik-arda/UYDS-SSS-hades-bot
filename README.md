@@ -8,7 +8,7 @@ Sürüm 1.0.0 | Faz 1-7 çekirdek kapsamı tamamlandı | Geliştirme sürümü |
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlayan, anlamsal olarak aranabilir hale getiren ve kaynak kontrollü yanıt üreten kurumsal bir destek asistanı olarak geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını ve kimlik doğrulamalı Faz 7 API rotalarını içerir. Cross-Encoder model seçimi ve web arayüzü henüz uygulanmamıştır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını ve kimlik doğrulamalı Faz 7 API rotalarını içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe retrieval benchmarkı ve kaynak ölçümü sonucuna bağlıdır. Web arayüzü henüz uygulanmamıştır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -16,12 +16,12 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 2 | SQLite, FTS5, veri modelleri ve şifreleme | Tamamlandı |
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
-| Faz 5 | Sorgu genişletme, hibrit arama ve RRF | Çekirdek tamamlandı; Cross-Encoder modeli ertelendi |
+| Faz 5 | Sorgu genişletme, hibrit arama, RRF ve güvenli Cross-Encoder katmanı | Tamamlandı; Cross-Encoder üretim aktivasyonu benchmark bekliyor |
 | Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Tamamlandı; canlı bağlantı sentetik içerikle doğrulandı |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Tamamlandı |
 | Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Temel geri bildirim, yönetici onayı ve analitik API'leri hazır; öğrenme döngüsü bekliyor |
 | Faz 9 | Kurumsal web arayüzü | Beklemede |
-| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | 89 kalıcı test ve CI hazır; benchmark ve geniş doğrulama bekliyor |
+| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | 101 kalıcı test ve CI hazır; benchmark ve geniş doğrulama bekliyor |
 
 ## Veri Gizliliği
 
@@ -39,6 +39,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Ortam profilleri: `dev`, `test`, `prod`
 - Zorunlu ve doğrulanan JWT, veritabanı şifreleme ve yönetici parolası değerleri
 - Yapılandırılabilir istek sınırı ve akış tabanlı istek gövdesi boyut kontrolü
+- Yinelenen `Content-Length` ve `Content-Length`/`Transfer-Encoding` çakışmasını uygulamaya ulaşmadan reddeden HTTP istek çerçeveleme koruması
 - Güvenlik başlıkları ve sınırlı CORS politikası
 - SQLite üzerinde merkezi kullanıcı ve IP brute-force sayaçları
 - bcrypt tabanlı parola özetleme
@@ -47,7 +48,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Non-root Docker kullanıcısı, salt-okunur kök dosya sistemi, capability kaldırma ve `no-new-privileges`
 - Salt-okunur model bağlama noktası ve yalnızca veri dizininde kalıcı yazma yetkisi
 - Haftalık Python, Docker ve GitHub Actions bağımlılık güncellemeleri ile yapılandırma doğrulaması için geçerli Dependabot politikası
-- Her push ve pull request için 89 test, Ruff, Bandit, `pip-audit`, sır kalıbı ve Docker build denetimi çalıştıran GitHub Actions iş akışı
+- Her push ve pull request için 101 test, Ruff, Bandit, `pip-audit`, sır kalıbı ve Docker build denetimi çalıştıran GitHub Actions iş akışı
 - Güvenlik düzeltmeleri güncel bağımlılıklar, CPU odaklı PyTorch ve PyJWT ile sınırlandırılmış çalışma zamanı
 - Ayrı liveness ve veritabanı/FTS readiness kontrolleri
 - PID sınırı ve kontrollü kapanış süresi
@@ -108,7 +109,10 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Yerel vektörler üzerinde kosinüs benzerliği ve SSS düzeyinde parça gruplama
 - FTS ve vektör sıralarını Reciprocal Rank Fusion ile birleştirme
 - Kaynak doküman, sayfa, satır ve aday metni taşıyan arama sonuçları
-- Cross-Encoder entegrasyonu için `YenidenSiralayiciProtokolu`
+- Sabit revizyonlu `mmarco-mMiniLMv2-L12-H384-v1` için isteğe bağlı Cross-Encoder yeniden sıralayıcı
+- Yalnızca ilk yapılandırılabilir aday grubunu skorlayan ve kalan RRF sırasını koruyan sınırlı yürütme
+- İzinli dosya listesi, resmî `safetensors` SHA-256, yerel manifest, mimari ve tokenizer doğrulaması
+- Uzaktan kodu ve ağ erişimini kapatan yerel model yükleme; model hatasında RRF sırasına güvenli dönüş
 - Yapılandırılabilir FTS alan ağırlıkları ve sonuç başına sorgu genişletme teşhisleri
 - Gerçek kosinüs benzerliğini RRF sırasından bağımsız taşıyan güven skoru girdisi
 
@@ -127,7 +131,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Satır enjeksiyonuna dayanıklı SSE veri çerçeveleme
 - TTL, mesaj sayısı ve toplam oturum sayısı sınırlı bellek içi konuşma hafızası
 - API anahtarı veya sağlayıcı hata ayrıntısını kullanıcı akışına taşımayan hata yönetimi
-- Sentetik verilerle çalışan toplam 89 birim, sözleşme, güvenlik ve servis entegrasyon testi
+- Sentetik verilerle çalışan toplam 101 birim, sözleşme, güvenlik ve servis entegrasyon testi
 
 ### Faz 7 API ve kimlik güvenliği
 
@@ -171,7 +175,10 @@ flowchart TD
     Q --> O
     H --> R["RRF hibrit sıralama"]
     O --> R
-    R --> S{"Güven eşiği"}
+    R --> Z{"Cross-Encoder etkin ve model geçerli mi?"}
+    Z -->|Evet| AA["İlk adayları yeniden sırala"]
+    Z -->|Hayır veya hata| S{"Güven eşiği"}
+    AA --> S
     S -->|Eşik altı| T["Kaynak açıklamayan standart ret yanıtı"]
     S -->|Eşik üstü| U["Sınırlı kaynak ve oturum bağlamı"]
     U --> V["DeepSeek kaynak kontrollü yanıt üretimi"]
@@ -185,7 +192,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 
 ## Planlanan Özellikler
 
-- Türkçe retrieval benchmarkı sonrasında Cross-Encoder model seçimi ve gerçek yeniden sıralama
+- Türkçe retrieval benchmarkı sonrasında Cross-Encoder üretim aktivasyonu ve aday sayısı ayarı
 - Faz 8 yönetici onaylı alternatif soru öğrenme döngüsü
 - Mevcut analitik ve yönetici API'lerini kullanan web panelleri
 - Kurumsal web arayüzü
@@ -206,7 +213,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 | İstek sınırlama | SlowAPI | Aktif |
 | Konteyner | Docker ve Docker Compose | Aktif |
 | Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
-| Yeniden sıralama | Cross-Encoder | Entegrasyon sözleşmesi hazır; model seçimi ertelendi |
+| Yeniden sıralama | Sentence-Transformers Cross-Encoder | Güvenli yerel entegrasyon hazır; üretim aktivasyonu benchmark bekliyor |
 | LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; sentetik canlı bağlantı doğrulandı, gerçek kurumsal içerik açık veri paylaşım onayı gerektirir |
 | Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
 
@@ -321,6 +328,11 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `FTS_ADAY_SAYISI` | FTS5 tarafından alınacak azami aday | `50` |
 | `VEKTOR_ADAY_SAYISI` | Vektör aramasından alınacak azami aday | `50` |
 | `RRF_ADAY_SAYISI` | Harmanlama sonrasında korunacak azami aday | `20` |
+| `YENIDEN_SIRALAMA_ETKIN` | Cross-Encoder yeniden sıralamayı etkinleştirir | `false` |
+| `YENIDEN_SIRALAMA_MODEL_YOLU` | Doğrulanmış yerel Cross-Encoder model dizini | `modeller/mmarco-mMiniLMv2-L12-H384-v1` |
+| `YENIDEN_SIRALAMA_ADAY_SAYISI` | Cross-Encoder ile skorlanacak ilk RRF adayı sayısı | `10` |
+| `YENIDEN_SIRALAMA_TOPLU_ISLEM_BOYUTU` | Tek Cross-Encoder çağrısındaki sorgu-aday çifti sayısı | `8` |
+| `YENIDEN_SIRALAMA_MAKS_TOKEN` | Cross-Encoder sorgu-aday çifti token sınırı | `512` |
 | `FTS_SORU_AGIRLIGI` | BM25 soru alanı ağırlığı | `1.0` |
 | `FTS_CEVAP_AGIRLIGI` | BM25 cevap alanı ağırlığı | `1.0` |
 | `FTS_KATEGORI_AGIRLIGI` | BM25 kategori alanı ağırlığı | `1.0` |
@@ -416,6 +428,22 @@ python vektorleri_olustur.py --tumunu-yenile
 Tam yenileme mevcut aktif vektörleri önceden silmez. Model yükleme veya üretim hatasında tamamlanmamış kayıtlar önceki geçerli vektörlerini korur; yalnızca başarıyla üretilen toplu işlemler atomik olarak güncellenir.
 
 Docker kullanırken model hazırlama işlemi ana makinede bir kez yapılır. `modeller/` dizini uygulama konteynerine salt-okunur bağlanır. Normal vektör üretimi `HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE` ve `HF_DATASETS_OFFLINE` değerlerini zorunlu olarak etkinleştirir.
+
+## Yerel Cross-Encoder Yeniden Sıralama
+
+Cross-Encoder varsayılan olarak kapalıdır. Sabit revizyonlu ve SHA-256 doğrulamalı model dosyalarını kurum verisi okumadan yerel dizine hazırlayın:
+
+```text
+python yeniden_siralama_modelini_hazirla.py
+```
+
+Türkçe retrieval benchmarkı doğruluk, p50/p95 gecikme ve tepe bellek açısından kabul edilebilir sonuç verirse `.env` içinde etkinleştirin:
+
+```text
+YENIDEN_SIRALAMA_ETKIN=true
+```
+
+Uygulama yalnızca ilk `YENIDEN_SIRALAMA_ADAY_SAYISI` RRF adayını yeniden skorlar. Model bulunamaz, bütünlük denetiminden geçemez veya geçersiz skor üretirse istek başarısız edilmez; özgün RRF sırası korunur ve yeniden sıralamanın uygulanmadığı sonuç teşhisine yazılır. Model yükleme çalışma zamanında çevrimdışıdır, uzaktan model koduna izin verilmez ve pickle ağırlıkları kabul edilmez.
 
 ## Uygulamayı Çalıştırma
 
@@ -551,7 +579,7 @@ Veritabanı bağlantıları ve yedekleme süreçler arasında paylaşımlı dosy
 Sözdizimi ve import derlemesi:
 
 ```text
-python -m compileall -q uygulama excel_ice_aktar.py yedekle.py vektorleri_olustur.py vektor_modelini_hazirla.py
+python -m compileall -q uygulama excel_ice_aktar.py yedekle.py vektorleri_olustur.py vektor_modelini_hazirla.py yeniden_siralama_modelini_hazirla.py
 ```
 
 Docker Compose yapılandırması:
@@ -603,7 +631,7 @@ Faz 4 doğrulamalarında:
 - Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
 - Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
 
-Faz 1-7 için kalıcı pytest paketi mevcuttur. Toplam 89 test yerel ortamda, Python 3.11 denetim konteynerinde ve GitHub Actions ortamında geçmektedir. Ruff, Bandit, `pip check` ve `pip-audit` denetimleri temizdir. Ağ erişimi kapalı Trivy v0.70.0 taramasında Debian tabanı ve Python paketleri için düzeltmesi bulunan kritik veya yüksek zafiyet bulunmamıştır. GitHub Actions iş akışı her push ve pull request için aynı test, statik analiz, bağımlılık, sır kalıbı ve Docker build denetimlerini tekrarlar. Workflow, Node.js 24 tabanlı güncel `actions/checkout@v7` ve `actions/setup-python@v7` sürümleriyle doğrulanmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
+Faz 1-7 için kalıcı pytest paketi mevcuttur. Toplam 101 test yerel ortamda, Python 3.11 denetim konteynerinde ve GitHub Actions ortamında çalıştırılmaktadır. Ruff, Bandit, `pip check` ve `pip-audit` denetimleri temizdir. Ağ erişimi kapalı Trivy v0.70.0 taramasında Debian tabanı ve Python paketleri için düzeltmesi bulunan kritik veya yüksek zafiyet bulunmamıştır. GitHub Actions iş akışı her push ve pull request için aynı test, statik analiz, bağımlılık, sır kalıbı ve Docker build denetimlerini tekrarlar. Workflow, Node.js 24 tabanlı güncel `actions/checkout@v7` ve `actions/setup-python@v7` sürümleriyle doğrulanmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -666,10 +694,13 @@ HadesBot/
 │   ├── test_konfigurasyon.py
 │   ├── test_openapi_sozlesmesi.py
 │   ├── test_oturum_hafizasi.py
-│   └── test_sorgu_genisletici.py
+│   ├── test_istek_boyutu.py
+│   ├── test_sorgu_genisletici.py
+│   └── test_yeniden_siralayici.py
 ├── excel_ice_aktar.py
 ├── es_anlamlilar.example.json
 ├── vektor_modelini_hazirla.py
+├── yeniden_siralama_modelini_hazirla.py
 ├── vektorleri_olustur.py
 ├── yedekle.py
 ├── Dockerfile
@@ -688,7 +719,7 @@ HadesBot/
 
 ## Bilinen Sınırlamalar
 
-- Cross-Encoder model seçimi, Türkçe retrieval benchmarkı ile ölçülmek üzere ertelenmiştir.
+- Cross-Encoder güvenli yerel entegrasyonu hazırdır ve varsayılan olarak kapalıdır; üretim aktivasyonu Türkçe retrieval benchmarkı, p50/p95 gecikme ve tepe bellek ölçümü sonrasına bırakılmıştır.
 - Gerçek DeepSeek sağlayıcı bağlantısı yalnızca sentetik içerikle doğrulanmıştır; açık kurumsal veri paylaşım onayı olmadan gerçek UYDS metinleri dış sağlayıcıya gönderilmemiştir.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur; bunların kullanacağı yönetici ve analitik API'leri hazırdır.
 - Faz 8 alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı henüz uygulanmamıştır.

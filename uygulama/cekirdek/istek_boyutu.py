@@ -31,8 +31,30 @@ class IstekGovdesiBoyutMiddleware:
             if istek_yolu in self.dosya_yukleme_yollari
             else self.maksimum_boyut
         )
-        basliklar = dict(kapsam.get("headers", []))
-        icerik_uzunlugu = basliklar.get(b"content-length")
+        ham_basliklar = [
+            (ad.lower(), deger)
+            for ad, deger in kapsam.get("headers", [])
+        ]
+        icerik_uzunluklari = [
+            deger
+            for ad, deger in ham_basliklar
+            if ad == b"content-length"
+        ]
+        aktarim_kodlamalari = [
+            deger
+            for ad, deger in ham_basliklar
+            if ad == b"transfer-encoding"
+        ]
+        if len(icerik_uzunluklari) > 1 or (
+            icerik_uzunluklari and aktarim_kodlamalari
+        ):
+            await self._gecersiz_uzunluk_hatasi_gonder(kapsam, gonder)
+            return
+        icerik_uzunlugu = (
+            icerik_uzunluklari[0]
+            if icerik_uzunluklari
+            else None
+        )
         if icerik_uzunlugu is not None:
             try:
                 bildirilen_boyut = int(icerik_uzunlugu)

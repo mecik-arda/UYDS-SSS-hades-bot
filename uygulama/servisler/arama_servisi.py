@@ -1,12 +1,16 @@
 from time import perf_counter
 
+from uygulama.cekirdek.gunlukleyici import gunlukleyici
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 from uygulama.modeller.semalar import AramaAdayi, AramaSonucu
 from uygulama.servisler.hibrit_arama import HibritArama, _RrfSonucu
 from uygulama.servisler.sorgu_genisletici import SorguGenisletici
 from uygulama.servisler.terim_haritasi import TerimHaritasi
 from uygulama.servisler.vektor_servisi import VektorServisi
-from uygulama.servisler.yeniden_siralayici import YenidenSiralayiciProtokolu
+from uygulama.servisler.yeniden_siralayici import (
+    YenidenSiralamaHatasi,
+    YenidenSiralayiciProtokolu,
+)
 
 
 class AramaServisi:
@@ -27,11 +31,19 @@ class AramaServisi:
         vektor_sonuclari, gecersiz_vektor = self._hibrit_arama.vektor_ile_ara(soru)
         rrf_sonuclari = self._hibrit_arama.rrf_harmanla(fts_sonuclari, vektor_sonuclari)
         zenginlestirilmis = self._kaynak_ve_metin_ekle(rrf_sonuclari)
-        if self._yeniden_siralayici is not None:
-            zenginlestirilmis = self._yeniden_siralayici.yeniden_sirala(
-                soru,
-                zenginlestirilmis,
-            )
+        yeniden_siralama_etkin = self._yeniden_siralayici is not None
+        if yeniden_siralama_etkin:
+            try:
+                zenginlestirilmis = self._yeniden_siralayici.yeniden_sirala(
+                    soru,
+                    zenginlestirilmis,
+                )
+            except YenidenSiralamaHatasi as hata:
+                yeniden_siralama_etkin = False
+                gunlukleyici.warning(
+                    "Yeniden siralama basarisiz; RRF sirasi korundu: "
+                    f"{type(hata).__name__}"
+                )
         gecen_sure_ms = (perf_counter() - baslangic) * 1000.0
         return AramaSonucu(
             adaylar=tuple(zenginlestirilmis),
@@ -45,7 +57,7 @@ class AramaServisi:
             vektor_aday_sayisi=len(vektor_sonuclari),
             birlesik_aday_sayisi=len(rrf_sonuclari),
             gecersiz_vektor_sayisi=gecersiz_vektor,
-            yeniden_siralama_etkin=self._yeniden_siralayici is not None,
+            yeniden_siralama_etkin=yeniden_siralama_etkin,
         )
 
     def _kaynak_ve_metin_ekle(

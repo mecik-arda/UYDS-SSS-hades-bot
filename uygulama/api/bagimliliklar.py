@@ -22,6 +22,10 @@ from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 from uygulama.servisler.oturum_sahipligi import OturumSahipligiServisi
 from uygulama.servisler.terim_haritasi import TerimHaritasi
 from uygulama.servisler.vektor_servisi import VektorServisi
+from uygulama.servisler.yeniden_siralayici import (
+    CrossEncoderYenidenSiralayici,
+    YenidenSiralayiciProtokolu,
+)
 
 _NONCE_KALIBI = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
 _IMZA_KALIBI = re.compile(r"^[a-f0-9]{64}$")
@@ -33,10 +37,25 @@ def vektor_servisini_al() -> VektorServisi:
 
 
 @lru_cache
+def yeniden_siralayiciyi_al() -> YenidenSiralayiciProtokolu | None:
+    if not konfigurasyon.YENIDEN_SIRALAMA_ETKIN:
+        return None
+    return CrossEncoderYenidenSiralayici(
+        model_yolu=konfigurasyon.YENIDEN_SIRALAMA_MODEL_YOLU,
+        aday_sayisi=konfigurasyon.YENIDEN_SIRALAMA_ADAY_SAYISI,
+        toplu_islem_boyutu=(
+            konfigurasyon.YENIDEN_SIRALAMA_TOPLU_ISLEM_BOYUTU
+        ),
+        maksimum_token=konfigurasyon.YENIDEN_SIRALAMA_MAKS_TOKEN,
+    )
+
+
+@lru_cache
 def arama_servisini_al() -> AramaServisi:
     return AramaServisi(
         vektor_servisi=vektor_servisini_al(),
         terim_haritasi=TerimHaritasi(),
+        yeniden_siralayici=yeniden_siralayiciyi_al(),
     )
 
 
@@ -71,6 +90,7 @@ def akis_semaforunu_al() -> asyncio.Semaphore:
 
 def bagimlilik_onbelleklerini_temizle() -> None:
     vektor_servisini_al.cache_clear()
+    yeniden_siralayiciyi_al.cache_clear()
     arama_servisini_al.cache_clear()
     oturum_hafizasini_al.cache_clear()
     oturum_sahipligi_servisini_al.cache_clear()
