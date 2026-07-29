@@ -5,7 +5,6 @@ os.environ["JWT_GIZLI_ANAHTARI"] = "test_jwt_anahtari_32_karakter_uzunlugunda"
 os.environ["VARSAYILAN_YONETICI_SIFRESI"] = "test_sifresi_12_karakter_minimum"
 
 import pytest
-from pathlib import Path
 
 import uygulama.cekirdek.konfigurasyon as konfigurasyon_modulu
 

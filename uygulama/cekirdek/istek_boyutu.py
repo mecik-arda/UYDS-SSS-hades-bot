@@ -3,7 +3,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
 class IstekGovdesiBoyutuAsildi(Exception):
-    pass
+    def __init__(self, mesaj: str = "Istek govdesi boyut siniri asildi") -> None:
+        super().__init__(mesaj)
 
 
 class IstekGovdesiBoyutMiddleware:

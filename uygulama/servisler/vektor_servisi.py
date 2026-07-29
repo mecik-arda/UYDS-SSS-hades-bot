@@ -20,7 +20,8 @@ _URETIM_KILIDI = Lock()
 
 
 class VektorModeliHatasi(RuntimeError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 @dataclass(frozen=True)
@@ -380,20 +381,31 @@ class VektorServisi:
                 raise ValueError("Bos parca listesi vektor iceremez")
             return 0
         parca_kimlikleri = [parca["parca_id"] for parca in parcalar]
-        yer_tutucular = ",".join("?" for _ in parca_kimlikleri)
         with baglam_yoneticisi() as baglanti:
             baglanti.execute("BEGIN IMMEDIATE")
+            baglanti.execute(
+                """
+                CREATE TEMP TABLE IF NOT EXISTS secili_parca_kimlikleri (
+                    id INTEGER PRIMARY KEY
+                )
+                """
+            )
+            baglanti.execute("DELETE FROM secili_parca_kimlikleri")
+            baglanti.executemany(
+                "INSERT INTO secili_parca_kimlikleri (id) VALUES (?)",
+                ((kimlik,) for kimlik in parca_kimlikleri),
+            )
             etkin_parca_kimlikleri = {
                 satir["id"]
                 for satir in baglanti.execute(
-                    f"""
+                    """
                     SELECT parca.id
                     FROM sss_parcalari AS parca
                     JOIN sss_kayitlari AS kayit ON kayit.id = parca.sss_id
+                    JOIN secili_parca_kimlikleri AS secili
+                        ON secili.id = parca.id
                     WHERE kayit.durum = 'aktif'
-                        AND parca.id IN ({yer_tutucular})
-                    """,
-                    parca_kimlikleri,
+                    """
                 ).fetchall()
             }
             kaydedilecekler = [

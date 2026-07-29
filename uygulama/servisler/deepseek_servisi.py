@@ -1,6 +1,8 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from pathlib import Path
+from time import monotonic
 
 import httpx
 
@@ -36,9 +38,11 @@ class DeepSeekServisi:
         self,
         istemci: httpx.AsyncClient | None = None,
         bekleme_islevi: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        zaman_saglayici: Callable[[], float] = monotonic,
     ) -> None:
         self._harici_istemci = istemci
         self._bekleme_islevi = bekleme_islevi
+        self._zaman_saglayici = zaman_saglayici
 
     async def yanit_akisini_uret(
         self,
@@ -50,12 +54,18 @@ class DeepSeekServisi:
         istek_govdesi = self._istek_govdesini_olustur(soru, kaynaklar, gecmis)
         deneme_sayisi = konfigurasyon.DEEPSEEK_YENIDEN_DENEME_SAYISI + 1
         icerik_aktarildi = False
+        toplam_karakter = 0
         for deneme in range(deneme_sayisi):
             try:
                 async for parca in self._tek_akis(
                     api_anahtari,
                     istek_govdesi,
                 ):
+                    toplam_karakter += len(parca)
+                    if toplam_karakter > konfigurasyon.DEEPSEEK_YANIT_MAKS_KARAKTER:
+                        raise DeepSeekServisiHatasi(
+                            "DeepSeek yaniti izin verilen boyutu asti"
+                        )
                     icerik_aktarildi = True
                     yield parca
                 return
@@ -86,6 +96,7 @@ class DeepSeekServisi:
                 konfigurasyon.DEEPSEEK_ZAMAN_ASIMI_SANIYE
             )
             istemci = httpx.AsyncClient(timeout=zaman_asimi, follow_redirects=False)
+        akis_baslangici = self._zaman_saglayici()
         try:
             async with istemci.stream(
                 "POST",
@@ -103,6 +114,11 @@ class DeepSeekServisi:
                         durum_kodu=yanit.status_code,
                     )
                 async for satir in yanit.aiter_lines():
+                    gecen_sure = self._zaman_saglayici() - akis_baslangici
+                    if gecen_sure > konfigurasyon.DEEPSEEK_AKIS_MAKS_SANIYE:
+                        raise DeepSeekServisiHatasi(
+                            "DeepSeek akisi izin verilen sureyi asti"
+                        )
                     if not satir or satir.startswith(":"):
                         continue
                     if not satir.startswith("data:"):
@@ -182,13 +198,35 @@ class DeepSeekServisi:
             ) from hata
 
     def _api_anahtarini_al(self) -> str:
-        anahtar = konfigurasyon.DEEPSEEK_API_ANAHTARI.strip()
+        anahtar_dosyasi = konfigurasyon.DEEPSEEK_API_ANAHTAR_DOSYASI.strip()
+        anahtar = (
+            self._api_anahtarini_dosyadan_al(anahtar_dosyasi)
+            if anahtar_dosyasi
+            else konfigurasyon.DEEPSEEK_API_ANAHTARI.strip()
+        )
         gecersiz_parcalar = ("buraya_yazin", "anahtarinizi")
         if not anahtar or any(parca in anahtar.lower() for parca in gecersiz_parcalar):
             raise DeepSeekYapilandirmaHatasi(
                 "DeepSeek API anahtari yapilandirilmamis"
             )
         return anahtar
+
+    def _api_anahtarini_dosyadan_al(self, dosya_yolu: str) -> str:
+        yol = Path(dosya_yolu)
+        try:
+            if not yol.is_file() or yol.is_symlink():
+                raise DeepSeekYapilandirmaHatasi(
+                    "DeepSeek API anahtar dosyasi gecersiz"
+                )
+            if yol.stat().st_size > 4096:
+                raise DeepSeekYapilandirmaHatasi(
+                    "DeepSeek API anahtar dosyasi boyut sinirini asiyor"
+                )
+            return yol.read_text(encoding="utf-8").strip()
+        except OSError as hata:
+            raise DeepSeekYapilandirmaHatasi(
+                "DeepSeek API anahtar dosyasi okunamadi"
+            ) from hata
 
     def _yeniden_denenebilir_mi(self, hata: Exception) -> bool:
         if isinstance(hata, httpx.TransportError):

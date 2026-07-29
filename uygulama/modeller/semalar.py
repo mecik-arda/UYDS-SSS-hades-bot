@@ -1,7 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, Field, JsonValue, field_validator
+
+
+def metni_dogrula(deger: str) -> str:
+    temiz_deger = deger.strip()
+    if any(ord(karakter) < 32 and karakter not in "\n\r\t" for karakter in temiz_deger):
+        raise ValueError("Metin kontrol karakteri iceremez")
+    return temiz_deger
 
 
 class KaynakRozeti(BaseModel):
@@ -11,7 +18,12 @@ class KaynakRozeti(BaseModel):
 
 class AramaIstegi(BaseModel):
     soru: str = Field(..., min_length=1, max_length=2000)
-    oturum_id: str | None = None
+    oturum_id: str | None = Field(default=None, min_length=32, max_length=128)
+
+    @field_validator("soru")
+    @classmethod
+    def soruyu_dogrula(cls, deger: str) -> str:
+        return metni_dogrula(deger)
 
 
 class AramaYaniti(BaseModel):
@@ -23,11 +35,16 @@ class AramaYaniti(BaseModel):
 
 
 class GeriBildirimIstegi(BaseModel):
-    sss_id: int | None = None
-    kullanici_sorusu: str
-    verilen_cevap: str
+    sss_id: int | None = Field(default=None, gt=0)
+    kullanici_sorusu: str = Field(min_length=1, max_length=2000)
+    verilen_cevap: str = Field(min_length=1, max_length=32768)
     puan: int = Field(..., ge=1, le=5)
-    yorum: str | None = None
+    yorum: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("kullanici_sorusu", "verilen_cevap", "yorum")
+    @classmethod
+    def geri_bildirim_metnini_dogrula(cls, deger: str | None) -> str | None:
+        return metni_dogrula(deger) if deger is not None else None
 
 
 class GeriBildirimYaniti(BaseModel):
@@ -61,14 +78,55 @@ class AnalitikVerisi(BaseModel):
 
 
 class KimlikDogrulamaIstegi(BaseModel):
-    kullanici_adi: str
-    sifre: str
+    kullanici_adi: str = Field(min_length=1, max_length=64, pattern=r"^[\w.-]+$")
+    sifre: str = Field(min_length=1, max_length=128)
+
+    @field_validator("kullanici_adi")
+    @classmethod
+    def kullanici_adini_normalize_et(cls, deger: str) -> str:
+        return deger.strip().casefold()
+
+
+class BelirtecYenilemeIstegi(BaseModel):
+    yenileme_belirteci: str = Field(min_length=32, max_length=512)
+
+
+class CikisIstegi(BaseModel):
+    yenileme_belirteci: str = Field(min_length=32, max_length=512)
 
 
 class BelirtecYaniti(BaseModel):
     erisim_belirteci: str
+    yenileme_belirteci: str
     belirtec_turu: str = "bearer"
     rol: str
+    erisim_belirteci_omru_saniye: int
+
+
+class GenelMesajYaniti(BaseModel):
+    mesaj: str
+
+
+class SssOzetKaydi(BaseModel):
+    id: int
+    kategori: str
+    soru: str
+    kaynak_dokuman: str | None
+    modul: str | None
+
+
+class SssListesiYaniti(BaseModel):
+    kayitlar: list[SssOzetKaydi]
+    toplam: int
+    sayfa: int
+    sayfa_basina: int
+
+
+class YenidenIndekslemeYaniti(BaseModel):
+    fts_kayit_sayisi: int
+    vektor_toplam_parca: int
+    uretilen_vektor_sayisi: int
+    mesaj: str
 
 
 class Sayfalama(BaseModel):

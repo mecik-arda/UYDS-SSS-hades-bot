@@ -1,12 +1,12 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-Sürüm 1.0.0 | Faz 1-6 servis çekirdeği tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-7 tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlamak, anlamsal olarak aranabilir hale getirmek ve sonraki fazlarda kaynak kontrollü bir destek asistanına dönüştürmek amacıyla geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini ve TTL’li oturum hafızasını içerir. Cross-Encoder model seçimi, kullanıcı API rotaları ve web arayüzü henüz uygulanmamıştır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını ve kimlik doğrulamalı Faz 7 API rotalarını içerir. Cross-Encoder model seçimi ve web arayüzü henüz uygulanmamıştır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -15,8 +15,8 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
 | Faz 5 | Sorgu genişletme, hibrit arama ve RRF | Çekirdek tamamlandı; Cross-Encoder modeli ertelendi |
-| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Servis katmanı tamamlandı; canlı çağrı için kurum onaylı anahtar gerekli |
-| Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Beklemede |
+| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Tamamlandı; canlı bağlantı sentetik içerikle doğrulandı |
+| Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Tamamlandı |
 | Faz 8 | Geri bildirim, yönetici onayı ve analitik | Beklemede |
 | Faz 9 | Kurumsal web arayüzü | Beklemede |
 | Faz 10 | Kalıcı testler, benchmark ve güvenlik doğrulaması | Beklemede |
@@ -27,7 +27,7 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 
 `veriler/`, `yedekler/` ve `modeller/` dizinleri sürüm kontrolünden çıkarılmıştır. Kurum içi terim haritasının gerçek içeriği de yalnızca `veriler/es_anlamlilar.json` dosyasında yerel olarak tutulur. Depodaki `es_anlamlilar.example.json` sadece kurumsal veri içermeyen bir şablondur. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır. UYDS metinleri vektör üretimi sırasında dış servislere gönderilmez.
 
-Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini geçen ilk kaynak parçaları, kullanıcı sorusu ve sınırlı oturum geçmişi yapılandırılmış DeepSeek API adresine gönderilir. Bu özellik kurumun veri işleme ve dış servis politikası onaylanmadan etkinleştirilmemelidir. `DEEPSEEK_API_ANAHTARI` boş bırakıldığında dış çağrı yapılamaz; düşük güvenli sorularda anahtar bulunsa bile DeepSeek çağrısı yapılmaz.
+Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini geçen ilk kaynak parçaları, kullanıcı sorusu ve sınırlı oturum geçmişi yapılandırılmış DeepSeek API adresine gönderilir. Üretim profilinde hedef alan adı ayrıca `DEEPSEEK_IZINLI_ALAN_ADLARI` listesinde bulunmak zorundadır. Bu özellik kurumun veri işleme ve dış servis politikası onaylanmadan etkinleştirilmemelidir. `DEEPSEEK_API_ANAHTARI` boş bırakıldığında dış çağrı yapılamaz; düşük güvenli sorularda anahtar bulunsa bile DeepSeek çağrısı yapılmaz ve kaynak kimlikleri istemciye açıklanmaz.
 
 ## Tamamlanan Özellikler
 
@@ -44,6 +44,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Hassas değer maskeleyen yapılandırılmış günlükleme
 - Non-root Docker kullanıcısı, salt-okunur kök dosya sistemi, capability kaldırma ve `no-new-privileges`
 - Salt-okunur model bağlama noktası ve yalnızca veri dizininde kalıcı yazma yetkisi
+- Haftalık Python ve Docker bağımlılık güncellemeleri için Dependabot politikası
 - Güvenlik düzeltmeleri güncel bağımlılıklar, CPU odaklı PyTorch ve PyJWT ile sınırlandırılmış çalışma zamanı
 - Ayrı liveness ve veritabanı/FTS readiness kontrolleri
 - PID sınırı ve kontrollü kapanış süresi
@@ -111,16 +112,34 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 ### Kaynak kontrollü yanıt üretimi
 
 - Yapılandırılabilir HTTPS DeepSeek Chat Completions istemcisi ve yerel geliştirme adresi desteği
+- Üretim profilinde DeepSeek hedef alan adı izin listesi; URL kimlik bilgisi, sorgu ve parça reddi
 - Yalnızca geçici ağ ve servis hatalarında, ilk çıktı parçasından önce üstel yeniden deneme
 - Kaynak metnindeki talimatları veri kabul eden ve dış bilgi kullanımını yasaklayan sistem istemi
 - İlk kaynak sayısını ve kaynak başına karakter sayısını sınırlayan bağlam bütçesi
+- Toplam akış süresi ve biriktirilen yanıt karakteri için uygulama tarafı kaynak sınırları
 - Gerçek vektör kosinüs benzerliğine dayalı `GUVEN_ESIGI` kapısı
-- Eşik altındaki ve yalnızca FTS ile bulunan sorularda dış API çağrısı yapmadan standart ret yanıtı
+- `0.0` ile `1.0` arasında doğrulanan güven eşiği
+- Eşik altındaki ve yalnızca FTS ile bulunan sorularda dış API çağrısı ve kaynak özeti üretmeden standart ret yanıtı
 - JSON kodlamalı `meta`, `parca`, `tamamlandi` ve `hata` SSE olayları
 - Satır enjeksiyonuna dayanıklı SSE veri çerçeveleme
 - TTL, mesaj sayısı ve toplam oturum sayısı sınırlı bellek içi konuşma hafızası
 - API anahtarı veya sağlayıcı hata ayrıntısını kullanıcı akışına taşımayan hata yönetimi
-- Sentetik veritabanı ve sahte HTTP taşıyıcısıyla çalışan 61 birim ve servis entegrasyon testi
+- Sentetik veritabanı ve sahte HTTP taşıyıcısıyla çalışan 77 birim ve servis entegrasyon testi
+
+### Faz 7 API ve kimlik güvenliği
+
+- JWT `kid`, yayıncı, hedef, `jti`, erişim türü ve zorunlu claim doğrulaması
+- Özetlenmiş opaque refresh token, her yenilemede rotasyon ve tekrar kullanımda token ailesi iptali
+- Çıkışta erişim belirteci karalisteleme, refresh ailesi iptali ve kullanıcı oturumlarını temizleme
+- Sunucunun ürettiği tahmin edilemez oturum kimliğini kullanıcı hesabına bağlama
+- Kullanıcılar arasında oturum okuma ve yazma yalıtımı
+- Kimlik doğrulamalı SSE arama, günlük kullanıcı kotası ve eşzamanlı akış sınırı
+- Geri bildirim, SSS listeleme, yönetici onayı, yeniden indeksleme ve analitik rotaları
+- Kritik yönetici işlemlerinde zaman damgası, nonce ve gövde özeti içeren HMAC imzası
+- Tekrar kullanılan yönetici nonce değerlerini SQLite üzerinde reddetme
+- Girdi değerlerini geri yansıtmayan merkezi doğrulama ve hata yanıtları
+- Her yanıtta izlenebilir ancak tahmin edilemez istek kimliği
+- Salt okunur `/run/secrets` bağlama noktası üzerinden yeniden başlatmasız DeepSeek anahtar rotasyonu
 
 ## Mevcut Veri Akışı
 
@@ -148,10 +167,8 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 ## Planlanan Özellikler
 
 - Türkçe retrieval benchmarkı sonrasında Cross-Encoder model seçimi ve gerçek yeniden sıralama
-- JWT giriş, yenileme ve çıkış rotaları
-- Faz 6 servislerini kullanan kimlik doğrulamalı arama ve SSE HTTP rotaları
-- Kullanıcı geri bildirimi ve yönetici onayı
-- Analitik ve yönetici panelleri
+- Faz 8 yönetici onaylı alternatif soru öğrenme döngüsü
+- Analitik ve yönetici web panelleri
 - Kurumsal web arayüzü
 - Benchmark, pytest ve güvenlik testi altyapısı
 
@@ -171,7 +188,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 | Konteyner | Docker ve Docker Compose | Aktif |
 | Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
 | Yeniden sıralama | Cross-Encoder | Entegrasyon sözleşmesi hazır; model seçimi ertelendi |
-| LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; canlı çağrı kurum onaylı anahtar gerektirir |
+| LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; sentetik canlı bağlantı doğrulandı, gerçek kurumsal içerik açık veri paylaşım onayı gerektirir |
 | Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
 
 ## Ön Koşullar
@@ -219,6 +236,8 @@ cp es_anlamlilar.example.json veriler/es_anlamlilar.json
 - `JWT_GIZLI_ANAHTARI`
 - `VARSAYILAN_YONETICI_SIFRESI`
 
+DeepSeek anahtarı doğrudan ortam değişkeni yerine salt okunur dosyadan verilecekse anahtarı Git tarafından dışlanan `sirlar/` dizininde tutun, `DEEPSEEK_API_ANAHTAR_DOSYASI=/run/secrets/deepseek_api_anahtari` değerini ayarlayın ve `DEEPSEEK_API_ANAHTARI` değerini boş bırakın. Docker Compose, `sirlar/` dizinini konteynere `/run/secrets` konumunda salt okunur bağlar. Anahtar dosyası sembolik bağlantı olamaz ve 4096 baytı aşamaz.
+
 Orijinal çalışma kitabını aşağıdaki konuma yerleştirin:
 
 ```text
@@ -235,6 +254,7 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 |---|---|---|
 | `ORTAM_PROFILI` | Etkin ortam profili | `prod` |
 | `DEEPSEEK_API_ANAHTARI` | Canlı DeepSeek yanıtı için kurum onaylı anahtar | Boş |
+| `DEEPSEEK_API_ANAHTAR_DOSYASI` | Yeniden başlatmasız rotasyon için salt okunur anahtar dosyası | Boş |
 | `DEEPSEEK_API_ADRESI` | HTTPS Chat Completions uç noktası | `https://api.deepseek.com/chat/completions` |
 | `DEEPSEEK_MODEL_ADI` | Kullanılacak DeepSeek model kimliği | `deepseek-v4-pro` |
 | `DEEPSEEK_ZAMAN_ASIMI_SANIYE` | Dış API istek zaman aşımı | `120` |
@@ -242,9 +262,12 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `DEEPSEEK_YENIDEN_DENEME_TABAN_SANIYE` | Üstel beklemenin başlangıç süresi | `0.5` |
 | `DEEPSEEK_KAYNAK_SAYISI` | Yanıt üretimine gönderilecek azami kaynak | `5` |
 | `DEEPSEEK_KAYNAK_MAKS_KARAKTER` | Kaynak başına bağlam karakter sınırı | `6000` |
+| `DEEPSEEK_IZINLI_ALAN_ADLARI` | Üretimde kullanılabilecek virgülle ayrılmış API alan adları | `api.deepseek.com` |
+| `DEEPSEEK_YANIT_MAKS_KARAKTER` | Tek yanıtta alınabilecek azami toplam karakter | `32768` |
+| `DEEPSEEK_AKIS_MAKS_SANIYE` | Tek canlı akışın azami toplam süresi | `180` |
 | `VERITABANI_YOLU` | SQLite dosya yolu | `veriler/veri_deposu.db` |
 | `VERITABANI_SIFRELEME_ANAHTARI` | En az 32 karakterli şifreleme anahtarı | Zorunlu |
-| `GUVEN_ESIGI` | DeepSeek çağrısı için asgari kosinüs benzerliği | `0.70` |
+| `GUVEN_ESIGI` | DeepSeek çağrısı için `0.0`–`1.0` arası asgari kosinüs benzerliği | `0.70` |
 | `VEKTOR_MODEL_ADI` | Veritabanında saklanan model kimliği | `paraphrase-multilingual-MiniLM-L12-v2` |
 | `VEKTOR_MODEL_YOLU` | Doğrulanmış yerel model dizini | `modeller/paraphrase-multilingual-MiniLM-L12-v2` |
 | `VEKTOR_BOYUTU` | Beklenen embedding boyutu | `384` |
@@ -253,16 +276,23 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `JWT_GIZLI_ANAHTARI` | En az 32 karakterli JWT anahtarı | Zorunlu |
 | `JWT_ALGORITMASI` | JWT imza algoritması | `HS256` |
 | `JWT_OMRU_DAKIKA` | Erişim belirteci ömrü | `30` |
+| `JWT_YENILEME_OMRU_GUN` | Yenileme belirteci ömrü | `7` |
+| `JWT_ANAHTAR_KIMLIGI` | Etkin JWT imza anahtarı kimliği | `ana-1` |
+| `JWT_ONCEKI_GIZLI_ANAHTAR` | Rotasyon sırasında doğrulanacak önceki JWT anahtarı | Boş |
+| `JWT_ONCEKI_ANAHTAR_KIMLIGI` | Önceki JWT anahtarı kimliği | Boş |
+| `YONETICI_ISTEK_IMZA_ANAHTARI` | Kritik yönetici isteklerinin HMAC anahtarı; boşsa JWT anahtarı kullanılır | Boş |
+| `YONETICI_IMZA_ZAMAN_PENCERESI_SANIYE` | Yönetici imzası zaman toleransı | `300` |
 | `VARSAYILAN_YONETICI_SIFRESI` | En az 12 karakterli yönetici parolası | Zorunlu |
 | `ISTEK_SINIRI` | Pencere başına istek sayısı | `100` |
 | `ISTEK_PENCERESI_SANIYE` | İstek sınırı penceresi | `60` |
 | `UYGULAMA_PORT` | Dış HTTP portu | `8000` |
 | `MESAJ_MAKS_KARAKTER` | Kullanıcı mesajı karakter sınırı | `2000` |
 | `DEEPSEEK_MAKS_TOKEN` | LLM çıktı token sınırı | `4096` |
-| `GUNLUK_MESAJ_KOTASI` | Gelecek kullanıcı günlük kotası | `500` |
+| `GUNLUK_MESAJ_KOTASI` | Kullanıcı başına günlük arama kotası | `500` |
 | `OTURUM_MAKS_MESAJ` | Oturum başına saklanan mesaj sınırı | `50` |
 | `OTURUM_TTL_DAKIKA` | Hareketsiz oturum yaşam süresi | `30` |
 | `OTURUM_MAKS_SAYI` | Bellekte tutulacak toplam oturum sınırı | `1000` |
+| `ESZAMANLI_AKIS_MAKS_SAYI` | Aynı anda işlenebilecek SSE akış sayısı | `10` |
 | `ISTEK_GOVDE_MAKS_BOYUT` | Genel istek gövdesi sınırı | `1048576` |
 | `DOSYA_YUKLEME_MAKS_BOYUT` | Excel yükleme sınırı | `52428800` |
 | `LOG_SEVIYESI` | Günlük seviyesi | `INFO` |
@@ -279,7 +309,7 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `MAKSIMUM_YEDEK_SAYISI` | Saklanacak yedek sayısı | `10` |
 | `YEDEKLEME_ARALIGI_SAAT` | Zamanlanmış yedek aralığı | `24` |
 
-`.env.dev`, `.env.test` ve `.env.prod` dosyaları gizli bilgi içermeyen profil değerlerini taşır. Gizli değerler yalnızca Git dışında tutulan `.env` dosyasına yazılmalıdır.
+`.env.dev`, `.env.test` ve `.env.prod` dosyaları gizli bilgi içermeyen profil değerlerini taşır. Gizli değerler Git dışında tutulan `.env`, salt okunur `sirlar/` dosyaları veya kurumun yetkili secret sağlayıcısı üzerinden verilmelidir.
 
 ## Excel Verilerini İçe Aktarma
 
@@ -442,18 +472,30 @@ Kök `/` rotası ve kullanıcı arayüzü henüz mevcut değildir.
 |---|---|---|---|
 | `GET` | `/api/saglik` | Uygulama süreci liveness durumu | Herkese açık |
 | `GET` | `/api/hazirlik` | Veritabanı, şema ve FTS5 readiness durumu | Herkese açık |
+| `POST` | `/api/v1/kimlik-dogrulama/giris` | Erişim ve yenileme belirteci üretir | Herkese açık |
+| `POST` | `/api/v1/kimlik-dogrulama/yenile` | Refresh token rotasyonu yapar | Geçerli refresh token |
+| `POST` | `/api/v1/kimlik-dogrulama/cikis` | Token ailesini ve oturumları iptal eder | Kullanıcı |
+| `POST` | `/api/v1/arama` | Hibrit arama ve kaynak kontrollü SSE yanıtı | Kullanıcı |
+| `GET` | `/api/v1/sss` | Aktif SSS özetlerini sayfalar | Kullanıcı |
+| `POST` | `/api/v1/geri-bildirim` | Puan ve yorum kaydeder | Kullanıcı |
+| `GET` | `/api/v1/yonetici/geri-bildirimler` | Bekleyen geri bildirimleri listeler | Yönetici |
+| `POST` | `/api/v1/yonetici/geri-bildirim/onay` | Geri bildirim durumunu günceller | Yönetici ve HMAC |
+| `POST` | `/api/v1/yonetici/yeniden-indeksle` | FTS ve vektör indekslerini yeniler | Yönetici ve HMAC |
+| `GET` | `/api/v1/analitik` | Kullanım istatistiklerini döndürür | Yönetici |
 
-### Faz 7 ve sonrasında planlanan rotalar
+### Yönetici istek imzası
 
-| Yöntem | Rota | Açıklama |
-|---|---|---|
-| `POST` | `/api/v1/kimlik-dogrulama/giris` | JWT ile kullanıcı girişi |
-| `POST` | `/api/v1/arama` | Hibrit SSS araması ve kaynaklı yanıt |
-| `POST` | `/api/v1/geri-bildirim` | Yanıta puan ve yorum ekleme |
-| `GET` | `/api/v1/yonetici/bekleyen-bildirimler` | Onay kuyruğu |
-| `POST` | `/api/v1/yonetici/onay` | Geri bildirim kararı |
-| `POST` | `/api/v1/yonetici/excel-yukle` | Yetkili Excel yükleme |
-| `GET` | `/api/v1/analitik` | Kullanım istatistikleri |
+Kritik yönetici POST isteklerinde geçerli yönetici JWT’sine ek olarak `X-UYDS-Zaman`, `X-UYDS-Nonce` ve `X-UYDS-Imza` başlıkları zorunludur. Zaman değeri Unix saniyesidir. Nonce 32–128 karakter uzunluğunda ve her istek için benzersiz olmalıdır. İmza, aşağıdaki beş değerin satır sonuyla birleştirilmiş UTF-8 metni üzerinde HMAC-SHA256 olarak hesaplanır:
+
+```text
+X-UYDS-Zaman
+X-UYDS-Nonce
+HTTP_YONTEMI
+/api/v1/hedef-yol
+ISTEK_GOVDESI_SHA256
+```
+
+İmza anahtarı `YONETICI_ISTEK_IMZA_ANAHTARI` değeridir; bu değer boşsa `JWT_GIZLI_ANAHTARI` kullanılır. Süresi geçen zaman damgaları reddedilir ve kabul edilen nonce özetleri SQLite üzerinde saklanarak tekrar kullanım `409` yanıtıyla engellenir.
 
 ## Yedekleme ve Geri Yükleme
 
@@ -528,7 +570,7 @@ Faz 4 doğrulamalarında:
 - Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
 - Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
 
-Faz 5 ve Faz 6 için kalıcı pytest paketi mevcuttur. Toplam 61 test Docker içindeki Python 3.11 çalışma ortamında geçmektedir. Retrieval benchmarkı, başarı metrikleri ve geniş güvenlik doğrulaması Faz 10 kapsamında eklenecektir.
+Faz 1-7 için kalıcı pytest paketi mevcuttur. Toplam 77 test hem yerel ortamda hem güncel üretim imajından oluşturulan geçici Python 3.11 denetim konteynerinde geçmektedir. Ruff, Bandit, `pip check` ve `pip-audit` denetimleri temizdir. Ağ erişimi kapalı Trivy v0.70.0 taramasında Debian tabanı ve Python paketleri için düzeltmesi bulunan kritik veya yüksek zafiyet bulunmamıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -587,21 +629,20 @@ HadesBot/
 └── README.md
 ```
 
-`api/`, `sablonlar/` ve `statik/` dizinlerinin işlevsel içerikleri ilgili gelecek fazlarda eklenecektir. Faz 5 ve Faz 6 servis testleri `testler/` dizininde bulunmaktadır.
+`uygulama/api/` Faz 7 kimlik doğrulama, arama, geri bildirim, yönetici, analitik ve SSS rotalarını içerir. `sablonlar/` ve `statik/` dizinlerinin kullanıcı arayüzü içeriği Faz 9 kapsamında eklenecektir.
 
 ## Bilinen Sınırlamalar
 
-- Yalnızca sağlık ve hazırlık kontrolü rotaları uygulanmıştır.
 - FTS5 BM25 ile yerel vektör benzerliğini RRF üzerinden birleştiren Faz 5 çekirdek hibrit arama hazırdır.
 - Cross-Encoder model seçimi, Türkçe retrieval benchmarkı ile ölçülmek üzere ertelenmiştir.
-- Faz 6 yanıt üretimi servis katmanında hazırdır; kullanıcıya açık SSE HTTP rotası Faz 7 kapsamında eklenecektir.
-- Gerçek DeepSeek sağlayıcı çağrısı kurum onaylı API anahtarı olmadığı için yerel kabul turunda yapılmamıştır.
-- Kimlik doğrulama servisleri hazır olsa da HTTP giriş rotası henüz yoktur.
+- Faz 7 API ve kimlik doğrulama rotaları tamamlanmıştır.
+- Gerçek DeepSeek sağlayıcı bağlantısı yalnızca sentetik içerikle doğrulanmıştır; açık kurumsal veri paylaşım onayı olmadan gerçek UYDS metinleri dış sağlayıcıya gönderilmemiştir.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
+- Bellek içi oturum sahipliği tek worker dağıtımı içindir; çok worker kullanımı kalıcı paylaşımlı oturum deposu gerektirir.
 - Veritabanı çalışma sırasında düz metin SQLite olarak açıktır ve temiz kapanışta şifrelenir.
 - Mantıksal anahtarı birden fazla aktif kayda karşılık gelen belirsiz gruplar otomatik revizyon zincirine bağlanmaz; yanlış eşleşmeyi önlemek için ekleme ve arşivleme olarak işlenir.
-- Kalıcı otomatik test paketi Faz 10’da oluşturulacaktır.
+- Faz 10’da retrieval benchmarkı, penetrasyon testi ve başarı metrikleri genişletilecektir.
 
 ## Lisans
 

@@ -1,5 +1,6 @@
 __pycache__
 .pytest_cache
+.ruff_cache
 .codex_pytest_temp
 .skills
 .faz4_test*
@@ -13,8 +14,11 @@ __pycache__
 .venv
 venv
 /modeller/
+/gecici_denetim/
+/sirlar/
 .git
 .gitignore
+.github/
 veriler
 testler
 plan.md

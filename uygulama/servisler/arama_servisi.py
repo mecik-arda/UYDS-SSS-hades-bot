@@ -55,10 +55,21 @@ class AramaServisi:
         if not rrf_sonuclari:
             return []
         sss_kimlikleri = [sonuc.sss_id for sonuc in rrf_sonuclari]
-        yer_tutucular = ",".join("?" for _ in sss_kimlikleri)
         with baglam_yoneticisi() as baglanti:
+            baglanti.execute(
+                """
+                CREATE TEMP TABLE IF NOT EXISTS secili_sss_kimlikleri (
+                    id INTEGER PRIMARY KEY
+                )
+                """
+            )
+            baglanti.execute("DELETE FROM secili_sss_kimlikleri")
+            baglanti.executemany(
+                "INSERT INTO secili_sss_kimlikleri (id) VALUES (?)",
+                ((kimlik,) for kimlik in sss_kimlikleri),
+            )
             satirlar = baglanti.execute(
-                f"""
+                """
                 SELECT
                     k.id AS sss_id,
                     k.kaynak_dokuman,
@@ -74,9 +85,9 @@ class AramaServisi:
                         LIMIT 1
                     ) AS ilk_parca_metni
                 FROM sss_kayitlari k
-                WHERE k.id IN ({yer_tutucular}) AND k.durum = 'aktif'
-                """,
-                sss_kimlikleri,
+                JOIN secili_sss_kimlikleri secili ON secili.id = k.id
+                WHERE k.durum = 'aktif'
+                """
             ).fetchall()
         kaynak_haritasi = {
             satir["sss_id"]: {

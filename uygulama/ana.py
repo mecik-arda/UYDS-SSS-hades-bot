@@ -10,7 +10,20 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from uygulama.api.bagimliliklar import bagimlilik_onbelleklerini_temizle
+from uygulama.api.rotalar.analitik import router as analitik_router
+from uygulama.api.rotalar.arama import router as arama_router
+from uygulama.api.rotalar.geri_bildirim import router as geri_bildirim_router
+from uygulama.api.rotalar.kimlik_dogrulama import (
+    router as kimlik_dogrulama_router,
+)
+from uygulama.api.rotalar.sss import router as sss_router
+from uygulama.api.rotalar.yonetici import router as yonetici_router
 from uygulama.cekirdek.gunlukleyici import gunlukleyici
+from uygulama.cekirdek.hata_yonetimi import (
+    IstekKimligiMiddleware,
+    hata_yonetimini_kaydet,
+)
 from uygulama.cekirdek.istek_boyutu import IstekGovdesiBoyutMiddleware
 from uygulama.cekirdek.istek_sinirlayici import istek_sinirlayici
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
@@ -41,6 +54,7 @@ async def uygulama_omru(uygulama: FastAPI):
         yield
     finally:
         gunlukleyici.info("UYDS Asistani kapatiliyor")
+        bagimlilik_onbelleklerini_temizle()
         await asyncio.to_thread(veritabanini_sifrele)
 
 
@@ -53,8 +67,10 @@ uygulama = FastAPI(
 
 uygulama.state.limiter = istek_sinirlayici
 uygulama.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+hata_yonetimini_kaydet(uygulama)
 uygulama.add_middleware(SlowAPIMiddleware)
 
+uygulama.add_middleware(IstekKimligiMiddleware)
 uygulama.add_middleware(GuvenlikBasliklariMiddleware)
 uygulama.add_middleware(
     IstekGovdesiBoyutMiddleware,
@@ -73,6 +89,12 @@ uygulama.add_middleware(
 
 sablonlar = Jinja2Templates(directory="uygulama/sablonlar")
 uygulama.mount("/statik", StaticFiles(directory="uygulama/statik"), name="statik")
+uygulama.include_router(kimlik_dogrulama_router)
+uygulama.include_router(arama_router)
+uygulama.include_router(geri_bildirim_router)
+uygulama.include_router(sss_router)
+uygulama.include_router(yonetici_router)
+uygulama.include_router(analitik_router)
 
 
 @uygulama.get("/api/saglik")

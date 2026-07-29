@@ -103,7 +103,8 @@ class DegisiklikPlani:
 
 
 class ExcelDogrulamaHatasi(ValueError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 class ExcelYukleyici:

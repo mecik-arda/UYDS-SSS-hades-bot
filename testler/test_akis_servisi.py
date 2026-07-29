@@ -111,7 +111,9 @@ class TestAkisServisi:
             "parca",
             "tamamlandi",
         ]
-        assert olayi_ayristir(olaylar[0])[1]["yeterli_guven"] is False
+        meta = olayi_ayristir(olaylar[0])[1]
+        assert meta["yeterli_guven"] is False
+        assert meta["kaynaklar"] == []
         assert len(mesajlar) == 2
 
     def test_fts_sonucu_tek_basina_guven_esigini_gecmez(self):

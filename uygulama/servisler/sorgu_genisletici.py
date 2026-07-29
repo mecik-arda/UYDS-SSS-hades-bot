@@ -9,15 +9,15 @@ from uygulama.servisler.terim_haritasi import (
 
 MAKS_GENISLETME_TERIMI = 15
 _DOLGU_KELIMELERI = frozenset({
-    "nasil", "nedir", "ne", "acaba", "mi", "mu", "mü", "mi",
+    "nasil", "nedir", "ne", "acaba", "mi", "mu", "mü",
     "kadar", "icin", "ile", "ve", "veya", "bir", "bu", "su", "şu",
     "o", "da", "de", "dir", "dır", "dur", "dür", "tir", "tır",
     "ki", "ise", "gibi", "daha", "en", "cok", "çok", "ama",
     "fakat", "lakin", "ancak", "yani", "sadece", "yalnizca",
     "yali", "her", "tum", "tüm", "bazi", "bazı", "hangi",
     "neden", "niye", "niçin", "nicin", "nerede", "nereye",
-    "nereden", "kim", "kimi", "neyle", "nasil",
-    "olur", "olabilir", "yapilir", "yapilir", "edilir",
+    "nereden", "kim", "kimi", "neyle",
+    "olur", "olabilir", "yapilir", "edilir",
     "gerekiyor", "gerekir", "lazim", "lazım", "var",
 })
 _FTS_OZEL_KARAKTERLERI = re.compile(r'["()\-*]')
@@ -34,7 +34,8 @@ class GenisletilmisSorgu:
 
 
 class SorguGenisletmeHatasi(ValueError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 class SorguGenisletici:

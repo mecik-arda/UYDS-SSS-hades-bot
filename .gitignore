@@ -16,6 +16,8 @@ __pycache__/
 venv/
 .skills/
 /modeller/
+/sirlar/
+/gecici_denetim/
 .faz4_test*
 /plan.md
 /kurallar.md

@@ -177,3 +177,59 @@ class TestDeepSeekServisi:
         with pytest.raises(DeepSeekServisiHatasi):
             akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
         asyncio.run(istemci.aclose())
+
+    def test_yanit_karakter_siniri_asilinca_akis_durdurulur(self, monkeypatch):
+        def yanitla(istek: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text=(
+                    'data: {"choices":[{"delta":{"content":"Tamam"}}]}\n\n'
+                    "data: [DONE]\n\n"
+                ),
+            )
+
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_API_ANAHTARI",
+            "test_deepseek_anahtari",
+        )
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_YANIT_MAKS_KARAKTER",
+            4,
+        )
+        istemci = httpx.AsyncClient(transport=httpx.MockTransport(yanitla))
+        servis = DeepSeekServisi(istemci=istemci)
+
+        with pytest.raises(DeepSeekServisiHatasi, match="boyutu"):
+            akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
+        asyncio.run(istemci.aclose())
+
+    def test_toplam_akis_suresi_asilinca_akis_durdurulur(self, monkeypatch):
+        zamanlar = iter((0.0, 181.0))
+
+        def yanitla(istek: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text='data: {"choices":[{"delta":{"content":"Tamam"}}]}\n\n',
+            )
+
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_API_ANAHTARI",
+            "test_deepseek_anahtari",
+        )
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_AKIS_MAKS_SANIYE",
+            180,
+        )
+        istemci = httpx.AsyncClient(transport=httpx.MockTransport(yanitla))
+        servis = DeepSeekServisi(
+            istemci=istemci,
+            zaman_saglayici=lambda: next(zamanlar),
+        )
+
+        with pytest.raises(DeepSeekServisiHatasi, match="sureyi"):
+            akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
+        asyncio.run(istemci.aclose())

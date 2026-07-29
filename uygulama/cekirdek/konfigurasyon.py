@@ -2,12 +2,13 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Konfigurasyon(BaseSettings):
     DEEPSEEK_API_ANAHTARI: str = Field(default="")
+    DEEPSEEK_API_ANAHTAR_DOSYASI: str = Field(default="")
     DEEPSEEK_API_ADRESI: str = Field(
         default="https://api.deepseek.com/chat/completions"
     )
@@ -25,9 +26,16 @@ class Konfigurasyon(BaseSettings):
         ge=500,
         le=20000,
     )
+    DEEPSEEK_IZINLI_ALAN_ADLARI: str = Field(default="api.deepseek.com")
+    DEEPSEEK_YANIT_MAKS_KARAKTER: int = Field(
+        default=32768,
+        gt=0,
+        le=1000000,
+    )
+    DEEPSEEK_AKIS_MAKS_SANIYE: float = Field(default=180, gt=0, le=900)
     VERITABANI_YOLU: str = Field(default="veriler/veri_deposu.db")
     VERITABANI_SIFRELEME_ANAHTARI: str = Field(min_length=32)
-    GUVEN_ESIGI: float = Field(default=0.70)
+    GUVEN_ESIGI: float = Field(default=0.70, ge=0, le=1)
     VEKTOR_MODEL_ADI: str = Field(default="paraphrase-multilingual-MiniLM-L12-v2")
     VEKTOR_MODEL_YOLU: str = Field(
         default="modeller/paraphrase-multilingual-MiniLM-L12-v2"
@@ -38,6 +46,16 @@ class Konfigurasyon(BaseSettings):
     JWT_GIZLI_ANAHTARI: str = Field(min_length=32)
     JWT_ALGORITMASI: str = Field(default="HS256")
     JWT_OMRU_DAKIKA: int = Field(default=30)
+    JWT_YENILEME_OMRU_GUN: int = Field(default=7, gt=0, le=90)
+    JWT_ANAHTAR_KIMLIGI: str = Field(default="ana-1", min_length=1, max_length=64)
+    JWT_ONCEKI_GIZLI_ANAHTAR: str = Field(default="")
+    JWT_ONCEKI_ANAHTAR_KIMLIGI: str = Field(default="", max_length=64)
+    YONETICI_ISTEK_IMZA_ANAHTARI: str = Field(default="")
+    YONETICI_IMZA_ZAMAN_PENCERESI_SANIYE: int = Field(
+        default=300,
+        gt=0,
+        le=900,
+    )
     VARSAYILAN_YONETICI_SIFRESI: str = Field(min_length=12)
     ISTEK_SINIRI: int = Field(default=100, gt=0)
     ISTEK_PENCERESI_SANIYE: int = Field(default=60, gt=0)
@@ -48,6 +66,7 @@ class Konfigurasyon(BaseSettings):
     OTURUM_MAKS_MESAJ: int = Field(default=50, gt=0)
     OTURUM_TTL_DAKIKA: int = Field(default=30, gt=0, le=1440)
     OTURUM_MAKS_SAYI: int = Field(default=1000, gt=0, le=100000)
+    ESZAMANLI_AKIS_MAKS_SAYI: int = Field(default=10, gt=0, le=1000)
     ISTEK_GOVDE_MAKS_BOYUT: int = Field(default=1048576, gt=0)
     DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
     LOG_SEVIYESI: str = Field(default="INFO")
@@ -109,11 +128,54 @@ class Konfigurasyon(BaseSettings):
         yerel_adresler = {"localhost", "127.0.0.1", "::1"}
         guvenli_mi = ayrismis.scheme == "https"
         yerel_mi = ayrismis.scheme == "http" and ayrismis.hostname in yerel_adresler
-        if not ayrismis.netloc or not (guvenli_mi or yerel_mi):
+        adres_bilesenleri_gecerli = (
+            ayrismis.hostname is not None
+            and ayrismis.username is None
+            and ayrismis.password is None
+            and not ayrismis.query
+            and not ayrismis.fragment
+        )
+        if not adres_bilesenleri_gecerli or not (guvenli_mi or yerel_mi):
             raise ValueError(
                 "DeepSeek API adresi HTTPS veya yerel HTTP adresi olmalidir"
             )
         return deger.rstrip("/")
+
+    @model_validator(mode="after")
+    def deepseek_uretim_hedefini_dogrula(self) -> "Konfigurasyon":
+        izinli_alan_adlari = {
+            alan_adi.strip().lower()
+            for alan_adi in self.DEEPSEEK_IZINLI_ALAN_ADLARI.split(",")
+            if alan_adi.strip()
+        }
+        if not izinli_alan_adlari:
+            raise ValueError("En az bir DeepSeek alan adi izinli olmalidir")
+        hedef_alan_adi = urlparse(self.DEEPSEEK_API_ADRESI).hostname
+        if (
+            self.ORTAM_PROFILI == "prod"
+            and hedef_alan_adi not in izinli_alan_adlari
+        ):
+            raise ValueError("Uretim DeepSeek API alan adi izinli listede degil")
+        return self
+
+    @model_validator(mode="after")
+    def jwt_rotasyonunu_dogrula(self) -> "Konfigurasyon":
+        onceki_anahtar = self.JWT_ONCEKI_GIZLI_ANAHTAR.strip()
+        onceki_kimlik = self.JWT_ONCEKI_ANAHTAR_KIMLIGI.strip()
+        if bool(onceki_anahtar) != bool(onceki_kimlik):
+            raise ValueError(
+                "Onceki JWT anahtari ve anahtar kimligi birlikte verilmelidir"
+            )
+        if onceki_anahtar and len(onceki_anahtar) < 32:
+            raise ValueError("Onceki JWT gizli anahtari en az 32 karakter olmalidir")
+        if onceki_kimlik == self.JWT_ANAHTAR_KIMLIGI:
+            raise ValueError("JWT anahtar kimlikleri benzersiz olmalidir")
+        imza_anahtari = self.YONETICI_ISTEK_IMZA_ANAHTARI.strip()
+        if imza_anahtari and len(imza_anahtari) < 32:
+            raise ValueError(
+                "Yonetici istek imza anahtari en az 32 karakter olmalidir"
+            )
+        return self
 
 
 def env_dosyasindan_ortam_profilini_al() -> str:

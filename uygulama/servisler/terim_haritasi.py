@@ -13,7 +13,8 @@ _TURKCE_KUCUK_HARF_CEVIRISI = str.maketrans({"I": "ı", "İ": "i"})
 
 
 class TerimHaritasiHatasi(ValueError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 class TerimHaritasi:

@@ -49,7 +49,11 @@ class AkisServisi:
             {
                 "guven_skoru": guven_skoru,
                 "yeterli_guven": yeterli_guven,
-                "kaynaklar": self._kaynak_ozetlerini_olustur(kaynaklar),
+                "kaynaklar": (
+                    self._kaynak_ozetlerini_olustur(kaynaklar)
+                    if yeterli_guven
+                    else []
+                ),
             },
         )
         if not yeterli_guven:

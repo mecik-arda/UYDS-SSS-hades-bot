@@ -154,7 +154,43 @@ CREATE TABLE IF NOT EXISTS asistan_sorgulari (
         guven_skoru IS NULL OR guven_skoru BETWEEN 0.0 AND 1.0
     ),
     cevaplandi_mi INTEGER NOT NULL DEFAULT 0 CHECK (cevaplandi_mi IN (0, 1)),
+    kullanici_adi TEXT,
+    model_adi TEXT,
+    prompt_surumu TEXT,
+    kaynak_sss_idleri TEXT,
     olusturulma_tarihi DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+YENILEME_BELIRTECLERI_TABLOSU = """
+CREATE TABLE IF NOT EXISTS yenileme_belirtecleri (
+    jti TEXT PRIMARY KEY,
+    aile_id TEXT NOT NULL,
+    kullanici_adi TEXT NOT NULL,
+    belirtec_ozeti TEXT UNIQUE NOT NULL,
+    sona_erme_tarihi TEXT NOT NULL,
+    olusturulma_tarihi TEXT NOT NULL,
+    ip_ozeti TEXT,
+    gecersiz_kilindi_mi INTEGER NOT NULL DEFAULT 0
+        CHECK (gecersiz_kilindi_mi IN (0, 1)),
+    yerine_gecen_jti TEXT,
+    FOREIGN KEY (kullanici_adi) REFERENCES kullanicilar(kullanici_adi)
+        ON DELETE CASCADE
+)
+"""
+
+GECERSIZ_ERISIM_BELIRTECLERI_TABLOSU = """
+CREATE TABLE IF NOT EXISTS gecersiz_erisim_belirtecleri (
+    jti TEXT PRIMARY KEY,
+    sona_erme_tarihi TEXT NOT NULL,
+    gecersiz_kilinma_tarihi TEXT NOT NULL
+)
+"""
+
+YONETICI_IMZA_NONCE_TABLOSU = """
+CREATE TABLE IF NOT EXISTS yonetici_imza_nonce_kayitlari (
+    nonce_ozeti TEXT PRIMARY KEY,
+    sona_erme_tarihi TEXT NOT NULL
 )
 """
 
@@ -255,8 +291,18 @@ TABLO_SORGULARI = [
     ASISTAN_SORGULARI_TABLOSU,
     SISTEM_GUNLUKLERI_TABLOSU,
     GIRIS_DENEMELERI_TABLOSU,
+    YENILEME_BELIRTECLERI_TABLOSU,
+    GECERSIZ_ERISIM_BELIRTECLERI_TABLOSU,
+    YONETICI_IMZA_NONCE_TABLOSU,
     SISTEM_MIGRASYONLARI_TABLOSU,
 ]
+
+ASISTAN_SORGULARI_EK_KOLONLARI = {
+    "kullanici_adi": "TEXT",
+    "model_adi": "TEXT",
+    "prompt_surumu": "TEXT",
+    "kaynak_sss_idleri": "TEXT",
+}
 
 SSS_KAYITLARI_EK_KOLONLARI = {
     "harici_kod": "TEXT",
@@ -347,6 +393,18 @@ INDEX_SORGULARI = [
     """
     CREATE INDEX IF NOT EXISTS asistan_sorgulari_oturum_tarih
     ON asistan_sorgulari(oturum_id, olusturulma_tarihi)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS asistan_sorgulari_kullanici_tarih
+    ON asistan_sorgulari(kullanici_adi, olusturulma_tarihi)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS yenileme_belirtecleri_aile
+    ON yenileme_belirtecleri(aile_id, gecersiz_kilindi_mi)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS yenileme_belirtecleri_kullanici
+    ON yenileme_belirtecleri(kullanici_adi, sona_erme_tarihi)
     """,
 ]
 
@@ -445,8 +503,12 @@ TETIKLEYICI_SILME_SORGULARI = [
 ]
 
 VARSAYILAN_YONETICI_SORGUSU = """
-INSERT OR IGNORE INTO kullanicilar (kullanici_adi, sifre_hash, rol, aktif_mi)
+INSERT INTO kullanicilar (kullanici_adi, sifre_hash, rol, aktif_mi)
 VALUES ('yonetici', ?, 'YONETICI', TRUE)
+ON CONFLICT(kullanici_adi) DO UPDATE SET
+    sifre_hash = excluded.sifre_hash,
+    rol = 'YONETICI',
+    aktif_mi = TRUE
 """
 
 
@@ -602,6 +664,11 @@ def tablolari_olustur() -> None:
             baglanti,
             "sss_vektorleri",
             SSS_VEKTORLERI_EK_KOLONLARI,
+        )
+        _eksik_kolonlari_ekle(
+            baglanti,
+            "asistan_sorgulari",
+            ASISTAN_SORGULARI_EK_KOLONLARI,
         )
         _arama_metnini_bir_kez_geriye_doldur(baglanti)
         _icerik_surumlerini_bir_kez_duzelt(baglanti)

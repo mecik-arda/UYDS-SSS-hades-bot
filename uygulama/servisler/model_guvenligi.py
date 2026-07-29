@@ -41,7 +41,8 @@ IZINLI_MODEL_MODULLERI = (
 
 
 class ModelGuvenlikHatasi(RuntimeError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 def dosya_ozetini_hesapla(dosya_yolu: Path) -> str:
