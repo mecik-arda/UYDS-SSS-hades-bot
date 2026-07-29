@@ -149,6 +149,20 @@ class TestAramaServisi:
         for aday in sonuc.adaylar:
             assert aday.yeniden_siralama_skoru is None
 
+    def test_vektor_benzerlik_skoru_adaya_tasinir(self, arama_servisi):
+        sonuc = arama_servisi.ara("fatura")
+        vektorlu_adaylar = [
+            aday
+            for aday in sonuc.adaylar
+            if aday.vektor_benzerlik_skoru is not None
+        ]
+
+        assert vektorlu_adaylar
+        assert all(
+            -1.0 <= aday.vektor_benzerlik_skoru <= 1.0
+            for aday in vektorlu_adaylar
+        )
+
     def test_sorgu_genisletme_teshisleri_sonuca_tasinir(self, arama_servisi):
         sonuc = arama_servisi.ara("fatura")
         assert '"harcama belgesi"' in sonuc.genisletilmis_fts_sorgusu

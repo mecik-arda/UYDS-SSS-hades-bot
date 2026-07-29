@@ -1,12 +1,12 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-Sürüm 1.0.0 | Faz 1-4 ve Faz 5 çekirdek arama tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-6 servis çekirdeği tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlamak, anlamsal olarak aranabilir hale getirmek ve sonraki fazlarda kaynak kontrollü bir destek asistanına dönüştürmek amacıyla geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi ve RRF tabanlı hibrit aramayı içerir. Cross-Encoder model seçimi, DeepSeek yanıt üretimi, kullanıcı API’leri ve web arayüzü henüz uygulanmamıştır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini ve TTL’li oturum hafızasını içerir. Cross-Encoder model seçimi, kullanıcı API rotaları ve web arayüzü henüz uygulanmamıştır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -15,7 +15,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
 | Faz 5 | Sorgu genişletme, hibrit arama ve RRF | Çekirdek tamamlandı; Cross-Encoder modeli ertelendi |
-| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Beklemede |
+| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Servis katmanı tamamlandı; canlı çağrı için kurum onaylı anahtar gerekli |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Beklemede |
 | Faz 8 | Geri bildirim, yönetici onayı ve analitik | Beklemede |
 | Faz 9 | Kurumsal web arayüzü | Beklemede |
@@ -26,6 +26,8 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör kayıtları, günlükler, yedekler ve proje çıktıları özel kurumsal veridir. Bu dosyalar GitHub, kişisel bulut depolama, e-posta veya harici dosya paylaşım servislerine aktarılmamalıdır.
 
 `veriler/`, `yedekler/` ve `modeller/` dizinleri sürüm kontrolünden çıkarılmıştır. Kurum içi terim haritasının gerçek içeriği de yalnızca `veriler/es_anlamlilar.json` dosyasında yerel olarak tutulur. Depodaki `es_anlamlilar.example.json` sadece kurumsal veri içermeyen bir şablondur. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır. UYDS metinleri vektör üretimi sırasında dış servislere gönderilmez.
+
+Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini geçen ilk kaynak parçaları, kullanıcı sorusu ve sınırlı oturum geçmişi yapılandırılmış DeepSeek API adresine gönderilir. Bu özellik kurumun veri işleme ve dış servis politikası onaylanmadan etkinleştirilmemelidir. `DEEPSEEK_API_ANAHTARI` boş bırakıldığında dış çağrı yapılamaz; düşük güvenli sorularda anahtar bulunsa bile DeepSeek çağrısı yapılmaz.
 
 ## Tamamlanan Özellikler
 
@@ -104,7 +106,21 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 - Kaynak doküman, sayfa, satır ve aday metni taşıyan arama sonuçları
 - Cross-Encoder entegrasyonu için `YenidenSiralayiciProtokolu`
 - Yapılandırılabilir FTS alan ağırlıkları ve sonuç başına sorgu genişletme teşhisleri
-- Sentetik veritabanlarıyla çalışan 40 birim ve servis entegrasyon testi
+- Gerçek kosinüs benzerliğini RRF sırasından bağımsız taşıyan güven skoru girdisi
+
+### Kaynak kontrollü yanıt üretimi
+
+- Yapılandırılabilir HTTPS DeepSeek Chat Completions istemcisi ve yerel geliştirme adresi desteği
+- Yalnızca geçici ağ ve servis hatalarında, ilk çıktı parçasından önce üstel yeniden deneme
+- Kaynak metnindeki talimatları veri kabul eden ve dış bilgi kullanımını yasaklayan sistem istemi
+- İlk kaynak sayısını ve kaynak başına karakter sayısını sınırlayan bağlam bütçesi
+- Gerçek vektör kosinüs benzerliğine dayalı `GUVEN_ESIGI` kapısı
+- Eşik altındaki ve yalnızca FTS ile bulunan sorularda dış API çağrısı yapmadan standart ret yanıtı
+- JSON kodlamalı `meta`, `parca`, `tamamlandi` ve `hata` SSE olayları
+- Satır enjeksiyonuna dayanıklı SSE veri çerçeveleme
+- TTL, mesaj sayısı ve toplam oturum sayısı sınırlı bellek içi konuşma hafızası
+- API anahtarı veya sağlayıcı hata ayrıntısını kullanıcı akışına taşımayan hata yönetimi
+- Sentetik veritabanı ve sahte HTTP taşıyıcısıyla çalışan 61 birim ve servis entegrasyon testi
 
 ## Mevcut Veri Akışı
 
@@ -132,11 +148,8 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 ## Planlanan Özellikler
 
 - Türkçe retrieval benchmarkı sonrasında Cross-Encoder model seçimi ve gerçek yeniden sıralama
-- DeepSeek API ile yalnızca seçilen kaynaklardan yanıt üretimi
-- Düşük güvenli ve cevapsız sorularda yanıt reddetme
-- Server-Sent Events ile canlı yanıt akışı
-- Kullanıcı oturum hafızası
 - JWT giriş, yenileme ve çıkış rotaları
+- Faz 6 servislerini kullanan kimlik doğrulamalı arama ve SSE HTTP rotaları
 - Kullanıcı geri bildirimi ve yönetici onayı
 - Analitik ve yönetici panelleri
 - Kurumsal web arayüzü
@@ -158,7 +171,7 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 | Konteyner | Docker ve Docker Compose | Aktif |
 | Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
 | Yeniden sıralama | Cross-Encoder | Entegrasyon sözleşmesi hazır; model seçimi ertelendi |
-| LLM istemcisi | HTTPX ve DeepSeek API | Faz 6 için planlandı |
+| LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; canlı çağrı kurum onaylı anahtar gerektirir |
 | Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
 
 ## Ön Koşullar
@@ -173,7 +186,7 @@ Yerel çalıştırma:
 - Python 3.11
 - Proje bağımlılıkları için izole sanal ortam
 
-DeepSeek API anahtarı mevcut Faz 1-5 çekirdek arama kapsamı için gerekli değildir. Anahtar, Faz 6 entegrasyonu devreye alındığında zorunlu olacaktır.
+DeepSeek API anahtarı uygulamanın başlaması, yerel arama ve düşük güvenli soru reddi için gerekli değildir. Güven eşiğini geçen bir soruda canlı kaynak kontrollü yanıt üretmek için kurum tarafından onaylanmış bir anahtar zorunludur.
 
 ## Kurulum
 
@@ -221,10 +234,17 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | Değişken | Açıklama | Varsayılan |
 |---|---|---|
 | `ORTAM_PROFILI` | Etkin ortam profili | `prod` |
-| `DEEPSEEK_API_ANAHTARI` | Faz 6 DeepSeek anahtarı | Boş |
+| `DEEPSEEK_API_ANAHTARI` | Canlı DeepSeek yanıtı için kurum onaylı anahtar | Boş |
+| `DEEPSEEK_API_ADRESI` | HTTPS Chat Completions uç noktası | `https://api.deepseek.com/chat/completions` |
+| `DEEPSEEK_MODEL_ADI` | Kullanılacak DeepSeek model kimliği | `deepseek-v4-flash` |
+| `DEEPSEEK_ZAMAN_ASIMI_SANIYE` | Dış API istek zaman aşımı | `120` |
+| `DEEPSEEK_YENIDEN_DENEME_SAYISI` | Geçici hata sonrası ek deneme sayısı | `2` |
+| `DEEPSEEK_YENIDEN_DENEME_TABAN_SANIYE` | Üstel beklemenin başlangıç süresi | `0.5` |
+| `DEEPSEEK_KAYNAK_SAYISI` | Yanıt üretimine gönderilecek azami kaynak | `5` |
+| `DEEPSEEK_KAYNAK_MAKS_KARAKTER` | Kaynak başına bağlam karakter sınırı | `6000` |
 | `VERITABANI_YOLU` | SQLite dosya yolu | `veriler/veri_deposu.db` |
 | `VERITABANI_SIFRELEME_ANAHTARI` | En az 32 karakterli şifreleme anahtarı | Zorunlu |
-| `GUVEN_ESIGI` | Gelecek arama güven eşiği | `0.70` |
+| `GUVEN_ESIGI` | DeepSeek çağrısı için asgari kosinüs benzerliği | `0.70` |
 | `VEKTOR_MODEL_ADI` | Veritabanında saklanan model kimliği | `paraphrase-multilingual-MiniLM-L12-v2` |
 | `VEKTOR_MODEL_YOLU` | Doğrulanmış yerel model dizini | `modeller/paraphrase-multilingual-MiniLM-L12-v2` |
 | `VEKTOR_BOYUTU` | Beklenen embedding boyutu | `384` |
@@ -238,9 +258,11 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `ISTEK_PENCERESI_SANIYE` | İstek sınırı penceresi | `60` |
 | `UYGULAMA_PORT` | Dış HTTP portu | `8000` |
 | `MESAJ_MAKS_KARAKTER` | Kullanıcı mesajı karakter sınırı | `2000` |
-| `DEEPSEEK_MAKS_TOKEN` | Gelecek LLM çıktı token sınırı | `4096` |
+| `DEEPSEEK_MAKS_TOKEN` | LLM çıktı token sınırı | `4096` |
 | `GUNLUK_MESAJ_KOTASI` | Gelecek kullanıcı günlük kotası | `500` |
-| `OTURUM_MAKS_MESAJ` | Gelecek oturum mesaj sınırı | `50` |
+| `OTURUM_MAKS_MESAJ` | Oturum başına saklanan mesaj sınırı | `50` |
+| `OTURUM_TTL_DAKIKA` | Hareketsiz oturum yaşam süresi | `30` |
+| `OTURUM_MAKS_SAYI` | Bellekte tutulacak toplam oturum sınırı | `1000` |
 | `ISTEK_GOVDE_MAKS_BOYUT` | Genel istek gövdesi sınırı | `1048576` |
 | `DOSYA_YUKLEME_MAKS_BOYUT` | Excel yükleme sınırı | `52428800` |
 | `LOG_SEVIYESI` | Günlük seviyesi | `INFO` |
@@ -506,7 +528,7 @@ Faz 4 doğrulamalarında:
 - Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
 - Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
 
-Faz 5 için kalıcı pytest paketi mevcuttur. Retrieval benchmarkı, başarı metrikleri ve geniş güvenlik doğrulaması Faz 10 kapsamında eklenecektir.
+Faz 5 ve Faz 6 için kalıcı pytest paketi mevcuttur. Toplam 61 test Docker içindeki Python 3.11 çalışma ortamında geçmektedir. Retrieval benchmarkı, başarı metrikleri ve geniş güvenlik doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -530,12 +552,26 @@ HadesBot/
 │   │   └── veritabani_modelleri.py
 │   ├── sablonlar/
 │   ├── servisler/
+│   │   ├── akis_servisi.py
+│   │   ├── arama_servisi.py
+│   │   ├── deepseek_servisi.py
 │   │   ├── excel_yukleyici.py
+│   │   ├── hibrit_arama.py
 │   │   ├── metin_parcalayici.py
 │   │   ├── model_guvenligi.py
+│   │   ├── oturum_hafizasi.py
+│   │   ├── sorgu_genisletici.py
 │   │   ├── terim_haritasi.py
-│   │   └── vektor_servisi.py
+│   │   ├── vektor_servisi.py
+│   │   └── yeniden_siralayici.py
 │   └── statik/
+├── testler/
+│   ├── test_akis_servisi.py
+│   ├── test_arama_servisi.py
+│   ├── test_deepseek_servisi.py
+│   ├── test_hibrit_arama.py
+│   ├── test_oturum_hafizasi.py
+│   └── test_sorgu_genisletici.py
 ├── excel_ice_aktar.py
 ├── es_anlamlilar.example.json
 ├── vektor_modelini_hazirla.py
@@ -551,14 +587,15 @@ HadesBot/
 └── README.md
 ```
 
-Henüz oluşturulmamış `api/`, `sablonlar/`, `statik/` ve `testler/` içerikleri ilgili gelecek fazlarda eklenecektir.
+`api/`, `sablonlar/` ve `statik/` dizinlerinin işlevsel içerikleri ilgili gelecek fazlarda eklenecektir. Faz 5 ve Faz 6 servis testleri `testler/` dizininde bulunmaktadır.
 
 ## Bilinen Sınırlamalar
 
 - Yalnızca sağlık ve hazırlık kontrolü rotaları uygulanmıştır.
 - FTS5 BM25 ile yerel vektör benzerliğini RRF üzerinden birleştiren Faz 5 çekirdek hibrit arama hazırdır.
 - Cross-Encoder model seçimi, Türkçe retrieval benchmarkı ile ölçülmek üzere ertelenmiştir.
-- DeepSeek API çağrısı ve kaynak kontrollü yanıt üretimi henüz yoktur.
+- Faz 6 yanıt üretimi servis katmanında hazırdır; kullanıcıya açık SSE HTTP rotası Faz 7 kapsamında eklenecektir.
+- Gerçek DeepSeek sağlayıcı çağrısı kurum onaylı API anahtarı olmadığı için yerel kabul turunda yapılmamıştır.
 - Kimlik doğrulama servisleri hazır olsa da HTTP giriş rotası henüz yoktur.
 - Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.

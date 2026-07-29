@@ -36,10 +36,12 @@ class _RrfSonucu:
     fts_sirasi: int | None
     vektor_sirasi: int | None
     rrf_skoru: float
+    vektor_benzerlik_skoru: float | None
 
 
 class HibritAramaHatasi(RuntimeError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 class HibritArama:
@@ -222,6 +224,7 @@ class HibritArama:
                 "parca_id": sonuc.parca_id,
                 "parca_metni": sonuc.parca_metni,
                 "vektor_sirasi": sonuc.vektor_sirasi,
+                "benzerlik_skoru": sonuc.benzerlik_skoru,
             }
         birlesik = sorted(
             rrf_skorlari.items(),
@@ -245,6 +248,11 @@ class HibritArama:
                         vektor_bilgi["vektor_sirasi"] if vektor_bilgi else None
                     ),
                     rrf_skoru=rrf_skoru,
+                    vektor_benzerlik_skoru=(
+                        vektor_bilgi["benzerlik_skoru"]
+                        if vektor_bilgi
+                        else None
+                    ),
                 )
             )
         return sonuc

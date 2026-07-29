@@ -104,6 +104,7 @@ class AramaAdayi:
     fts_sirasi: int | None
     vektor_sirasi: int | None
     rrf_skoru: float
+    vektor_benzerlik_skoru: float | None
     yeniden_siralama_skoru: float | None
 
 

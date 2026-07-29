@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,6 +8,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Konfigurasyon(BaseSettings):
     DEEPSEEK_API_ANAHTARI: str = Field(default="")
+    DEEPSEEK_API_ADRESI: str = Field(
+        default="https://api.deepseek.com/chat/completions"
+    )
+    DEEPSEEK_MODEL_ADI: str = Field(default="deepseek-v4-flash", min_length=1)
+    DEEPSEEK_ZAMAN_ASIMI_SANIYE: float = Field(default=120.0, gt=0, le=600)
+    DEEPSEEK_YENIDEN_DENEME_SAYISI: int = Field(default=2, ge=0, le=5)
+    DEEPSEEK_YENIDEN_DENEME_TABAN_SANIYE: float = Field(
+        default=0.5,
+        ge=0,
+        le=10,
+    )
+    DEEPSEEK_KAYNAK_SAYISI: int = Field(default=5, gt=0, le=10)
+    DEEPSEEK_KAYNAK_MAKS_KARAKTER: int = Field(
+        default=6000,
+        ge=500,
+        le=20000,
+    )
     VERITABANI_YOLU: str = Field(default="veriler/veri_deposu.db")
     VERITABANI_SIFRELEME_ANAHTARI: str = Field(min_length=32)
     GUVEN_ESIGI: float = Field(default=0.70)
@@ -28,6 +46,8 @@ class Konfigurasyon(BaseSettings):
     DEEPSEEK_MAKS_TOKEN: int = Field(default=4096, gt=0)
     GUNLUK_MESAJ_KOTASI: int = Field(default=500, gt=0)
     OTURUM_MAKS_MESAJ: int = Field(default=50, gt=0)
+    OTURUM_TTL_DAKIKA: int = Field(default=30, gt=0, le=1440)
+    OTURUM_MAKS_SAYI: int = Field(default=1000, gt=0, le=100000)
     ISTEK_GOVDE_MAKS_BOYUT: int = Field(default=1048576, gt=0)
     DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
     LOG_SEVIYESI: str = Field(default="INFO")
@@ -81,6 +101,19 @@ class Konfigurasyon(BaseSettings):
         if kucuk_deger not in {"dev", "test", "prod"}:
             raise ValueError("Gecersiz ortam profili")
         return kucuk_deger
+
+    @field_validator("DEEPSEEK_API_ADRESI")
+    @classmethod
+    def deepseek_api_adresini_dogrula(cls, deger: str) -> str:
+        ayrismis = urlparse(deger)
+        yerel_adresler = {"localhost", "127.0.0.1", "::1"}
+        guvenli_mi = ayrismis.scheme == "https"
+        yerel_mi = ayrismis.scheme == "http" and ayrismis.hostname in yerel_adresler
+        if not ayrismis.netloc or not (guvenli_mi or yerel_mi):
+            raise ValueError(
+                "DeepSeek API adresi HTTPS veya yerel HTTP adresi olmalidir"
+            )
+        return deger.rstrip("/")
 
 
 def env_dosyasindan_ortam_profilini_al() -> str:

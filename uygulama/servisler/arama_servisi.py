@@ -106,6 +106,9 @@ class AramaServisi:
                     fts_sirasi=rrf_sonucu.fts_sirasi,
                     vektor_sirasi=rrf_sonucu.vektor_sirasi,
                     rrf_skoru=rrf_sonucu.rrf_skoru,
+                    vektor_benzerlik_skoru=(
+                        rrf_sonucu.vektor_benzerlik_skoru
+                    ),
                     yeniden_siralama_skoru=None,
                 )
             )
