@@ -3,8 +3,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -143,8 +141,6 @@ uygulama.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-sablonlar = Jinja2Templates(directory="uygulama/sablonlar")
-uygulama.mount("/statik", StaticFiles(directory="uygulama/statik"), name="statik")
 uygulama.include_router(kimlik_dogrulama_router)
 uygulama.include_router(arama_router)
 uygulama.include_router(geri_bildirim_router)
