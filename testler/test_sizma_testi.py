@@ -10,6 +10,13 @@ YONETICI_GIRIS = {"kullanici_adi": "yonetici", "sifre": "CiYoneticiSifresi-123"}
 
 @pytest.fixture
 def istemci(gecici_veritabani, mock_vektor_servisi):
+    import os
+    import json
+    os.makedirs("veriler", exist_ok=True)
+    if not os.path.exists("veriler/es_anlamlilar.json"):
+        with open("veriler/es_anlamlilar.json", "w", encoding="utf-8") as f:
+            json.dump({}, f)
+            
     from fastapi import FastAPI
     from slowapi import _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
