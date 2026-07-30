@@ -23,6 +23,9 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Tamamlandı |
 | Faz 9 | Kurumsal web arayüzü | Tamamlandı |
 | Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | 119 kalıcı test ve CI hazır; benchmark ve geniş doğrulama bekliyor |
+| Faz 11 | Yapay Zeka Yanıt Kalitesi ve "Prompt" Optimizasyonu | Planlandı |
+| Faz 12 | Veri Gizliliği ve Analitik Kayıt Yönetimi | Planlandı |
+| Faz 13 | Gelişmiş Kurumsal Yetenekler ve Hata Toleransı | Planlandı |
 
 ## Veri Gizliliği
 
@@ -228,6 +231,13 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 
 - Türkçe retrieval benchmarkı sonrasında Cross-Encoder üretim aktivasyonu ve aday sayısı ayarı
 - Temsili retrieval benchmarkı, penetrasyon senaryoları ve başarı ölçümleri
+- **Yapay Zeka ve Prompt Optimizasyonu (Faz 11):** Sistem talimatı iyileştirmesi, Reranker devreye alımı, Few-Shot Prompting ve sentetik veri temizliği.
+- **Veri Gizliliği ve Analitik (Faz 12):** Otomatik log temizleme (Data Retention), hassas veri anonimleştirme (PII Masking) ve yönetici için kişisel verileri dışlama özelliği.
+- **Gelişmiş Kurumsal Yetenekler (Faz 13):** Arama sonuçlarında rol bazlı filtreleme (RBAC for Retrieval), çevrimdışı yedekleme modu (Offline Fallback) ve işleme dönük butonlar (Intent Deep-Linking).
+
+## Son İyileştirmeler (Hotfix & İnce Ayarlar)
+- TensorFlow ve Keras 3 uyumluluk sorunlarını gidermek için `tf-keras` ve `protobuf` bağımlılıkları ortamda güncellendi.
+- Geçerli ancak kısa soruların reddedilmesini önlemek amacıyla `GUVEN_ESIGI` (Kosinüs Benzerliği) değeri `0.70` seviyesinden `0.50` seviyesine optimize edildi ve bu değişiklik `hata_duzeltme_kaydi.md` kütüğüne işlendi.
 
 ## Teknoloji Yığını
 

@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: read
+  packages: read
+  security-events: write
 
 concurrency:
   group: faz1-9-${{ github.workflow }}-${{ github.ref }}
@@ -41,7 +43,7 @@ jobs:
           ruff check uygulama testler
           bandit -r uygulama -q
       - name: Testleri çalıştır
-        run: python -m pytest -q
+        run: python -m pytest -q --cov=uygulama --cov-report=term --cov-report=xml
       - name: Bağımlılık zafiyetlerini denetle
         run: python -m pip_audit
 
@@ -53,7 +55,7 @@ jobs:
       - name: Compose yapılandırmasını doğrula
         run: docker compose config --quiet
       - name: Üretim imajını oluştur
-        run: docker compose build
+        run: COMPOSE_PROJECT_NAME=hadesbot docker compose build
       - name: Konteyner duman testi için dizinleri hazırla
         run: |
           mkdir -p veriler modeller sirlar
@@ -85,6 +87,20 @@ jobs:
           done
           docker compose logs uyds_sohbet_botu_uygulamasi
           exit 1
+      - name: Docker imaj zafiyetlerini tara
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "hadesbot-uyds_sohbet_botu_uygulamasi:latest"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: 1
+      - name: Trivy sonuçlarını GitHub Security sekmesine yükle
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: "trivy-results.sarif"
+          category: trivy
       - name: Konteynerleri kapat
         if: always()
         run: docker compose down --volumes --remove-orphans
@@ -109,6 +125,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - name: Playwright tarayıcısını önbellekten yükle
+        uses: actions/cache@v4
+        id: playwright-onbellek
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
       - name: Bağımlılıkları ve tarayıcıyı kur
         run: |
           python -m pip install pip==26.1.2 setuptools==83.0.0
@@ -137,6 +159,15 @@ jobs:
       - name: Hata günlüğünü göster
         if: failure()
         run: cat /tmp/hadesbot-e2e.log
+      - name: Hata eserlerini GitHub'a yükle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadesbot-e2e-hatasi
+          path: |
+            /tmp/hadesbot-e2e.log
+            veriler/ci_on_yuz.db
+          retention-days: 7
       - name: Uygulamayı kapat
         if: always()
         run: |
