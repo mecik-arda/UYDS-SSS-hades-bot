@@ -90,7 +90,7 @@ jobs:
       - name: Docker imaj zafiyetlerini tara
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "hadesbot-uyds_sohbet_botu_uygulamasi:latest"
+          image-ref: "hadesbot-uygulama:yerel"
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
