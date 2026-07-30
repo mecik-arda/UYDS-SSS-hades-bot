@@ -1,6 +1,7 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-[![Faz 1-7 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-7-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-7-dogrulama.yml)
+[![Faz 1-9 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-9-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-9-dogrulama.yml)
+[![CodeQL](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml)
 
 Sürüm 1.0.0 | Faz 1-9 kapsamı tamamlandı | Geliştirme sürümü | MIT Lisansı
 
@@ -50,7 +51,8 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Non-root Docker kullanıcısı, salt-okunur kök dosya sistemi, capability kaldırma ve `no-new-privileges`
 - Salt-okunur model bağlama noktası ve yalnızca veri dizininde kalıcı yazma yetkisi
 - Haftalık Python, Docker ve GitHub Actions bağımlılık güncellemeleri ile yapılandırma doğrulaması için geçerli Dependabot politikası
-- Her push ve pull request için güncel pytest paketi, Ruff, Bandit, `pip-audit`, sır kalıbı ve Docker build denetimi çalıştıran GitHub Actions iş akışı
+- Her push ve pull request için güncel pytest paketi, Ruff, Bandit, `pip check`, `pip-audit`, sır kalıbı, gerçek Chromium E2E ve Docker sağlık duman testi çalıştıran GitHub Actions iş akışı
+- Python ve JavaScript kaynaklarını `security-extended` sorgularıyla tarayan CodeQL güvenlik analizi
 - Güvenlik düzeltmeleri güncel bağımlılıklar, CPU odaklı PyTorch ve PyJWT ile sınırlandırılmış çalışma zamanı
 - Ayrı liveness ve veritabanı/FTS readiness kontrolleri
 - PID sınırı ve kontrollü kapanış süresi
@@ -689,7 +691,7 @@ Canlı DeepSeek doğrulamasında:
 - API anahtarı, gerçek soru ve kaynak içerikleri doğrulama raporuna veya sürüm kontrolüne eklenmedi.
 - Bu teknik sorgunun gerçek veri yanıtında `[Kaynak N]` etiketi bulunmadı. Temsili gerçek soru setinde yüzde 100 kaynak gösterme oranı Faz 10 kabul ölçümü olarak korunmaktadır.
 
-Faz 1-9 için kalıcı pytest paketi mevcuttur. Toplam 119 test yerel ortamda çalıştırılmaktadır. Ruff, Bandit, Python derleme ve `git diff --check` denetimleri temizdir. Faz 9 arayüzü izole bir çalışma veritabanıyla gerçek Uvicorn sürecinde; masaüstü, 390 piksel mobil kırılım, JWT yönetici girişi, yönetici/analitik veri yükleme, statik dosya sunumu ve tarayıcı konsolu bakımından doğrulanmıştır. Faz 1-7 tabanının Python 3.11 denetim konteyneri, `pip check`, `pip-audit`, ağ erişimi kapalı Trivy v0.70.0 ve GitHub Actions doğrulamaları temizdir; Faz 8-9 değişikliklerinin aynı CI zincirindeki doğrulaması push sonrasında çalışacaktır. GitHub Actions iş akışı her push ve pull request için test, statik analiz, bağımlılık, sır kalıbı ve Docker build denetimlerini tekrarlar. Workflow, Node.js 24 tabanlı güncel `actions/checkout@v7` ve `actions/setup-python@v7` sürümleriyle doğrulanmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
+Faz 1-9 için kalıcı pytest paketi mevcuttur. Toplam 119 test yerel ortamda çalıştırılmaktadır; canlı Chromium E2E testi yalnızca ayrılmış CI job'ında etkinleştirilir. Ruff, Bandit, Python derleme ve `git diff --check` denetimleri temizdir. Faz 9 arayüzü izole bir çalışma veritabanıyla gerçek Uvicorn sürecinde; masaüstü, 390 piksel mobil kırılım, JWT yönetici girişi, yönetici/analitik veri yükleme, statik dosya sunumu ve tarayıcı konsolu bakımından doğrulanmıştır. Python 3.11 kalite job'ı `pip check`, `pip-audit`, sır kalıbı, test ve statik analiz denetimlerini; Docker job'ı Compose doğrulaması, üretim imajı oluşturma, liveness ve readiness duman testlerini tekrarlar. Ayrı CodeQL workflow'u Python ve JavaScript kaynaklarını push, pull request ve haftalık zamanlamada analiz eder. Workflow'lar Node.js 24 tabanlı güncel `actions/checkout@v7`, `actions/setup-python@v7` ve desteklenen `github/codeql-action@v4` ana sürümleriyle yapılandırılmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -699,7 +701,8 @@ Başlıca Git takipli proje dosyaları aşağıdadır:
 HadesBot/
 ├── .github/
 │   ├── workflows/
-│   │   └── faz1-7-dogrulama.yml
+│   │   ├── codeql.yml
+│   │   └── faz1-9-dogrulama.yml
 │   └── dependabot.yml
 ├── uygulama/
 │   ├── ana.py
@@ -757,6 +760,7 @@ HadesBot/
 │   ├── test_deepseek_servisi.py
 │   ├── test_faz7_api.py
 │   ├── test_faz9_on_yuz.py
+│   ├── test_faz9_tarayici.py
 │   ├── test_geri_bildirim_servisi.py
 │   ├── test_guvenlik_bakimi.py
 │   ├── test_hibrit_arama.py

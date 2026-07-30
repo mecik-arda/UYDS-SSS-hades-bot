@@ -1,0 +1,146 @@
+name: Faz 1-9 doğrulama
+
+on:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: faz1-9-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kalite-ve-guvenlik:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Bağımlılıkları kur
+        run: |
+          python -m pip install pip==26.1.2 setuptools==83.0.0
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.13.0+cpu
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+          python -m pip check
+      - name: Sır kalıbı tara
+        run: |
+          if git grep -Il -E 'sk-[A-Za-z0-9]{16,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- .; then
+            exit 1
+          fi
+      - name: Derleme ve kod kalitesi
+        run: |
+          python -m compileall -q uygulama testler
+          ruff check uygulama testler
+          bandit -r uygulama -q
+      - name: Testleri çalıştır
+        run: python -m pytest -q
+      - name: Bağımlılık zafiyetlerini denetle
+        run: python -m pip_audit
+
+  docker-derleme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compose yapılandırmasını doğrula
+        run: docker compose config --quiet
+      - name: Üretim imajını oluştur
+        run: docker compose build
+      - name: Konteyner duman testi için dizinleri hazırla
+        run: |
+          mkdir -p veriler modeller sirlar
+          cp es_anlamlilar.example.json veriler/es_anlamlilar.json
+          chmod 777 veriler
+      - name: Konteyneri başlat ve sağlık kontrollerini doğrula
+        env:
+          ORTAM_PROFILI: test
+          VERITABANI_YOLU: veriler/ci_docker.db
+          VERITABANI_SIFRELEME_ANAHTARI: ci-veritabani-sifreleme-anahtari-123456
+          JWT_GIZLI_ANAHTARI: ci-jwt-gizli-anahtari-1234567890123456
+          VARSAYILAN_YONETICI_SIFRESI: CiYoneticiSifresi-123
+          ES_ANLAMLILAR_YOLU: veriler/es_anlamlilar.json
+          DEEPSEEK_API_ANAHTARI: ""
+        run: |
+          docker compose up -d uyds_sohbet_botu_uygulamasi
+          for deneme in {1..30}; do
+            durum="$(docker inspect --format='{{.State.Health.Status}}' uyds_asistani 2>/dev/null || true)"
+            if [ "$durum" = "healthy" ]; then
+              curl --fail --silent http://127.0.0.1:8000/api/saglik >/dev/null
+              curl --fail --silent http://127.0.0.1:8000/api/hazirlik >/dev/null
+              exit 0
+            fi
+            if [ "$durum" = "unhealthy" ]; then
+              docker compose logs uyds_sohbet_botu_uygulamasi
+              exit 1
+            fi
+            sleep 2
+          done
+          docker compose logs uyds_sohbet_botu_uygulamasi
+          exit 1
+      - name: Konteynerleri kapat
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+  on-yuz-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ORTAM_PROFILI: test
+      VERITABANI_YOLU: veriler/ci_on_yuz.db
+      VERITABANI_SIFRELEME_ANAHTARI: ci-veritabani-sifreleme-anahtari-123456
+      JWT_GIZLI_ANAHTARI: ci-jwt-gizli-anahtari-1234567890123456
+      VARSAYILAN_YONETICI_SIFRESI: CiYoneticiSifresi-123
+      CANLI_YONETICI_SIFRESI: CiYoneticiSifresi-123
+      ES_ANLAMLILAR_YOLU: veriler/es_anlamlilar.json
+      DEEPSEEK_API_ANAHTARI: ""
+      UYGULAMA_PORT: "8000"
+      CANLI_ON_YUZ_TESTI: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Bağımlılıkları ve tarayıcıyı kur
+        run: |
+          python -m pip install pip==26.1.2 setuptools==83.0.0
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.13.0+cpu
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+          python -m pip check
+          python -m playwright install --with-deps chromium
+      - name: İzole ön yüz verisini hazırla
+        run: |
+          mkdir -p veriler
+          cp es_anlamlilar.example.json veriler/es_anlamlilar.json
+      - name: Uygulamayı başlat
+        run: |
+          python -m uvicorn uygulama.ana:uygulama --host 127.0.0.1 --port 8000 >/tmp/hadesbot-e2e.log 2>&1 &
+          echo "$!" >/tmp/hadesbot-e2e.pid
+          for deneme in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/api/hazirlik >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hadesbot-e2e.log
+          exit 1
+      - name: Gerçek tarayıcı testini çalıştır
+        run: python -m pytest -q testler/test_faz9_tarayici.py
+      - name: Hata günlüğünü göster
+        if: failure()
+        run: cat /tmp/hadesbot-e2e.log
+      - name: Uygulamayı kapat
+        if: always()
+        run: |
+          if [ -f /tmp/hadesbot-e2e.pid ]; then
+            kill -TERM "$(cat /tmp/hadesbot-e2e.pid)" 2>/dev/null || true
+            wait "$(cat /tmp/hadesbot-e2e.pid)" 2>/dev/null || true
+          fi
