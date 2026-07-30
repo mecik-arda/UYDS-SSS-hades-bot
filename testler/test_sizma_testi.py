@@ -201,7 +201,6 @@ class TestModelDoS:
 
 class TestRateLimiting:
     def test_hizli_istekler_429_dondurur(self, istemci):
-        import time
         belirtec = _belirtec_al(istemci, **GECERLI_GIRIS)
         yanit_kodlari = []
         for _ in range(150):
