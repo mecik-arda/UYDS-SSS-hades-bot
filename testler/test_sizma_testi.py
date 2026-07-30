@@ -36,7 +36,6 @@ def istemci(gecici_veritabani, mock_vektor_servisi):
     app.add_middleware(IstekKimligiMiddleware)
     app.include_router(kimlik_dogrulama_router)
     app.include_router(arama_router)
-    from uygulama.api.bagimliliklar import vektor_servisini_al
     import uygulama.api.bagimliliklar as bag_modul
     import uygulama.servisler.deepseek_servisi as deepseek_modul
 
