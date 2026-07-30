@@ -1,4 +1,4 @@
-name: Faz 1-9 doğrulama
+name: Faz 1-10 doğrulama
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   security-events: write
 
 concurrency:
-  group: faz1-9-${{ github.workflow }}-${{ github.ref }}
+  group: faz1-10-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
