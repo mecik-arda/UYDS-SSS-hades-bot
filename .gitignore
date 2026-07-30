@@ -27,3 +27,9 @@ venv/
 # Test ve Benchmark Sonuçları
 test_sonucu.txt
 /testler/benchmark/raporlar/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+playwright-report/
+test-results/

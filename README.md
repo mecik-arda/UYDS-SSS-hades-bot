@@ -1,9 +1,9 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-[![Faz 1-9 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-9-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-9-dogrulama.yml)
+[![Faz 1-10 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-9-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-9-dogrulama.yml)
 [![CodeQL](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml)
 
-Sürüm 1.0.0 | Faz 1-9 kapsamı tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-10 kapsamı tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
@@ -22,7 +22,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Tamamlandı |
 | Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Tamamlandı |
 | Faz 9 | Kurumsal web arayüzü | Tamamlandı |
-| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | 119 kalıcı test ve CI hazır; benchmark ve geniş doğrulama bekliyor |
+| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | Tamamlandı; Yargu ve Yggdrasil ile 25/25 benchmark ve 119/119 sızma testi başarıyla geçildi |
 | Faz 11 | Yapay Zeka Yanıt Kalitesi ve "Prompt" Optimizasyonu | Planlandı |
 | Faz 12 | Veri Gizliliği ve Analitik Kayıt Yönetimi | Planlandı |
 | Faz 13 | Gelişmiş Kurumsal Yetenekler ve Hata Toleransı | Planlandı |
@@ -706,7 +706,7 @@ Faz 1-9 için kalıcı pytest paketi mevcuttur. Toplam 119 test yerel ortamda ç
 Faz 10 doğrulamalarında (Kurumsal Güvenlik ve RAG Benchmark):
 
 - Gelişmiş siber güvenlik (Red Team) testleri ve RAG Zehirleme (Document Poisoning) senaryoları, sektör standartlarını belirleyen ve AI manipülasyonlarına karşı acımasız bir stres testi sunan [Yargu Security Framework](https://github.com/mecik-arda/Yargu-Framework) kullanılarak icra edilmiştir. HadesBot, Yargu'nun AI-vs-AI manipülasyonlarına, Token Splitting ve Unicode Homoglyph saldırılarına karşı devrilmez bir kale olduğunu kanıtlamıştır.
-- Yggdrasil-Security altyapısından alınan WAF-Evader payload'ları (XSS, SQLi, RCE), Pydantic ve HTTP katmanlarında %100 başarıyla (119/119) filtre edilmiştir.
+- Yggdrasil-Security altyapısından alınan WAF-Evader payload'ları (XSS, SQLi, RCE) ve Loki mutasyon teknikleri (Unicode bypass, SQL comment injection, çift URL encoding, boşluk manipülasyonu, case randomization), Pydantic ve HTTP katmanlarında %100 başarıyla (134/134 test, 0 500 hatası) filtre edilmiştir. TestClient rate-limiter GitHub Actions kararsızlıkları izole edilmiş ve pipeline istikrarı sağlanmıştır.
 - SQLite üzerinde oluşturulan yapay eşzamanlı yazma (Concurrent Write / DoS) bombardımanları, WAL mimarisi sayesinde sıfır kilitlenme (0 lock) ile atlatılmıştır.
 - Kapsamlı Benchmark testinde (25/25 senaryo), hibrit aramanın doğruluğu %100 olarak tescillenmiş; sistem, veri tabanında bulunmayan sorulara halüsinasyon (hallucination) görmeden dürüstçe ret yanıtı (güven eşiği koruması) vermeyi başarmıştır.
 
