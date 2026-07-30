@@ -4,15 +4,12 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from uygulama.ana import uygulama
-
 GECERLI_GIRIS = {"kullanici_adi": "yonetici", "sifre": "test_sifresi_12_karakter_minimum"}
 YONETICI_GIRIS = {"kullanici_adi": "yonetici", "sifre": "CiYoneticiSifresi-123"}
 
 
 @pytest.fixture
 def istemci(gecici_veritabani, mock_vektor_servisi):
-    import asyncio
     from fastapi import FastAPI
     from slowapi import _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
