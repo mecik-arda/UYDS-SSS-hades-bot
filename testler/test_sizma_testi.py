@@ -209,8 +209,11 @@ class TestRateLimiting:
         for _ in range(300):
             yanit = istemci.post(
                 "/api/v1/arama",
-                json={"soru": "test"},
-                headers=_yetki_basligi(belirtec),
+                headers={
+                    "Authorization": f"Bearer {belirtec}",
+                    "X-Forwarded-For": "192.168.1.1"
+                },
+                json={"soru": "test"}
             )
             yanit_kodlari.append(yanit.status_code)
             if 429 in yanit_kodlari:
