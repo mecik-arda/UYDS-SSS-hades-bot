@@ -82,7 +82,9 @@ CREATE TABLE IF NOT EXISTS geri_bildirimler (
     durum TEXT NOT NULL DEFAULT 'BEKLEMEDE'
         CHECK (durum IN ('BEKLEMEDE', 'ONAYLANDI', 'REDDEDILDI')),
     tarih DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sss_id) REFERENCES sss_kayitlari(id) ON DELETE SET NULL
+    secili_sss_id INTEGER,
+    FOREIGN KEY (sss_id) REFERENCES sss_kayitlari(id) ON DELETE SET NULL,
+    FOREIGN KEY (secili_sss_id) REFERENCES sss_kayitlari(id) ON DELETE SET NULL
 )
 """
 
@@ -135,6 +137,9 @@ CREATE TABLE IF NOT EXISTS alternatif_sorular (
     sss_id INTEGER NOT NULL,
     soru TEXT NOT NULL,
     vektor_verisi BLOB,
+    model_adi TEXT,
+    vektor_boyutu INTEGER,
+    metin_ozeti TEXT,
     kaynak TEXT NOT NULL,
     durum TEXT NOT NULL DEFAULT 'beklemede'
         CHECK (durum IN ('beklemede', 'onaylandi', 'reddedildi')),
@@ -302,6 +307,18 @@ ASISTAN_SORGULARI_EK_KOLONLARI = {
     "model_adi": "TEXT",
     "prompt_surumu": "TEXT",
     "kaynak_sss_idleri": "TEXT",
+}
+
+GERI_BILDIRIMLER_EK_KOLONLARI = {
+    "secili_sss_id": (
+        "INTEGER REFERENCES sss_kayitlari(id) ON DELETE SET NULL"
+    ),
+}
+
+ALTERNATIF_SORULAR_EK_KOLONLARI = {
+    "model_adi": "TEXT",
+    "vektor_boyutu": "INTEGER",
+    "metin_ozeti": "TEXT",
 }
 
 SSS_KAYITLARI_EK_KOLONLARI = {
@@ -669,6 +686,16 @@ def tablolari_olustur() -> None:
             baglanti,
             "asistan_sorgulari",
             ASISTAN_SORGULARI_EK_KOLONLARI,
+        )
+        _eksik_kolonlari_ekle(
+            baglanti,
+            "geri_bildirimler",
+            GERI_BILDIRIMLER_EK_KOLONLARI,
+        )
+        _eksik_kolonlari_ekle(
+            baglanti,
+            "alternatif_sorular",
+            ALTERNATIF_SORULAR_EK_KOLONLARI,
         )
         _arama_metnini_bir_kez_geriye_doldur(baglanti)
         _icerik_surumlerini_bir_kez_duzelt(baglanti)

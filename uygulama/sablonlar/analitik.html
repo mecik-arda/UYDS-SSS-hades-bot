@@ -1,0 +1,51 @@
+{% extends "temel.html" %}
+{% block icerik %}
+<section class="yonetici-izgara analitik-metrikleri">
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Toplam soru</span>
+        <strong id="toplam-soru">—</strong>
+        <small>İşlenen kullanıcı sorgusu</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Geri bildirim</span>
+        <strong id="toplam-geri-bildirim">—</strong>
+        <small>Toplanan değerlendirme</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Ortalama puan</span>
+        <strong id="ortalama-puan">—</strong>
+        <small>Beş üzerinden kullanıcı puanı</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Bekleyen onay</span>
+        <strong id="bekleyen-onay">—</strong>
+        <small>İnceleme kuyruğu</small>
+    </div>
+</section>
+<section class="analitik-izgara">
+    <div class="panel-karti">
+        <div class="panel-basligi">
+            <div>
+                <p class="ust-etiket">Kategori dağılımı</p>
+                <h2>En çok sorulan konular</h2>
+            </div>
+        </div>
+        <div class="cubuk-grafik" id="kategori-grafigi" aria-label="Kategori dağılım grafiği">
+            <div class="iskelet-satiri"></div>
+            <div class="iskelet-satiri"></div>
+        </div>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi">
+            <div>
+                <p class="ust-etiket">İyileştirme alanları</p>
+                <h2>Son cevapsız sorular</h2>
+            </div>
+        </div>
+        <div class="veri-listesi" id="analitik-cevapsiz-listesi">
+            <div class="iskelet-satiri"></div>
+            <div class="iskelet-satiri"></div>
+        </div>
+    </div>
+</section>
+{% endblock %}

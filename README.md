@@ -2,13 +2,13 @@
 
 [![Faz 1-7 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-7-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-7-dogrulama.yml)
 
-Sürüm 1.0.0 | Faz 1-7 çekirdek kapsamı tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-9 kapsamı tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlayan, anlamsal olarak aranabilir hale getiren ve kaynak kontrollü yanıt üreten kurumsal bir destek asistanı olarak geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını ve kimlik doğrulamalı Faz 7 API rotalarını içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe retrieval benchmarkı ve kaynak ölçümü sonucuna bağlıdır. Web arayüzü henüz uygulanmamıştır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını, kimlik doğrulamalı API rotalarını, yönetici onaylı alternatif soru öğrenme döngüsünü ve responsive kurumsal web arayüzünü içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe retrieval benchmarkı ve kaynak ölçümü sonucuna bağlıdır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -17,11 +17,11 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
 | Faz 5 | Sorgu genişletme, hibrit arama, RRF ve güvenli Cross-Encoder katmanı | Tamamlandı; Cross-Encoder üretim aktivasyonu benchmark bekliyor |
-| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Tamamlandı; canlı bağlantı sentetik içerikle doğrulandı |
+| Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Tamamlandı; canlı bağlantı sentetik ve kurum onaylı gerçek kaynaklarla doğrulandı |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Tamamlandı |
-| Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Temel geri bildirim, yönetici onayı ve analitik API'leri hazır; öğrenme döngüsü bekliyor |
-| Faz 9 | Kurumsal web arayüzü | Beklemede |
-| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | 101 kalıcı test ve CI hazır; benchmark ve geniş doğrulama bekliyor |
+| Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Tamamlandı |
+| Faz 9 | Kurumsal web arayüzü | Tamamlandı |
+| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | 119 kalıcı test ve CI hazır; benchmark ve geniş doğrulama bekliyor |
 
 ## Veri Gizliliği
 
@@ -30,6 +30,8 @@ UYDS Excel dosyaları, soru-cevap içerikleri, SQLite veritabanları, vektör ka
 `veriler/`, `yedekler/` ve `modeller/` dizinleri sürüm kontrolünden çıkarılmıştır. Kurum içi terim haritasının gerçek içeriği de yalnızca `veriler/es_anlamlilar.json` dosyasında yerel olarak tutulur. Depodaki `es_anlamlilar.example.json` sadece kurumsal veri içermeyen bir şablondur. Gerçek veri yalnızca yetkili yerel çalışma ortamında tutulmalıdır. UYDS metinleri vektör üretimi sırasında dış servislere gönderilmez.
 
 Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini geçen ilk kaynak parçaları, kullanıcı sorusu ve sınırlı oturum geçmişi yapılandırılmış DeepSeek API adresine gönderilir. Üretim profilinde hedef alan adı ayrıca `DEEPSEEK_IZINLI_ALAN_ADLARI` listesinde bulunmak zorundadır. Bu özellik kurumun veri işleme ve dış servis politikası onaylanmadan etkinleştirilmemelidir. `DEEPSEEK_API_ANAHTARI` boş bırakıldığında dış çağrı yapılamaz; düşük güvenli sorularda anahtar bulunsa bile DeepSeek çağrısı yapılmaz ve kaynak kimlikleri istemciye açıklanmaz.
+
+Şifreli veritabanı yalnızca oluşturulurken kullanılan `VERITABANI_SIFRELEME_ANAHTARI` ile açılabilir. Mevcut bir `.db.enc` dosyası varken yeni anahtar üretmek veriyi kurtarmaz. Anahtar değişikliği veya veritabanı yeniden oluşturma öncesinde `.env`, `.db.enc`, kaynak Excel ve kurum içi terim haritası birlikte erişimi kısıtlı yerel bir kurtarma yedeğine alınmalıdır. `yedekler/` altında tutulan kurtarma kopyaları sır ve kurumsal veri içerir; Git'e eklenmemeli veya paylaşılmamalıdır.
 
 ## Tamamlanan Özellikler
 
@@ -48,7 +50,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Non-root Docker kullanıcısı, salt-okunur kök dosya sistemi, capability kaldırma ve `no-new-privileges`
 - Salt-okunur model bağlama noktası ve yalnızca veri dizininde kalıcı yazma yetkisi
 - Haftalık Python, Docker ve GitHub Actions bağımlılık güncellemeleri ile yapılandırma doğrulaması için geçerli Dependabot politikası
-- Her push ve pull request için 101 test, Ruff, Bandit, `pip-audit`, sır kalıbı ve Docker build denetimi çalıştıran GitHub Actions iş akışı
+- Her push ve pull request için güncel pytest paketi, Ruff, Bandit, `pip-audit`, sır kalıbı ve Docker build denetimi çalıştıran GitHub Actions iş akışı
 - Güvenlik düzeltmeleri güncel bağımlılıklar, CPU odaklı PyTorch ve PyJWT ile sınırlandırılmış çalışma zamanı
 - Ayrı liveness ve veritabanı/FTS readiness kontrolleri
 - PID sınırı ve kontrollü kapanış süresi
@@ -131,7 +133,7 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Satır enjeksiyonuna dayanıklı SSE veri çerçeveleme
 - TTL, mesaj sayısı ve toplam oturum sayısı sınırlı bellek içi konuşma hafızası
 - API anahtarı veya sağlayıcı hata ayrıntısını kullanıcı akışına taşımayan hata yönetimi
-- Sentetik verilerle çalışan toplam 101 birim, sözleşme, güvenlik ve servis entegrasyon testi
+- Sentetik verilerle çalışan toplam 119 birim, sözleşme, güvenlik, servis entegrasyon ve ön yüz sunum testi
 
 ### Faz 7 API ve kimlik güvenliği
 
@@ -150,6 +152,29 @@ Faz 6 canlı yanıt üretimi etkinleştirildiğinde yalnızca güven eşiğini g
 - Süresi dolan refresh ailelerini, erişim karalistesini ve yönetici nonce kayıtlarını başlangıçta ve yapılandırılabilir aralıklarla temizleyen güvenlik bakımı
 - Bellek içi oturum sahipliğini korumak için standart dağıtımda çoklu worker yapılandırmasını başlangıçta reddetme
 - Faz 7 rotalarını ve kritik yönetici HMAC başlıklarını koruyan OpenAPI sözleşme testleri
+
+### Faz 8 geri bildirim ve alternatif soru öğrenme döngüsü
+
+- Kullanıcı puanı, yorumu, dönen cevap, ilk kaynak SSS kimliği ve önerilen doğru SSS kimliğini `BEKLEMEDE` durumunda kaydetme
+- Yöneticinin kullanıcının seçimini koruyabilmesi veya aktif başka bir SSS kaydıyla değiştirebilmesi
+- Yönetici onayında kullanıcı sorusunu doğrudan `onaylandi` durumundaki alternatif soru olarak etkinleştirme
+- Alternatif soru vektörlerinde model kimliği, vektör boyutu ve metin özeti bütünlük bilgilerini saklama
+- Model değişiminde onaylanmış alternatif soru vektörlerini yeniden üretme
+- Alternatif soru benzerliğini yapılandırılabilir eşik ve aday sınırıyla filtreleme
+- Alternatif soru sırasını RRF skoruna dönüştürerek FTS ve ana vektör sonuçlarıyla tekilleştirilmiş biçimde birleştirme
+- Eski veritabanlarına geri bildirim ve alternatif soru metadata sütunlarını geriye uyumlu biçimde ekleme
+- Cevapsız veya güven eşiği altındaki sorguları yönetici yetkisiyle sayfalı olarak listeleme
+
+### Faz 9 kurumsal web arayüzü
+
+- `/`, `/yonetici` ve `/analitik` rotalarında Jinja2 tabanlı açık kurşuni çalışma alanı ve koyu lacivert navigasyon
+- Responsive sol navigasyon, kullanıcı profili, sistem hazırlık bandı, yerel soru geçmişi ve görünüm ayarları
+- JWT giriş, yenileme ve çıkış yaşam döngüsünü API ile yöneten tarayıcı istemcisi
+- `fetch` akışıyla SSE olaylarını parça parça işleyen canlı sohbet, güven göstergesi ve kaynak rozetleri
+- Yönetici yetkisini API rolüyle doğrulayan geri bildirim ve cevapsız sorgu panelleri
+- Analitik özet kartları, kategori çubuk grafiği ve cevapsız soru listesi
+- Sunucu içeriğini yalnızca güvenli DOM `textContent` işlemleriyle gösteren, satır içi betik kullanmayan XSS dayanıklı çıktı üretimi
+- Klavye odağı, atlama bağlantısı, semantik bölgeler, azaltılmış hareket desteği ve 390 piksel mobil kırılım doğrulaması
 
 ## Mevcut Veri Akışı
 
@@ -170,6 +195,7 @@ flowchart TD
     M --> H["FTS5 tam metin indeksi"]
     G --> I["Çevrimdışı MiniLM vektör üretimi"]
     I --> O["SQLite Float32 vektör BLOB kayıtları"]
+    AD["Faz 9 web arayüzü"] --> P
     P["Kimliği doğrulanmış kullanıcı sorgusu"] --> Q["Sorgu normalizasyonu ve genişletme"]
     Q --> H
     Q --> O
@@ -183,9 +209,15 @@ flowchart TD
     S -->|Eşik üstü| U["Sınırlı kaynak ve oturum bağlamı"]
     U --> V["DeepSeek kaynak kontrollü yanıt üretimi"]
     V --> W["SSE meta, parça, tamamlandı ve hata olayları"]
+    T --> AD
+    W --> AD
     T --> X["Sorgu ve sonuç kaydı"]
     W --> X
     X --> Y["Geri bildirim ve analitik API'leri"]
+    Y --> AD
+    Y --> AB["Yönetici inceleme ve doğru SSS seçimi"]
+    AB --> AC["Onaylanmış alternatif soru vektörü"]
+    AC --> R
 ```
 
 Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerrer bir satır elendikten sonra 2.398 benzersiz kayıt ve 4.075 metin parçası oluşturulmuştur. Gerçek içerikler ve üretilen veritabanı sürüm kontrolüne dahil edilmez.
@@ -193,9 +225,6 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 ## Planlanan Özellikler
 
 - Türkçe retrieval benchmarkı sonrasında Cross-Encoder üretim aktivasyonu ve aday sayısı ayarı
-- Faz 8 yönetici onaylı alternatif soru öğrenme döngüsü
-- Mevcut analitik ve yönetici API'lerini kullanan web panelleri
-- Kurumsal web arayüzü
 - Temsili retrieval benchmarkı, penetrasyon senaryoları ve başarı ölçümleri
 
 ## Teknoloji Yığını
@@ -214,8 +243,8 @@ Gerçek UYDS çalışma kitabında 2.399 veri satırı okunmuş, birebir mükerr
 | Konteyner | Docker ve Docker Compose | Aktif |
 | Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
 | Yeniden sıralama | Sentence-Transformers Cross-Encoder | Güvenli yerel entegrasyon hazır; üretim aktivasyonu benchmark bekliyor |
-| LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; sentetik canlı bağlantı doğrulandı, gerçek kurumsal içerik açık veri paylaşım onayı gerektirir |
-| Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Faz 9 için planlandı |
+| LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; sentetik ve kurum onaylı gerçek kaynaklarla canlı bağlantı doğrulandı |
+| Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Aktif |
 
 ## Ön Koşullar
 
@@ -328,6 +357,8 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 | `FTS_ADAY_SAYISI` | FTS5 tarafından alınacak azami aday | `50` |
 | `VEKTOR_ADAY_SAYISI` | Vektör aramasından alınacak azami aday | `50` |
 | `RRF_ADAY_SAYISI` | Harmanlama sonrasında korunacak azami aday | `20` |
+| `ALTERNATIF_SORU_ADAY_SAYISI` | Alternatif soru kanalından alınacak azami aday | `5` |
+| `ALTERNATIF_SORU_BENZERLIK_ESIGI` | Alternatif sorunun RRF birleştirmesine katılacağı en düşük kosinüs benzerliği | `0.70` |
 | `YENIDEN_SIRALAMA_ETKIN` | Cross-Encoder yeniden sıralamayı etkinleştirir | `false` |
 | `YENIDEN_SIRALAMA_MODEL_YOLU` | Doğrulanmış yerel Cross-Encoder model dizini | `modeller/mmarco-mMiniLMv2-L12-H384-v1` |
 | `YENIDEN_SIRALAMA_ADAY_SAYISI` | Cross-Encoder ile skorlanacak ilk RRF adayı sayısı | `10` |
@@ -345,6 +376,8 @@ Gerçek Excel dosyasını Git’e eklemeyin.
 Tablodaki değerler uygulama ve Docker Compose varsayılanlarını gösterir. Geliştirme için sunulan `.env.example`, `ORTAM_PROFILI=dev` ve `LOG_SEVIYESI=DEBUG` değerleriyle bu iki varsayılanı bilinçli olarak geçersiz kılar.
 
 `.env.dev`, `.env.test` ve `.env.prod` dosyaları uygulamanın otomatik yüklediği, Git tarafından takip edilen ve yalnızca gizli olmayan profil değerlerini taşıyan dosyalardır; bu dosyalara hiçbir zaman API anahtarı, parola veya şifreleme anahtarı yazılmamalıdır. Gizli değerler Git dışında tutulan `.env`, salt okunur `sirlar/` dosyaları veya kurumun yetkili secret sağlayıcısı üzerinden verilmelidir. `.env` ignore edilirken `.env.example` güvenli kurulum şablonu olarak sürüm kontrolünde tutulur.
+
+Her yapılandırma anahtarı `.env` içinde yalnızca bir kez tanımlanmalıdır. Özellikle `ORTAM_PROFILI`, `VERITABANI_YOLU` ve `VERITABANI_SIFRELEME_ANAHTARI` için yinelenen tanımlar profil dosyalarının beklenmeyen sırayla uygulanmasına veya yanlış şifreli veritabanının seçilmesine neden olabilir. Mevcut şifreli veritabanı taşınırken standart yol `veriler/veri_deposu.db` olarak korunmalı ve aynı şifreleme anahtarı kullanılmalıdır.
 
 ## Excel Verilerini İçe Aktarma
 
@@ -429,6 +462,8 @@ Tam yenileme mevcut aktif vektörleri önceden silmez. Model yükleme veya üret
 
 Docker kullanırken model hazırlama işlemi ana makinede bir kez yapılır. `modeller/` dizini uygulama konteynerine salt-okunur bağlanır. Normal vektör üretimi `HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE` ve `HF_DATASETS_OFFLINE` değerlerini zorunlu olarak etkinleştirir.
 
+Model ve vektör komutlarını proje sanal ortamında veya Docker imajında çalıştırmak önerilir. Paylaşımlı bir Python ortamındaki ilgisiz TensorFlow/protobuf paketleri `transformers` yüklemesini bozarsa temiz proje ortamı kullanılmalıdır. Yalnızca PyTorch tabanlı tek seferlik yerel üretimde `USE_TF=0` ve `TRANSFORMERS_NO_TF=1` ortam değişkenleriyle TensorFlow entegrasyonu kapatılabilir; bu değerler üretim yapılandırmasının zorunlu parçası değildir.
+
 ## Yerel Cross-Encoder Yeniden Sıralama
 
 Cross-Encoder varsayılan olarak kapalıdır. Sabit revizyonlu ve SHA-256 doğrulamalı model dosyalarını kurum verisi okumadan yerel dizine hazırlayın:
@@ -508,12 +543,15 @@ source .venv/bin/activate
 
 Mevcut erişim adresleri:
 
+- Sohbet arayüzü: `http://localhost:8000/`
+- Yönetici merkezi: `http://localhost:8000/yonetici`
+- Analitik görünümü: `http://localhost:8000/analitik`
 - Sağlık kontrolü: `http://localhost:8000/api/saglik`
 - Hazırlık kontrolü: `http://localhost:8000/api/hazirlik`
 - Swagger arayüzü: `http://localhost:8000/docs`
 - OpenAPI şeması: `http://localhost:8000/openapi.json`
 
-Kök `/` rotası ve kullanıcı arayüzü henüz mevcut değildir.
+Web arayüzü açıldığında kimlik doğrulama penceresi gösterilir. Kullanıcı rolü sohbet ekranına; `YONETICI` rolü ayrıca yönetici ve analitik panellerine erişir. Erişim ve yenileme belirteçleri yalnızca geçerli tarayıcı sekmesi oturumunda tutulur.
 
 ## API Durumu
 
@@ -530,7 +568,8 @@ Kök `/` rotası ve kullanıcı arayüzü henüz mevcut değildir.
 | `GET` | `/api/v1/sss` | Aktif SSS özetlerini sayfalar | Kullanıcı |
 | `POST` | `/api/v1/geri-bildirim` | Puan ve yorum kaydeder | Kullanıcı |
 | `GET` | `/api/v1/yonetici/geri-bildirimler` | Bekleyen geri bildirimleri listeler | Yönetici |
-| `POST` | `/api/v1/yonetici/geri-bildirim/onay` | Geri bildirim durumunu günceller | Yönetici ve HMAC |
+| `GET` | `/api/v1/yonetici/cevapsiz-sorgular` | Cevapsız veya düşük güvenli sorguları sayfalı listeler | Yönetici |
+| `POST` | `/api/v1/yonetici/geri-bildirim/onay` | Geri bildirimi onaylar veya reddeder; yönetici doğru SSS seçimini değiştirebilir | Yönetici ve HMAC |
 | `POST` | `/api/v1/yonetici/yeniden-indeksle` | FTS ve vektör indekslerini yeniler | Yönetici ve HMAC |
 | `GET` | `/api/v1/analitik` | Kullanım istatistiklerini döndürür | Yönetici |
 
@@ -631,7 +670,26 @@ Faz 4 doğrulamalarında:
 - Uygulama ve yedekleyici salt-okunur kök dosya sistemiyle çalıştırıldı.
 - Açık bağlantı sırasında şifreleme denemesi özel kilidin serbest kalmasını bekledi ve veri yarışı oluşmadı.
 
-Faz 1-7 için kalıcı pytest paketi mevcuttur. Toplam 101 test yerel ortamda, Python 3.11 denetim konteynerinde ve GitHub Actions ortamında çalıştırılmaktadır. Ruff, Bandit, `pip check` ve `pip-audit` denetimleri temizdir. Ağ erişimi kapalı Trivy v0.70.0 taramasında Debian tabanı ve Python paketleri için düzeltmesi bulunan kritik veya yüksek zafiyet bulunmamıştır. GitHub Actions iş akışı her push ve pull request için aynı test, statik analiz, bağımlılık, sır kalıbı ve Docker build denetimlerini tekrarlar. Workflow, Node.js 24 tabanlı güncel `actions/checkout@v7` ve `actions/setup-python@v7` sürümleriyle doğrulanmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
+Son yerel işletim doğrulamasında:
+
+- Yinelenen `.env` tanımları kaldırıldı; etkin profil `prod`, standart veritabanı yolu `veriler/veri_deposu.db` olarak doğrulandı.
+- Açılabilir şifreli veritabanının SQLite bütünlük kontrolü `ok` verdi ve kurtarma kopyaları alınmadan hiçbir mevcut dosyanın üzerine yazılmadı.
+- Gerçek çalışma kitabından 2.398 benzersiz SSS ve 4.075 aktif metin parçası yeniden oluşturuldu.
+- Yerel MiniLM modeliyle 4.075 parçanın tamamı vektörleştirildi; eksik, geçersiz veya pasif vektör kalmadı.
+- Uygulama gerçek şifreli veritabanıyla başlatıldı; liveness, readiness, ön yüz ve yönetici girişi başarıyla doğrulandı.
+- DeepSeek anahtarı devre dışı bırakılarak sentetik bir SSE sohbet akışı uçtan uca tamamlandı; bu doğrulamada kurumsal içerik dış servise gönderilmedi.
+- Kapanış sonrasında düz metin SQLite dosyası bırakılmadı ve kalıcı durum yalnızca şifreli `.db.enc` dosyasında tutuldu.
+
+Canlı DeepSeek doğrulamasında:
+
+- `deepseek-v4-pro` modeli sentetik soru ve kaynakla gerçek API üzerinde yanıt ve kaynak atfı üretti.
+- Kurum sahibinin açık veri işleme onayıyla gerçek bilgi tabanında güven skoru `0,894982` olan sorgu güven kapısını geçti.
+- Yapılandırılmış 5 kaynakla yapılan kimliği doğrulanmış chatbot isteği `HTTP 200` döndürdü.
+- Yanıt 29 SSE `parca` olayıyla aktı, 11,64 saniyede `tamamlandi` olayına ulaştı ve `cevaplandi=true` sonucu verdi.
+- API anahtarı, gerçek soru ve kaynak içerikleri doğrulama raporuna veya sürüm kontrolüne eklenmedi.
+- Bu teknik sorgunun gerçek veri yanıtında `[Kaynak N]` etiketi bulunmadı. Temsili gerçek soru setinde yüzde 100 kaynak gösterme oranı Faz 10 kabul ölçümü olarak korunmaktadır.
+
+Faz 1-9 için kalıcı pytest paketi mevcuttur. Toplam 119 test yerel ortamda çalıştırılmaktadır. Ruff, Bandit, Python derleme ve `git diff --check` denetimleri temizdir. Faz 9 arayüzü izole bir çalışma veritabanıyla gerçek Uvicorn sürecinde; masaüstü, 390 piksel mobil kırılım, JWT yönetici girişi, yönetici/analitik veri yükleme, statik dosya sunumu ve tarayıcı konsolu bakımından doğrulanmıştır. Faz 1-7 tabanının Python 3.11 denetim konteyneri, `pip check`, `pip-audit`, ağ erişimi kapalı Trivy v0.70.0 ve GitHub Actions doğrulamaları temizdir; Faz 8-9 değişikliklerinin aynı CI zincirindeki doğrulaması push sonrasında çalışacaktır. GitHub Actions iş akışı her push ve pull request için test, statik analiz, bağımlılık, sır kalıbı ve Docker build denetimlerini tekrarlar. Workflow, Node.js 24 tabanlı güncel `actions/checkout@v7` ve `actions/setup-python@v7` sürümleriyle doğrulanmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında eklenecektir.
 
 ## Proje Yapısı
 
@@ -652,8 +710,17 @@ HadesBot/
 │   │       ├── arama.py
 │   │       ├── geri_bildirim.py
 │   │       ├── kimlik_dogrulama.py
+│   │       ├── on_yuz.py
 │   │       ├── sss.py
 │   │       └── yonetici.py
+│   ├── sablonlar/
+│   │   ├── temel.html
+│   │   ├── indeks.html
+│   │   ├── yonetici.html
+│   │   └── analitik.html
+│   ├── statik/
+│   │   ├── css/stil.css
+│   │   └── js/uygulama.js
 │   ├── cekirdek/
 │   │   ├── gunlukleyici.py
 │   │   ├── guvenlik.py
@@ -689,6 +756,8 @@ HadesBot/
 │   ├── test_arama_servisi.py
 │   ├── test_deepseek_servisi.py
 │   ├── test_faz7_api.py
+│   ├── test_faz9_on_yuz.py
+│   ├── test_geri_bildirim_servisi.py
 │   ├── test_guvenlik_bakimi.py
 │   ├── test_hibrit_arama.py
 │   ├── test_konfigurasyon.py
@@ -715,14 +784,13 @@ HadesBot/
 └── README.md
 ```
 
-`uygulama/api/` Faz 7 kimlik doğrulama, arama, geri bildirim, yönetici, analitik ve SSS rotalarını içerir. `uygulama/sablonlar/` ve `uygulama/statik/` dizinleri gerçek kullanıcı arayüzü dosyalarıyla birlikte Faz 9 kapsamında oluşturulacaktır.
+`uygulama/api/` kimlik doğrulama, arama, geri bildirim, yönetici, analitik, SSS ve ön yüz rotalarını içerir. `uygulama/sablonlar/` Jinja2 sayfalarını, `uygulama/statik/` ise kurumsal stil ve tarayıcı istemcisini içerir.
 
 ## Bilinen Sınırlamalar
 
 - Cross-Encoder güvenli yerel entegrasyonu hazırdır ve varsayılan olarak kapalıdır; üretim aktivasyonu Türkçe retrieval benchmarkı, p50/p95 gecikme ve tepe bellek ölçümü sonrasına bırakılmıştır.
-- Gerçek DeepSeek sağlayıcı bağlantısı yalnızca sentetik içerikle doğrulanmıştır; açık kurumsal veri paylaşım onayı olmadan gerçek UYDS metinleri dış sağlayıcıya gönderilmemiştir.
-- Kullanıcı arayüzü, yönetici paneli ve analitik ekranları henüz yoktur; bunların kullanacağı yönetici ve analitik API'leri hazırdır.
-- Faz 8 alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı henüz uygulanmamıştır.
+- DeepSeek sağlayıcı bağlantısı sentetik ve kurum sahibinin açıkça onayladığı gerçek UYDS kaynaklarıyla doğrulanmıştır. Üretim kullanımı kurumun veri işleme politikası ve etkin API anahtarı gerektirir.
+- Tek canlı teknik sorguda yanıt başarıyla tamamlanmasına rağmen zorunlu `[Kaynak N]` etiketi üretilmedi; kaynak gösterme oranının yüzde 100 olması Faz 10 kabul testinde temsili sorgu setiyle doğrulanacaktır.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
 - Bellek içi oturum sahipliği tek worker dağıtımı içindir; standart ortam değişkenleriyle çok worker başlatma girişimi reddedilir. Gerçek çok-worker desteği kalıcı paylaşımlı oturum deposu gerektirir.
 - Veritabanı çalışma sırasında düz metin SQLite olarak açıktır ve temiz kapanışta şifrelenir.

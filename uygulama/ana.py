@@ -1,9 +1,11 @@
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -15,6 +17,7 @@ from uygulama.api.rotalar.geri_bildirim import router as geri_bildirim_router
 from uygulama.api.rotalar.kimlik_dogrulama import (
     router as kimlik_dogrulama_router,
 )
+from uygulama.api.rotalar.on_yuz import router as on_yuz_router
 from uygulama.api.rotalar.sss import router as sss_router
 from uygulama.api.rotalar.yonetici import router as yonetici_router
 from uygulama.cekirdek.gunlukleyici import gunlukleyici
@@ -38,6 +41,9 @@ from uygulama.cekirdek.veritabani import (
     veritabanini_sifrele,
 )
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
+
+
+UYGULAMA_DIZINI = Path(__file__).resolve().parent
 
 
 async def guvenlik_bakimini_yurut() -> None:
@@ -66,7 +72,7 @@ async def periyodik_guvenlik_bakimini_calistir(
             )
             return
         except TimeoutError:
-            pass
+            gunlukleyici.debug("Periyodik guvenlik bakimi zamani geldi")
         try:
             await guvenlik_bakimini_yurut()
         except Exception as hata:
@@ -99,7 +105,10 @@ async def uygulama_omru(uygulama: FastAPI):
         )
         gunlukleyici.info("Veritabani baslatma islemleri tamamlandi")
     except Exception as hata:
-        gunlukleyici.error(f"Baslatma islemleri sirasinda hata olustu: {hata}")
+        gunlukleyici.error(
+            "Baslatma islemleri sirasinda hata olustu: "
+            f"{type(hata).__name__}"
+        )
         raise
     try:
         yield
@@ -147,6 +156,12 @@ uygulama.include_router(geri_bildirim_router)
 uygulama.include_router(sss_router)
 uygulama.include_router(yonetici_router)
 uygulama.include_router(analitik_router)
+uygulama.include_router(on_yuz_router)
+uygulama.mount(
+    "/statik",
+    StaticFiles(directory=str(UYGULAMA_DIZINI / "statik")),
+    name="static",
+)
 
 
 @uygulama.get("/api/saglik")

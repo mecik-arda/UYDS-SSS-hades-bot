@@ -1,0 +1,45 @@
+{% extends "temel.html" %}
+{% block icerik %}
+<section class="yonetici-izgara">
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Bekleyen geri bildirim</span>
+        <strong id="bekleyen-metrigi">—</strong>
+        <small>Yönetici kararı bekleyen kayıt</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Cevapsız sorgu</span>
+        <strong id="cevapsiz-metrigi">—</strong>
+        <small>Düşük güvenli veya yanıtsız kayıt</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Bilgi tabanı durumu</span>
+        <strong id="hazirlik-metrigi">Denetleniyor</strong>
+        <small>FTS ve veritabanı hazırlığı</small>
+    </div>
+</section>
+<section class="panel-karti">
+    <div class="panel-basligi">
+        <div>
+            <p class="ust-etiket">Geri bildirim döngüsü</p>
+            <h2>Yönetici inceleme kuyruğu</h2>
+        </div>
+        <button type="button" class="ikincil-dugme" id="yonetici-yenile">Verileri yenile</button>
+    </div>
+    <div class="veri-listesi" id="geri-bildirim-listesi">
+        <div class="iskelet-satiri"></div>
+        <div class="iskelet-satiri"></div>
+    </div>
+</section>
+<section class="panel-karti">
+    <div class="panel-basligi">
+        <div>
+            <p class="ust-etiket">Bilgi açığı takibi</p>
+            <h2>Cevapsız ve düşük güvenli sorular</h2>
+        </div>
+    </div>
+    <div class="veri-listesi" id="cevapsiz-sorgu-listesi">
+        <div class="iskelet-satiri"></div>
+        <div class="iskelet-satiri"></div>
+    </div>
+</section>
+{% endblock %}

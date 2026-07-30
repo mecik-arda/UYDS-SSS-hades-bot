@@ -2,13 +2,16 @@ import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from uygulama.api.bagimliliklar import api_servisini_al
+from uygulama.api.bagimliliklar import geri_bildirim_servisini_al
 from uygulama.cekirdek.guvenlik import KullaniciBilgisi, mevcut_kullaniciyi_al
 from uygulama.modeller.semalar import (
     GeriBildirimIstegi,
     GeriBildirimYaniti,
 )
-from uygulama.servisler.api_servisi import ApiServisi, ApiServisiHatasi
+from uygulama.servisler.geri_bildirim_servisi import (
+    GeriBildirimServisi,
+    GeriBildirimServisiHatasi,
+)
 
 router = APIRouter(prefix="/api/v1/geri-bildirim", tags=["Geri Bildirim"])
 
@@ -17,14 +20,14 @@ router = APIRouter(prefix="/api/v1/geri-bildirim", tags=["Geri Bildirim"])
 async def geri_bildirim_olustur(
     istek_govdesi: GeriBildirimIstegi,
     kullanici: KullaniciBilgisi = Depends(mevcut_kullaniciyi_al),
-    servis: ApiServisi = Depends(api_servisini_al),
+    servis: GeriBildirimServisi = Depends(geri_bildirim_servisini_al),
 ) -> GeriBildirimYaniti:
     try:
         geri_bildirim_id = await asyncio.to_thread(
             servis.geri_bildirim_kaydet,
             istek_govdesi,
         )
-    except ApiServisiHatasi as hata:
+    except GeriBildirimServisiHatasi as hata:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(hata),

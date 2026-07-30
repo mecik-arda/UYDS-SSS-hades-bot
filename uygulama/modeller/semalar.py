@@ -40,6 +40,7 @@ class GeriBildirimIstegi(BaseModel):
     verilen_cevap: str = Field(min_length=1, max_length=32768)
     puan: int = Field(..., ge=1, le=5)
     yorum: str | None = Field(default=None, max_length=2000)
+    secili_sss_id: int | None = Field(default=None, gt=0)
 
     @field_validator("kullanici_sorusu", "verilen_cevap", "yorum")
     @classmethod
@@ -54,8 +55,9 @@ class GeriBildirimYaniti(BaseModel):
 
 
 class YoneticiOnayIstegi(BaseModel):
-    geri_bildirim_id: int
+    geri_bildirim_id: int = Field(gt=0)
     islem: str = Field(..., pattern="^(ONAYLA|REDDET)$")
+    secili_sss_id: int | None = Field(default=None, gt=0)
 
 
 class YoneticiOnayYaniti(BaseModel):
@@ -143,10 +145,26 @@ class BekleyenGeriBildirim(BaseModel):
     yorum: str | None
     durum: str
     tarih: datetime
+    secili_sss_id: int | None = None
 
 
 class BekleyenGeriBildirimListesi(BaseModel):
     bildirimler: list[BekleyenGeriBildirim]
+    toplam: int
+    sayfalama: Sayfalama
+
+
+class CevapsizSorgu(BaseModel):
+    id: int
+    kullanici_sorusu: str
+    guven_skoru: float | None
+    cevaplandi_mi: bool
+    kullanici_adi: str | None
+    olusturulma_tarihi: datetime
+
+
+class CevapsizSorguListesi(BaseModel):
+    sorgular: list[CevapsizSorgu]
     toplam: int
     sayfalama: Sayfalama
 

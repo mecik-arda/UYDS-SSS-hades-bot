@@ -30,7 +30,8 @@ YENIDEN_SIRALAMA_MODEL_OZETI = (
 
 
 class YenidenSiralamaHatasi(RuntimeError):
-    pass
+    def __init__(self, mesaj: str) -> None:
+        super().__init__(mesaj)
 
 
 @runtime_checkable

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from uygulama.api.bagimliliklar import (
     api_servisini_al,
-    vektor_servisini_al,
+    geri_bildirim_servisini_al,
     yonetici_istek_imzasini_dogrula,
 )
 from uygulama.cekirdek.guvenlik import (
@@ -13,15 +13,44 @@ from uygulama.cekirdek.guvenlik import (
 )
 from uygulama.modeller.semalar import (
     BekleyenGeriBildirimListesi,
+    CevapsizSorguListesi,
     Sayfalama,
     YenidenIndekslemeYaniti,
     YoneticiOnayIstegi,
     YoneticiOnayYaniti,
 )
-from uygulama.servisler.api_servisi import ApiServisi, ApiServisiHatasi
-from uygulama.servisler.vektor_servisi import VektorServisi
+from uygulama.servisler.api_servisi import ApiServisi
+from uygulama.servisler.geri_bildirim_servisi import (
+    GeriBildirimServisi,
+    GeriBildirimServisiHatasi,
+)
 
 router = APIRouter(prefix="/api/v1/yonetici", tags=["Yönetici"])
+
+
+@router.get(
+    "/cevapsiz-sorgular",
+    response_model=CevapsizSorguListesi,
+)
+async def cevapsiz_sorgulari_listele(
+    sayfa: int = Query(default=1, ge=1),
+    sayfa_basina: int = Query(default=20, ge=1, le=100),
+    yonetici: KullaniciBilgisi = Depends(mevcut_yoneticiyi_al),
+    servis: ApiServisi = Depends(api_servisini_al),
+) -> CevapsizSorguListesi:
+    sorgular, toplam = await asyncio.to_thread(
+        servis.cevapsiz_sorgulari_listele,
+        sayfa,
+        sayfa_basina,
+    )
+    return CevapsizSorguListesi(
+        sorgular=sorgular,
+        toplam=toplam,
+        sayfalama=Sayfalama(
+            sayfa=sayfa,
+            sayfa_basina=sayfa_basina,
+        ),
+    )
 
 
 @router.get(
@@ -32,7 +61,7 @@ async def bekleyen_geri_bildirimleri_listele(
     sayfa: int = Query(default=1, ge=1),
     sayfa_basina: int = Query(default=20, ge=1, le=100),
     yonetici: KullaniciBilgisi = Depends(mevcut_yoneticiyi_al),
-    servis: ApiServisi = Depends(api_servisini_al),
+    servis: GeriBildirimServisi = Depends(geri_bildirim_servisini_al),
 ) -> BekleyenGeriBildirimListesi:
     bildirimler, toplam = await asyncio.to_thread(
         servis.bekleyen_geri_bildirimleri_listele,
@@ -55,15 +84,27 @@ async def geri_bildirim_durumunu_guncelle(
     yonetici: KullaniciBilgisi = Depends(
         yonetici_istek_imzasini_dogrula
     ),
-    servis: ApiServisi = Depends(api_servisini_al),
+    servis: GeriBildirimServisi = Depends(geri_bildirim_servisini_al),
 ) -> YoneticiOnayYaniti:
     try:
-        yeni_durum = await asyncio.to_thread(
-            servis.geri_bildirim_durumunu_guncelle,
-            istek_govdesi.geri_bildirim_id,
-            istek_govdesi.islem,
-        )
-    except ApiServisiHatasi as hata:
+        if istek_govdesi.islem == "ONAYLA":
+            sonuc = await asyncio.to_thread(
+                servis.geri_bildirimi_onayla,
+                istek_govdesi.geri_bildirim_id,
+                istek_govdesi.secili_sss_id,
+            )
+            yeni_durum = sonuc["yeni_durum"]
+            detay = (
+                f"geri_bildirim_id={istek_govdesi.geri_bildirim_id},"
+                f"alternatif_soru_id={sonuc.get('alternatif_soru_id')}"
+            )
+        else:
+            yeni_durum = await asyncio.to_thread(
+                servis.geri_bildirimi_reddet,
+                istek_govdesi.geri_bildirim_id,
+            )
+            detay = f"geri_bildirim_id={istek_govdesi.geri_bildirim_id}"
+    except GeriBildirimServisiHatasi as hata:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(hata),
@@ -72,10 +113,7 @@ async def geri_bildirim_durumunu_guncelle(
         servis.sistem_gunlugu_kaydet,
         yonetici.kullanici_adi,
         "GERI_BILDIRIM_DURUMU_GUNCELLENDI",
-        (
-            f"geri_bildirim_id={istek_govdesi.geri_bildirim_id},"
-            f"durum={yeni_durum}"
-        ),
+        f"{detay},durum={yeni_durum}",
     )
     return YoneticiOnayYaniti(
         id=istek_govdesi.geri_bildirim_id,
@@ -89,12 +127,10 @@ async def yeniden_indeksle(
     yonetici: KullaniciBilgisi = Depends(
         yonetici_istek_imzasini_dogrula
     ),
-    servis: ApiServisi = Depends(api_servisini_al),
-    vektor_servisi: VektorServisi = Depends(vektor_servisini_al),
+    servis: GeriBildirimServisi = Depends(geri_bildirim_servisini_al),
 ) -> YenidenIndekslemeYaniti:
     fts_sayisi, vektor_sonucu = await asyncio.to_thread(
         servis.fts_ve_vektorleri_yeniden_indeksle,
-        vektor_servisi,
     )
     await asyncio.to_thread(
         servis.sistem_gunlugu_kaydet,
@@ -109,5 +145,5 @@ async def yeniden_indeksle(
         fts_kayit_sayisi=fts_sayisi,
         vektor_toplam_parca=vektor_sonucu.toplam_aktif_parca,
         uretilen_vektor_sayisi=vektor_sonucu.uretilen_vektor_sayisi,
-        mesaj="FTS ve vektor indeksleri yenilendi",
+        mesaj="FTS ve vektor indeksleri alternatif sorularla birlikte yenilendi",
     )

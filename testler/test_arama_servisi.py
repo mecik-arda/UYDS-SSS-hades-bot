@@ -5,9 +5,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from uygulama.modeller.semalar import AramaSonucu
+from uygulama.modeller.semalar import AramaSonucu, GeriBildirimIstegi
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur
 from uygulama.servisler.arama_servisi import AramaServisi
+from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
 from uygulama.servisler.terim_haritasi import TerimHaritasi
 from uygulama.servisler.vektor_servisi import VektorServisi
 from uygulama.servisler.yeniden_siralayici import YenidenSiralamaHatasi
@@ -169,6 +170,36 @@ class TestAramaServisi:
         assert '"harcama belgesi"' in sonuc.genisletilmis_fts_sorgusu
         assert sonuc.genisletilen_terim_sayisi == 3
         assert sonuc.kullanilan_grup_sayisi == 1
+
+    def test_alternatif_soru_rrf_ile_birlestirilir_ve_tekillestirilir(
+        self,
+        dolu_veritabani,
+        harita,
+    ):
+        vektor_servisi = _SahteVektorServisi()
+        geri_bildirim_servisi = GeriBildirimServisi(vektor_servisi)
+        geri_bildirim_id = geri_bildirim_servisi.geri_bildirim_kaydet(
+            GeriBildirimIstegi(
+                sss_id=2,
+                kullanici_sorusu="Masraf belgesini nasil duzenlerim",
+                verilen_cevap="Yanlis cevap",
+                puan=1,
+                secili_sss_id=1,
+            )
+        )
+        geri_bildirim_servisi.geri_bildirimi_onayla(geri_bildirim_id)
+        servis = AramaServisi(
+            vektor_servisi,
+            harita,
+            geri_bildirim_servisi=geri_bildirim_servisi,
+        )
+        sonuc = servis.ara("Masraf belgesini nasil duzenlerim")
+        sss_kimlikleri = [aday.sss_id for aday in sonuc.adaylar]
+        assert sss_kimlikleri[0] == 1
+        assert len(sss_kimlikleri) == len(set(sss_kimlikleri))
+        assert sonuc.birlesik_aday_sayisi == len(sss_kimlikleri)
+        assert sonuc.adaylar[0].aday_metni != "Masraf belgesini nasil duzenlerim"
+        assert sonuc.adaylar[0].vektor_benzerlik_skoru == pytest.approx(1.0)
 
     def test_yeniden_siralayici_etkin_dali_sonucu_gunceller(
         self,

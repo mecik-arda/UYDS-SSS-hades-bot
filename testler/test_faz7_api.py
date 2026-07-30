@@ -13,6 +13,7 @@ from uygulama.api.bagimliliklar import (
     akis_semaforunu_al,
     akis_servisini_al,
     api_servisini_al,
+    geri_bildirim_servisini_al,
     oturum_hafizasini_al,
     oturum_sahipligi_servisini_al,
 )
@@ -33,6 +34,7 @@ from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur
 from uygulama.servisler.api_servisi import ApiServisi
+from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
 from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 from uygulama.servisler.oturum_sahipligi import OturumSahipligiServisi
 
@@ -48,7 +50,7 @@ class SahteAkisServisi:
 
 
 @pytest.fixture
-def faz7_istemcisi(tmp_path, monkeypatch):
+def faz7_istemcisi(tmp_path, monkeypatch, mock_vektor_servisi):
     monkeypatch.setattr(
         konfigurasyon,
         "VERITABANI_YOLU",
@@ -108,10 +110,14 @@ def faz7_istemcisi(tmp_path, monkeypatch):
     uygulama.include_router(yonetici_router)
     uygulama.include_router(analitik_router)
     api_servisi = ApiServisi()
+    geri_bildirim_servisi = GeriBildirimServisi(mock_vektor_servisi)
     sahiplik = OturumSahipligiServisi()
     hafiza = OturumHafizasi()
     uygulama.dependency_overrides[akis_servisini_al] = SahteAkisServisi
     uygulama.dependency_overrides[api_servisini_al] = lambda: api_servisi
+    uygulama.dependency_overrides[
+        geri_bildirim_servisini_al
+    ] = lambda: geri_bildirim_servisi
     uygulama.dependency_overrides[
         oturum_sahipligi_servisini_al
     ] = lambda: sahiplik
@@ -302,6 +308,7 @@ def test_geri_bildirim_analitik_ve_imzali_yonetici_onayi(
         {
             "geri_bildirim_id": geri_bildirim.json()["id"],
             "islem": "ONAYLA",
+            "secili_sss_id": 1,
         },
         separators=(",", ":"),
     ).encode("utf-8")
@@ -321,6 +328,17 @@ def test_geri_bildirim_analitik_ve_imzali_yonetici_onayi(
     )
     assert onay.status_code == 200
     assert onay.json()["yeni_durum"] == "ONAYLANDI"
+    with baglam_yoneticisi() as baglanti:
+        alternatif_soru = baglanti.execute(
+            """
+            SELECT sss_id, durum, model_adi, vektor_boyutu
+            FROM alternatif_sorular
+            """
+        ).fetchone()
+    assert alternatif_soru["sss_id"] == 1
+    assert alternatif_soru["durum"] == "onaylandi"
+    assert alternatif_soru["model_adi"]
+    assert alternatif_soru["vektor_boyutu"] == 384
 
     tekrar = faz7_istemcisi.post(
         yol,
@@ -335,6 +353,41 @@ def test_geri_bildirim_analitik_ve_imzali_yonetici_onayi(
     )
     assert analitik.status_code == 200
     assert analitik.json()["toplam_geri_bildirim_sayisi"] == 1
+
+
+def test_cevapsiz_sorgular_yalniz_yoneticiye_sayfalanir(
+    faz7_istemcisi,
+):
+    with baglam_yoneticisi() as baglanti:
+        baglanti.execute(
+            """
+            INSERT INTO asistan_sorgulari (
+                kullanici_sorusu,
+                guven_skoru,
+                cevaplandi_mi,
+                kullanici_adi
+            )
+            VALUES ('Cevapsiz sentetik soru', 0.2, 0, 'kullanici1')
+            """
+        )
+    kullanici = giris_yap(faz7_istemcisi, "kullanici1")
+    kullanici_yaniti = faz7_istemcisi.get(
+        "/api/v1/yonetici/cevapsiz-sorgular",
+        headers=yetki_basligi(kullanici["erisim_belirteci"]),
+    )
+    assert kullanici_yaniti.status_code == 403
+    yonetici = giris_yap(faz7_istemcisi, "yonetici")
+    yonetici_yaniti = faz7_istemcisi.get(
+        "/api/v1/yonetici/cevapsiz-sorgular",
+        params={"sayfa": 1, "sayfa_basina": 10},
+        headers=yetki_basligi(yonetici["erisim_belirteci"]),
+    )
+    assert yonetici_yaniti.status_code == 200
+    govde = yonetici_yaniti.json()
+    assert govde["toplam"] == 1
+    assert govde["sayfalama"] == {"sayfa": 1, "sayfa_basina": 10}
+    assert govde["sorgular"][0]["kullanici_sorusu"] == "Cevapsiz sentetik soru"
+    assert govde["sorgular"][0]["guven_skoru"] == pytest.approx(0.2)
 
 
 def test_dogrulama_hatasi_girdi_degerini_geri_yansitmaz(

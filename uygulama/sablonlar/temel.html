@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#e9edf2">
+    <title>{{ baslik }} | HadesBot</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/stil.css') }}">
+    <script src="{{ url_for('static', path='/js/uygulama.js') }}" defer></script>
+</head>
+<body data-sayfa="{{ sayfa }}">
+    <a class="atlama-baglantisi" href="#ana-icerik">Ana içeriğe geç</a>
+    <div class="uygulama-kabugu">
+        <aside class="yan-panel" id="yan-panel" aria-label="Ana navigasyon">
+            <div class="marka">
+                <span class="marka-isareti" aria-hidden="true">H</span>
+                <span>
+                    <strong>HadesBot</strong>
+                    <small>UYDS Bilgi Merkezi</small>
+                </span>
+            </div>
+            <nav class="navigasyon">
+                <a href="/" data-nav="sohbet">
+                    <span class="nav-isareti" aria-hidden="true">S</span>
+                    <span>Sohbet</span>
+                </a>
+                <a href="/yonetici" data-nav="yonetici" data-yonetici-ogesi>
+                    <span class="nav-isareti" aria-hidden="true">Y</span>
+                    <span>Yönetici</span>
+                </a>
+                <a href="/analitik" data-nav="analitik" data-yonetici-ogesi>
+                    <span class="nav-isareti" aria-hidden="true">A</span>
+                    <span>Analitik</span>
+                </a>
+                <button type="button" data-panel-ac="gecmis">
+                    <span class="nav-isareti" aria-hidden="true">G</span>
+                    <span>Geçmiş</span>
+                </button>
+                <button type="button" data-panel-ac="ayarlar">
+                    <span class="nav-isareti" aria-hidden="true">D</span>
+                    <span>Ayarlar</span>
+                </button>
+            </nav>
+            <div class="profil-karti">
+                <span class="profil-avatar" id="profil-avatar" aria-hidden="true">K</span>
+                <span class="profil-bilgisi">
+                    <strong id="profil-adi">Oturum kapalı</strong>
+                    <small id="profil-rolu">Giriş gerekli</small>
+                </span>
+                <button type="button" class="ikon-dugmesi" id="cikis-dugmesi" aria-label="Çıkış yap" hidden>Ç</button>
+            </div>
+        </aside>
+        <div class="sayfa-alani">
+            <header class="ust-cubuk">
+                <button type="button" class="mobil-menu" id="mobil-menu" aria-controls="yan-panel" aria-expanded="false">Menü</button>
+                <div>
+                    <p class="ust-etiket">UYDS Kurumsal Asistan</p>
+                    <h1>{{ baslik }}</h1>
+                </div>
+                <div class="sistem-durumu">
+                    <span class="durum-noktasi" id="durum-noktasi"></span>
+                    <span id="durum-metni">Sistem denetleniyor</span>
+                </div>
+            </header>
+            <div class="uyari-bandi" id="uyari-bandi" role="status" aria-live="polite">
+                <span class="uyari-isareti" aria-hidden="true">i</span>
+                <span id="uyari-metni">Güvenli bağlantı ve servis durumu denetleniyor.</span>
+                <button type="button" id="uyari-kapat" aria-label="Uyarıyı kapat">Kapat</button>
+            </div>
+            <main id="ana-icerik">
+                {% block icerik %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    <section class="yan-cekmece" id="gecmis-paneli" aria-labelledby="gecmis-basligi" hidden>
+        <div class="cekmece-basligi">
+            <div>
+                <p class="ust-etiket">Yerel oturum</p>
+                <h2 id="gecmis-basligi">Soru geçmişi</h2>
+            </div>
+            <button type="button" data-panel-kapat>Kap</button>
+        </div>
+        <div id="gecmis-listesi" class="gecmis-listesi"></div>
+    </section>
+    <section class="yan-cekmece" id="ayarlar-paneli" aria-labelledby="ayarlar-basligi" hidden>
+        <div class="cekmece-basligi">
+            <div>
+                <p class="ust-etiket">Görünüm</p>
+                <h2 id="ayarlar-basligi">Ayarlar</h2>
+            </div>
+            <button type="button" data-panel-kapat>Kap</button>
+        </div>
+        <label class="ayar-satiri">
+            <span>
+                <strong>Kompakt görünüm</strong>
+                <small>Daha yoğun bir çalışma alanı kullanır.</small>
+            </span>
+            <input type="checkbox" id="kompakt-gorunum">
+        </label>
+        <label class="ayar-satiri">
+            <span>
+                <strong>Hareketleri azalt</strong>
+                <small>Arayüz geçişlerini ve yazı efektini azaltır.</small>
+            </span>
+            <input type="checkbox" id="hareket-azalt">
+        </label>
+    </section>
+    <div class="cekmece-ortusu" id="cekmece-ortusu" hidden></div>
+    <dialog class="giris-penceresi" id="giris-penceresi">
+        <form method="dialog" id="giris-formu">
+            <div class="giris-markasi">
+                <span class="marka-isareti" aria-hidden="true">H</span>
+                <div>
+                    <p class="ust-etiket">Güvenli erişim</p>
+                    <h2>HadesBot'a giriş yapın</h2>
+                </div>
+            </div>
+            <p class="ikincil-metin">Kurumsal bilgi tabanına erişmek için kullanıcı bilgilerinizle oturum açın.</p>
+            <label>
+                <span>Kullanıcı adı</span>
+                <input name="kullanici_adi" autocomplete="username" maxlength="64" required>
+            </label>
+            <label>
+                <span>Şifre</span>
+                <input type="password" name="sifre" autocomplete="current-password" maxlength="128" required>
+            </label>
+            <p class="form-hatasi" id="giris-hatasi" role="alert"></p>
+            <button type="submit" class="birincil-dugme" id="giris-dugmesi">Giriş yap</button>
+        </form>
+    </dialog>
+    <div class="bildirim-alani" id="bildirim-alani" aria-live="polite"></div>
+</body>
+</html>

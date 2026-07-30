@@ -205,6 +205,44 @@ class ApiServisi:
             ],
         }
 
+    def cevapsiz_sorgulari_listele(
+        self,
+        sayfa: int,
+        sayfa_basina: int,
+    ) -> tuple[list[dict], int]:
+        with baglam_yoneticisi() as baglanti:
+            toplam = baglanti.execute(
+                """
+                SELECT COUNT(*)
+                FROM asistan_sorgulari
+                WHERE cevaplandi_mi = 0
+                    OR guven_skoru < ?
+                """,
+                (konfigurasyon.GUVEN_ESIGI,),
+            ).fetchone()[0]
+            satirlar = baglanti.execute(
+                """
+                SELECT
+                    id,
+                    kullanici_sorusu,
+                    guven_skoru,
+                    cevaplandi_mi,
+                    kullanici_adi,
+                    olusturulma_tarihi
+                FROM asistan_sorgulari
+                WHERE cevaplandi_mi = 0
+                    OR guven_skoru < ?
+                ORDER BY olusturulma_tarihi DESC, id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (
+                    konfigurasyon.GUVEN_ESIGI,
+                    sayfa_basina,
+                    (sayfa - 1) * sayfa_basina,
+                ),
+            ).fetchall()
+        return [dict(satir) for satir in satirlar], int(toplam)
+
     def gunluk_kota_kullanildi_mi(self, kullanici_adi: str) -> bool:
         bugun = datetime.now(timezone.utc).date().isoformat()
         with baglam_yoneticisi() as baglanti:

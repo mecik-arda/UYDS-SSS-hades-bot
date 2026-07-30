@@ -18,6 +18,7 @@ from uygulama.servisler.akis_servisi import AkisServisi
 from uygulama.servisler.api_servisi import ApiServisi
 from uygulama.servisler.arama_servisi import AramaServisi
 from uygulama.servisler.deepseek_servisi import DeepSeekServisi
+from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
 from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 from uygulama.servisler.oturum_sahipligi import OturumSahipligiServisi
 from uygulama.servisler.terim_haritasi import TerimHaritasi
@@ -56,6 +57,7 @@ def arama_servisini_al() -> AramaServisi:
         vektor_servisi=vektor_servisini_al(),
         terim_haritasi=TerimHaritasi(),
         yeniden_siralayici=yeniden_siralayiciyi_al(),
+        geri_bildirim_servisi=geri_bildirim_servisini_al(),
     )
 
 
@@ -84,6 +86,11 @@ def api_servisini_al() -> ApiServisi:
 
 
 @lru_cache
+def geri_bildirim_servisini_al() -> GeriBildirimServisi:
+    return GeriBildirimServisi(vektor_servisi=vektor_servisini_al())
+
+
+@lru_cache
 def akis_semaforunu_al() -> asyncio.Semaphore:
     return asyncio.Semaphore(konfigurasyon.ESZAMANLI_AKIS_MAKS_SAYI)
 
@@ -96,6 +103,7 @@ def bagimlilik_onbelleklerini_temizle() -> None:
     oturum_sahipligi_servisini_al.cache_clear()
     akis_servisini_al.cache_clear()
     api_servisini_al.cache_clear()
+    geri_bildirim_servisini_al.cache_clear()
     akis_semaforunu_al.cache_clear()
 
 

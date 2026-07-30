@@ -77,6 +77,12 @@ class Konfigurasyon(BaseSettings):
     FTS_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
     VEKTOR_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
     RRF_ADAY_SAYISI: int = Field(default=20, gt=0, le=100)
+    ALTERNATIF_SORU_ADAY_SAYISI: int = Field(default=5, gt=0, le=100)
+    ALTERNATIF_SORU_BENZERLIK_ESIGI: float = Field(
+        default=0.70,
+        ge=0,
+        le=1,
+    )
     YENIDEN_SIRALAMA_ETKIN: bool = Field(default=False)
     YENIDEN_SIRALAMA_MODEL_YOLU: str = Field(
         default="modeller/mmarco-mMiniLMv2-L12-H384-v1"

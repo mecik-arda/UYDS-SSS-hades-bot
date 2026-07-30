@@ -1,8 +1,11 @@
+from dataclasses import replace
 from time import perf_counter
 
 from uygulama.cekirdek.gunlukleyici import gunlukleyici
+from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 from uygulama.modeller.semalar import AramaAdayi, AramaSonucu
+from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
 from uygulama.servisler.hibrit_arama import HibritArama, _RrfSonucu
 from uygulama.servisler.sorgu_genisletici import SorguGenisletici
 from uygulama.servisler.terim_haritasi import TerimHaritasi
@@ -19,10 +22,13 @@ class AramaServisi:
         vektor_servisi: VektorServisi,
         terim_haritasi: TerimHaritasi,
         yeniden_siralayici: YenidenSiralayiciProtokolu | None = None,
+        geri_bildirim_servisi: GeriBildirimServisi | None = None,
     ) -> None:
         self._sorgu_genisletici = SorguGenisletici(terim_haritasi)
         self._hibrit_arama = HibritArama(vektor_servisi)
         self._yeniden_siralayici = yeniden_siralayici
+        self._geri_bildirim_servisi = geri_bildirim_servisi
+        self._vektor_servisi = vektor_servisi
 
     def ara(self, soru: str) -> AramaSonucu:
         baslangic = perf_counter()
@@ -30,6 +36,11 @@ class AramaServisi:
         fts_sonuclari = self._hibrit_arama.fts_ile_ara(genisletilmis.fts_sorgusu)
         vektor_sonuclari, gecersiz_vektor = self._hibrit_arama.vektor_ile_ara(soru)
         rrf_sonuclari = self._hibrit_arama.rrf_harmanla(fts_sonuclari, vektor_sonuclari)
+        alternatif_sonuclar = self._alternatif_sorulari_tara(soru)
+        rrf_sonuclari = self._alternatif_sonuclari_birlestir(
+            rrf_sonuclari,
+            alternatif_sonuclar,
+        )
         zenginlestirilmis = self._kaynak_ve_metin_ekle(rrf_sonuclari)
         yeniden_siralama_etkin = self._yeniden_siralayici is not None
         if yeniden_siralama_etkin:
@@ -66,7 +77,9 @@ class AramaServisi:
     ) -> list[AramaAdayi]:
         if not rrf_sonuclari:
             return []
-        sss_kimlikleri = [sonuc.sss_id for sonuc in rrf_sonuclari]
+        sss_kimlikleri = list(
+            dict.fromkeys(sonuc.sss_id for sonuc in rrf_sonuclari)
+        )
         with baglam_yoneticisi() as baglanti:
             baglanti.execute(
                 """
@@ -147,3 +160,80 @@ class AramaServisi:
         if kaynak.get("ilk_parca_metni"):
             return kaynak["ilk_parca_metni"]
         return f"{kaynak['soru']}\n{kaynak['cevap']}"
+
+    def _alternatif_sorulari_tara(
+        self,
+        soru: str,
+    ) -> list[_RrfSonucu]:
+        if self._geri_bildirim_servisi is None:
+            return []
+        try:
+            sorgu_vektoru = self._vektor_servisi.metni_vektore_donustur(soru)
+        except ValueError:
+            return []
+        alternatifler = self._geri_bildirim_servisi.alternatif_sorulari_ara(
+            sorgu_vektoru,
+            konfigurasyon.ALTERNATIF_SORU_ADAY_SAYISI,
+        )
+        sonuclar = []
+        islenen_sss_kimlikleri = set()
+        for sira, alt in enumerate(alternatifler, start=1):
+            if (
+                alt["benzerlik_skoru"]
+                < konfigurasyon.ALTERNATIF_SORU_BENZERLIK_ESIGI
+            ):
+                continue
+            if alt["sss_id"] in islenen_sss_kimlikleri:
+                continue
+            islenen_sss_kimlikleri.add(alt["sss_id"])
+            sonuclar.append(
+                _RrfSonucu(
+                    sss_id=alt["sss_id"],
+                    parca_id=None,
+                    parca_metni=None,
+                    fts_sirasi=None,
+                    vektor_sirasi=None,
+                    rrf_skoru=1.0 / (konfigurasyon.RRF_K + sira),
+                    vektor_benzerlik_skoru=alt["benzerlik_skoru"],
+                )
+            )
+        return sonuclar
+
+    def _alternatif_sonuclari_birlestir(
+        self,
+        rrf_sonuclari: list[_RrfSonucu],
+        alternatif_sonuclar: list[_RrfSonucu],
+    ) -> list[_RrfSonucu]:
+        birlesik = {sonuc.sss_id: sonuc for sonuc in rrf_sonuclari}
+        for alternatif in alternatif_sonuclar:
+            mevcut = birlesik.get(alternatif.sss_id)
+            if mevcut is None:
+                birlesik[alternatif.sss_id] = alternatif
+                continue
+            benzerlik_skorlari = [
+                skor
+                for skor in (
+                    mevcut.vektor_benzerlik_skoru,
+                    alternatif.vektor_benzerlik_skoru,
+                )
+                if skor is not None
+            ]
+            birlesik[alternatif.sss_id] = replace(
+                mevcut,
+                rrf_skoru=mevcut.rrf_skoru + alternatif.rrf_skoru,
+                vektor_benzerlik_skoru=(
+                    max(benzerlik_skorlari)
+                    if benzerlik_skorlari
+                    else None
+                ),
+            )
+        return sorted(
+            birlesik.values(),
+            key=lambda sonuc: (
+                -sonuc.rrf_skoru,
+                sonuc.fts_sirasi
+                if sonuc.fts_sirasi is not None
+                else 999999,
+                sonuc.sss_id,
+            ),
+        )[: konfigurasyon.RRF_ADAY_SAYISI]

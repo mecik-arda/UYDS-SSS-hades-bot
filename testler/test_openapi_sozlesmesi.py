@@ -13,6 +13,7 @@ def test_faz7_openapi_rota_sozlesmesi_sabit():
         "/api/v1/sss": {"get"},
         "/api/v1/geri-bildirim": {"post"},
         "/api/v1/yonetici/geri-bildirimler": {"get"},
+        "/api/v1/yonetici/cevapsiz-sorgular": {"get"},
         "/api/v1/yonetici/geri-bildirim/onay": {"post"},
         "/api/v1/yonetici/yeniden-indeksle": {"post"},
         "/api/v1/analitik": {"get"},

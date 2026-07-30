@@ -1,0 +1,59 @@
+{% extends "temel.html" %}
+{% block icerik %}
+<section class="sohbet-duzeni">
+    <div class="sohbet-paneli">
+        <div class="sohbet-basligi">
+            <div>
+                <p class="ust-etiket">Canlı bilgi tabanı</p>
+                <h2>Size nasıl yardımcı olabilirim?</h2>
+            </div>
+            <button type="button" class="ikincil-dugme" id="yeni-sohbet">Yeni sohbet</button>
+        </div>
+        <div class="mesaj-alani" id="mesaj-alani" aria-live="polite" aria-label="Sohbet mesajları">
+            <article class="mesaj asistan-mesaji karsilama-mesaji">
+                <span class="mesaj-avatar" aria-hidden="true">H</span>
+                <div class="mesaj-govdesi">
+                    <span class="mesaj-rolu">HadesBot</span>
+                    <p>UYDS süreçleri, modülleri ve sık sorulan sorular hakkında güvenilir kaynaklara dayalı yanıtlar sunabilirim.</p>
+                    <div class="hizli-sorular" aria-label="Örnek sorular">
+                        <button type="button" data-hizli-soru="UYDS üzerinde sık kullanılan işlemler nelerdir?">Sık kullanılan işlemler</button>
+                        <button type="button" data-hizli-soru="Bir belgeyi nasıl düzenleyebilirim?">Belge düzenleme</button>
+                        <button type="button" data-hizli-soru="Sistem modülleri hakkında bilgi verir misin?">Sistem modülleri</button>
+                    </div>
+                </div>
+            </article>
+        </div>
+        <form class="soru-formu" id="soru-formu">
+            <label class="ekran-okuyucu" for="soru-girdisi">Sorunuz</label>
+            <textarea id="soru-girdisi" name="soru" rows="1" maxlength="2000" placeholder="Sorunuzu yazın..." required></textarea>
+            <div class="girdi-alt-satiri">
+                <span><strong id="karakter-sayaci">0</strong>/2000</span>
+                <button type="submit" class="gonder-dugmesi" id="gonder-dugmesi">
+                    <span>Gönder</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+            </div>
+        </form>
+    </div>
+    <aside class="bilgi-paneli" aria-label="Oturum bilgileri">
+        <div class="bilgi-karti vurgu-karti">
+            <p class="ust-etiket">Yanıt güveni</p>
+            <div class="guven-gostergesi">
+                <strong id="guven-degeri">—</strong>
+                <span id="guven-etiketi">Henüz yanıt yok</span>
+            </div>
+            <div class="ilerleme-cizgisi"><span id="guven-cizgisi"></span></div>
+        </div>
+        <div class="bilgi-karti">
+            <p class="ust-etiket">Aktif kaynaklar</p>
+            <div class="kaynak-listesi" id="kaynak-listesi">
+                <p class="bos-durum">Yanıt üretildiğinde kullanılan kurumsal kaynaklar burada gösterilir.</p>
+            </div>
+        </div>
+        <div class="bilgi-karti">
+            <p class="ust-etiket">Gizlilik</p>
+            <p class="ikincil-metin">Sorularınız yalnızca yetkili kurumsal servislerle işlenir. Yanıtlarda doğrulanmış kaynak gösterimi zorunludur.</p>
+        </div>
+    </aside>
+</section>
+{% endblock %}
