@@ -15,7 +15,7 @@ def istemci(gecici_veritabani, mock_vektor_servisi):
     os.makedirs("veriler", exist_ok=True)
     if not os.path.exists("veriler/es_anlamlilar.json"):
         with open("veriler/es_anlamlilar.json", "w", encoding="utf-8") as f:
-            json.dump({}, f)
+            json.dump({"test": ["deneme"]}, f)
             
     from fastapi import FastAPI
     from slowapi import _rate_limit_exceeded_handler
