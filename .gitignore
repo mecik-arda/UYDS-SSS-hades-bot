@@ -23,3 +23,7 @@ venv/
 /kurallar.md
 /hata_duzeltme_kaydi.md
 /uygulama/varsayilanlar/es_anlamlilar.json
+
+# Test ve Benchmark Sonuçları
+test_sonucu.txt
+/testler/benchmark/raporlar/
