@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system uygulama_grubu && \
     useradd --system --no-create-home --gid uygulama_grubu uygulama_kullanicisi
 
