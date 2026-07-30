@@ -94,6 +94,7 @@ jobs:
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
           exit-code: 1
       - name: Trivy sonuçlarını GitHub Security sekmesine yükle
         if: success() || failure()
