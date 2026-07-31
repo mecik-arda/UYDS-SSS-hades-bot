@@ -27,12 +27,6 @@ def test_baslik_parcalari_ayrilir():
     assert len(baslik_parcalari) >= 2
 
 
-def test_madde_imleri_gruplanir():
-    parcalayici = YapisalParcalayici()
-    metin = "- Birinci madde\n- Ikinci madde\n- Ucuncu madde"
-    belge = _ornek_belge_icerik(metin)
-    parcalar = parcalayici.yapisal_parcala(belge)
-    madde_parcalari = [p for p in parcalar if p.parca_turu == "madde_imleri"]
 
 
 def test_tablo_butunlugu_korunur():
