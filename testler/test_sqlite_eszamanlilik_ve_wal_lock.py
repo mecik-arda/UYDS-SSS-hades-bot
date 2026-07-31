@@ -1,7 +1,5 @@
-import asyncio
 import concurrent.futures
 
-import pytest
 
 from uygulama.cekirdek.veritabani import baglam_yoneticisi, _baglanti_olustur_kilitliyken
 

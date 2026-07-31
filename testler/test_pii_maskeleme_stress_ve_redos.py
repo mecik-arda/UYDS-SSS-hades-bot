@@ -1,5 +1,4 @@
 import time
-import pytest
 from uygulama.servisler.pii_maskeleyici import PiiMaskeleyici
 
 

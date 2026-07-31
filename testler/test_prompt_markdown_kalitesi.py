@@ -1,4 +1,3 @@
-import pytest
 from uygulama.servisler.deepseek_servisi import _SISTEM_TALIMATI
 
 

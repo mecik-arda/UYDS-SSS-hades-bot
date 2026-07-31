@@ -1,5 +1,4 @@
 import asyncio
-import pytest
 from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 
 
