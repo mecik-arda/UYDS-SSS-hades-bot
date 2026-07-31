@@ -1,11 +1,7 @@
-import pytest
+from datetime import datetime, timezone
 
 from uygulama.servisler.belge_ayiklayici import BelgeIcerik
-from uygulama.servisler.yapisal_parcalayici import (
-    YapisalParca,
-    YapisalParcalayici,
-)
-from datetime import datetime, timezone
+from uygulama.servisler.yapisal_parcalayici import YapisalParcalayici
 
 
 def _ornek_belge_icerik(metin="", yetki=0):

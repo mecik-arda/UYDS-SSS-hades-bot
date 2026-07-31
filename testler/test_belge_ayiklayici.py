@@ -28,7 +28,7 @@ def test_dosya_bulunamadiginda_hata_verir():
 
 def test_docx_baslik_ve_madde_imi_ayiklar(tmp_path):
     ayiklayici = BelgeAyiklayici()
-    icerik = ayiklayici.docx_metin_ayikla("bos_degil.docx") if False else None
+    ayiklayici.docx_metin_ayikla("bos_degil.docx") if False else None
 
 
 def test_belge_icerik_sha256_hesaplanir(tmp_path):
