@@ -149,7 +149,6 @@ class BelgeAyiklayici:
         self,
         sayfa,
     ) -> list[list[list[str]]]:
-        import fitz
         motor_secimi = konfigurasyon.PDF_TABLO_MOTORU
         if motor_secimi == "ham_metin":
             return []

@@ -9,7 +9,6 @@ from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.servisler.belge_ayiklayici import (
     BelgeAyiklamaHatasi,
     BelgeAyiklayici,
-    BelgeIcerik,
 )
 
 
@@ -103,9 +102,6 @@ class SenkronizasyonMotoru:
             if d.strip()
         ]
         taranan = self.dizin_tara(dizinler)
-        plan = SenkronizasyonPlani(
-            yeni_dosyalar=taranan,
-        )
         sonuc = SenkronizasyonSonucu(
             baslangic_zamani=baslangic,
             bitis_zamani=datetime.now(timezone.utc),
