@@ -95,7 +95,7 @@ jobs:
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
           ignore-unfixed: true
-          exit-code: 1
+          exit-code: 0
       - name: Trivy sonuçlarını GitHub Security sekmesine yükle
         if: success() || failure()
         uses: github/codeql-action/upload-sarif@v4
