@@ -1,6 +1,6 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-[![Faz 1-12 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-12-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-12-dogrulama.yml)
+[![Faz 1-12 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-14-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-14-dogrulama.yml)
 [![CodeQL](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml)
 
 Sürüm 1.0.0 | Faz 1-13 tamamlandı | Geliştirme sürümü | MIT Lisansı
@@ -562,7 +562,7 @@ HadesBot/
 ├── .github/
 │   ├── workflows/
 │   │   ├── codeql.yml
-│   │   └── faz1-12-dogrulama.yml
+│   │   └── faz1-14-dogrulama.yml
 │   └── dependabot.yml
 ├── uygulama/
 │   ├── ana.py
