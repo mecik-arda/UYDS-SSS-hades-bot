@@ -248,6 +248,21 @@ function mesajiEkle(rol, metin = "") {
     return paragraf;
 }
 
+function eylemleriGoster(eylemler) {
+    const liste = document.getElementById("kaynak-listesi");
+    if (!eylemler.length) {
+        return;
+    }
+    eylemler.forEach((eylem) => {
+        const dugme = document.createElement("a");
+        dugme.className = `eylem-dugmesi ${eylem.buton_tipi === "yonetici" ? "yonetici-eylemi" : ""}`;
+        dugme.textContent = eylem.buton_metni;
+        dugme.href = eylem.hedef_url;
+        dugme.setAttribute("role", "button");
+        liste.append(dugme);
+    });
+}
+
 function kaynaklariGoster(kaynaklar) {
     const liste = document.getElementById("kaynak-listesi");
     liste.replaceChildren();
@@ -364,6 +379,13 @@ async function soruGonder(olay) {
                 if (veri.olay === "parca") {
                     cevap += String(veri.veri.metin || "");
                     cevapParagrafi.innerHTML = markdownDonustur(cevap);
+                }
+                if (veri.olay === "fallback") {
+                    cevapParagrafi.innerHTML = markdownDonustur(String(veri.veri.mesaj || ""));
+                    kaynaklariGoster(Array.isArray(veri.veri.kaynaklar) ? veri.veri.kaynaklar : []);
+                }
+                if (veri.olay === "eylem") {
+                    eylemleriGoster(Array.isArray(veri.veri.eylemler) ? veri.veri.eylemler : []);
                 }
                 if (veri.olay === "hata") {
                     throw new Error(String(veri.veri.mesaj || "Yanıt üretilemedi"));
