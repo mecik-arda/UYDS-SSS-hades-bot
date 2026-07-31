@@ -685,7 +685,7 @@ function geriBildirimCubugunuGoster(cevapParagrafi, cevaplandi) {
                     sss_id: Durum.sonKaynaklar.length > 0 ? Durum.sonKaynaklar[0].sss_id : null,
                     kullanici_sorusu: Durum.sonSoru,
                     verilen_cevap: Durum.sonCevap,
-                    puan: 1,
+                    puan: 5,
                     yorum: "Kullanici tarafindan yararli bulundu"
                 })
             });

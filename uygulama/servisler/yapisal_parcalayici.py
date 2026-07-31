@@ -114,7 +114,7 @@ class YapisalParcalayici:
                     )
                 )
                 continue
-            if re.match(r"^[\-\*••]\s", temiz):
+            if re.match(r"^[\-\*•]\s", temiz):
                 madde_imleri_grubu.append(
                     temiz.lstrip("-*•" + "•" + " ").strip()
                 )
