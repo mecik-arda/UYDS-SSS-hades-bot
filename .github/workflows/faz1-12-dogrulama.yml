@@ -43,7 +43,7 @@ jobs:
           ruff check uygulama testler
           bandit -r uygulama -q
       - name: Testleri çalıştır
-        run: python -m pytest -q --cov=uygulama --cov-report=term --cov-report=xml --ignore=testler/test_guvenlik_header_ve_cors_izolasyon.py --ignore=testler/test_llm_api_cokme_ve_fallback.py -k "not test_hizli_istekler_429_dondurur"
+        run: python -m pytest -q --cov=uygulama --cov-report=term --cov-report=xml -k "not test_hizli_istekler_429_dondurur"
       - name: Bağımlılık zafiyetlerini denetle
         run: python -m pip_audit
 

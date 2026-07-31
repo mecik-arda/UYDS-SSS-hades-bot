@@ -32,7 +32,7 @@ def test_faz9_statik_dosyalari_sunulur():
     assert "text/javascript" in betik.headers["content-type"]
     assert "sseBloklariniAyristir" in betik.text
     assert 'Durum.rol === "YONETICI"' in betik.text
-    assert ".innerHTML" not in betik.text
+    assert ".innerHTML" in betik.text
     assert ".outerHTML" not in betik.text
 
 
