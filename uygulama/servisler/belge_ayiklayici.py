@@ -180,10 +180,6 @@ class BelgeAyiklayici:
         self,
         sayfa,
     ) -> list[list[list[str]]]:
-        try:
-            import pdfplumber
-        except ImportError:
-            return []
         return []
 
     def docx_metin_ayikla(
