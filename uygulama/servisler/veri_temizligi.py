@@ -41,7 +41,7 @@ class VeriTemizligi:
                     baglanti.execute("BEGIN IMMEDIATE")
                     yer_tutucular = ",".join("?" * len(silinecekler))
                     baglanti.execute(
-                        f"DELETE FROM asistan_sorgulari WHERE id IN ({yer_tutucular})",
+                        f"DELETE FROM asistan_sorgulari WHERE id IN ({yer_tutucular})",  # nosec B608
                         silinecekler,
                     )
                     baglanti.commit()
