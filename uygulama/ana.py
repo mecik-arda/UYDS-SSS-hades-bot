@@ -40,6 +40,7 @@ from uygulama.cekirdek.veritabani import (
     veritabani_hazirligini_denetle,
     veritabanini_sifrele,
 )
+from uygulama.servisler.eposta_raporlayici import EpostaRaporlayici
 from uygulama.servisler.veri_temizligi import VeriTemizligi
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
 
@@ -88,6 +89,7 @@ async def uygulama_omru(uygulama: FastAPI):
     gunlukleyici.info("UYDS Asistani baslatiliyor")
     bakim_gorevi = None
     temizlik_gorevi = None
+    rapor_gorevi = None
     bakim_durdurma_olayi = asyncio.Event()
     try:
         tek_worker_dagitimini_dogrula(
@@ -110,6 +112,8 @@ async def uygulama_omru(uygulama: FastAPI):
         )
         veri_temizligi = VeriTemizligi()
         temizlik_gorevi = veri_temizligi.periyodik_temizlik_baslat()
+        eposta_raporlayici = EpostaRaporlayici()
+        rapor_gorevi = eposta_raporlayici.periyodik_raporlama_baslat()
         gunlukleyici.info("Veritabani baslatma islemleri tamamlandi")
     except Exception as hata:
         gunlukleyici.error(
@@ -128,6 +132,12 @@ async def uygulama_omru(uygulama: FastAPI):
             temizlik_gorevi.cancel()
             try:
                 await temizlik_gorevi
+            except asyncio.CancelledError:
+                pass
+        if rapor_gorevi is not None:
+            rapor_gorevi.cancel()
+            try:
+                await rapor_gorevi
             except asyncio.CancelledError:
                 pass
         bagimlilik_onbelleklerini_temizle()

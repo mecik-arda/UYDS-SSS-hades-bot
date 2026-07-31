@@ -110,6 +110,15 @@ class Konfigurasyon(BaseSettings):
     NIYET_SINIFLANDIRMA_AKTIF: bool = Field(default=True)
     NIYET_GUVEN_ESIGI: float = Field(default=0.80, ge=0, le=1)
     NIYET_EYLEMLERI_YOLU: str = Field(default="veriler/niyet_eylemleri.json")
+    EPOSTA_RAPORLAMA_AKTIF: bool = Field(default=False)
+    EPOSTA_SMTP_SUNUCU: str = Field(default="smtp.kurum.gov.tr")
+    EPOSTA_SMTP_PORT: int = Field(default=587, ge=1, le=65535)
+    EPOSTA_TLS_KULLAN: bool = Field(default=True)
+    EPOSTA_KULLANICI: str = Field(default="")
+    EPOSTA_SIFRE: str = Field(default="")
+    EPOSTA_ALICI: str = Field(default="")
+    EPOSTA_RAPOR_GUNU: str = Field(default="pazartesi")
+    EPOSTA_RAPOR_SAATI: str = Field(default="09:00")
 
     model_config = SettingsConfigDict(
         env_file=".env",
