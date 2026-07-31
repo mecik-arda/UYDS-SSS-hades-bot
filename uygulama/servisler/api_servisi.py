@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
+from uygulama.servisler.pii_maskeleyici import PiiMaskeleyici
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 from uygulama.modeller.semalar import GeriBildirimIstegi
 from uygulama.servisler.vektor_servisi import VektorServisi
@@ -189,6 +190,10 @@ class ApiServisi:
                 LIMIT 20
                 """
             ).fetchall()
+        cevapsiz_listesi = [dict(satir) for satir in cevapsizlar]
+        if konfigurasyon.KULLANICI_SORULARINI_GIZLE:
+            for cevapsiz_kayit in cevapsiz_listesi:
+                cevapsiz_kayit["kullanici_sorusu"] = "[GIZLI]"
         return {
             "toplam_soru_sayisi": toplam_soru,
             "toplam_geri_bildirim_sayisi": geri_bildirim_ozeti["toplam"],
@@ -200,9 +205,7 @@ class ApiServisi:
             "en_cok_sorulan_kategoriler": [
                 dict(satir) for satir in kategoriler
             ],
-            "cevapsiz_kalan_sorular": [
-                dict(satir) for satir in cevapsizlar
-            ],
+            "cevapsiz_kalan_sorular": cevapsiz_listesi,
         }
 
     def cevapsiz_sorgulari_listele(
@@ -241,7 +244,11 @@ class ApiServisi:
                     (sayfa - 1) * sayfa_basina,
                 ),
             ).fetchall()
-        return [dict(satir) for satir in satirlar], int(toplam)
+        sonuclar = [dict(satir) for satir in satirlar]
+        if konfigurasyon.KULLANICI_SORULARINI_GIZLE:
+            for kayit in sonuclar:
+                kayit["kullanici_sorusu"] = "[GIZLI]"
+        return sonuclar, int(toplam)
 
     def gunluk_kota_kullanildi_mi(self, kullanici_adi: str) -> bool:
         bugun = datetime.now(timezone.utc).date().isoformat()
@@ -267,6 +274,9 @@ class ApiServisi:
         cevaplandi_mi: bool,
         kaynak_sss_idleri: list[int],
     ) -> None:
+        maskeli_soru = soru
+        if konfigurasyon.PII_MASKELEME_AKTIF:
+            maskeli_soru = PiiMaskeleyici.tumunu_maskele(soru)
         with baglam_yoneticisi() as baglanti:
             baglanti.execute(
                 """
@@ -285,7 +295,7 @@ class ApiServisi:
                 """,
                 (
                     oturum_id,
-                    soru,
+                    maskeli_soru,
                     cevap,
                     guven_skoru,
                     int(cevaplandi_mi),

@@ -40,6 +40,7 @@ from uygulama.cekirdek.veritabani import (
     veritabani_hazirligini_denetle,
     veritabanini_sifrele,
 )
+from uygulama.servisler.veri_temizligi import VeriTemizligi
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
 
 
@@ -86,23 +87,29 @@ async def periyodik_guvenlik_bakimini_calistir(
 async def uygulama_omru(uygulama: FastAPI):
     gunlukleyici.info("UYDS Asistani baslatiliyor")
     bakim_gorevi = None
+    temizlik_gorevi = None
     bakim_durdurma_olayi = asyncio.Event()
     try:
         tek_worker_dagitimini_dogrula(
             konfigurasyon.UYGULAMA_WORKER_SAYISI
         )
-        tablolari_olustur()
+        await asyncio.to_thread(tablolari_olustur)
         await guvenlik_bakimini_yurut()
         varsayilan_yonetici_sifre_hash = await asyncio.to_thread(
             sifre_hash_olustur,
             konfigurasyon.VARSAYILAN_YONETICI_SIFRESI,
         )
-        varsayilan_yonetici_olustur(varsayilan_yonetici_sifre_hash)
+        await asyncio.to_thread(
+            varsayilan_yonetici_olustur,
+            varsayilan_yonetici_sifre_hash,
+        )
         bakim_gorevi = asyncio.create_task(
             periyodik_guvenlik_bakimini_calistir(
                 bakim_durdurma_olayi
             )
         )
+        veri_temizligi = VeriTemizligi()
+        temizlik_gorevi = veri_temizligi.periyodik_temizlik_baslat()
         gunlukleyici.info("Veritabani baslatma islemleri tamamlandi")
     except Exception as hata:
         gunlukleyici.error(
@@ -117,6 +124,12 @@ async def uygulama_omru(uygulama: FastAPI):
         if bakim_gorevi is not None:
             bakim_durdurma_olayi.set()
             await bakim_gorevi
+        if temizlik_gorevi is not None:
+            temizlik_gorevi.cancel()
+            try:
+                await temizlik_gorevi
+            except asyncio.CancelledError:
+                pass
         bagimlilik_onbelleklerini_temizle()
         await asyncio.to_thread(veritabanini_sifrele)
 

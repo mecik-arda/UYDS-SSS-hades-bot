@@ -16,6 +16,11 @@ _HASSAS_KELIME_KALIPLARI = [
     (r'(Authorization:\s*Bearer\s+)(\S+)', r'\1[GIZLI]'),
     (r'(DEEPSEEK_API_ANAHTARI\s*=\s*)(\S+)', r'\1[GIZLI]'),
     (r'(JWT_GIZLI_ANAHTARI\s*=\s*)(\S+)', r'\1[GIZLI]'),
+    (r'\b[1-9]\d{10}\b', '[TC_KIMLIK_GIZLI]'),
+    (r'\bTR\d{24}\b', '[IBAN_GIZLI]'),
+    (r'\b05\d{9}\b', '[TELEFON_GIZLI]'),
+    (r'\b\d{16}\b', '[KREDI_KARTI_GIZLI]'),
+    (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EPOSTA_GIZLI]'),
 ]
 
 

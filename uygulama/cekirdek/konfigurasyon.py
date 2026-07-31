@@ -100,6 +100,12 @@ class Konfigurasyon(BaseSettings):
     FTS_HARICI_KOD_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
     FTS_MODUL_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
     FTS_ARAMA_METNI_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
+    VERI_SAKLAMA_SURESI_AY: int = Field(default=6, gt=0, le=120)
+    VERI_TEMIZLIK_AKTIF: bool = Field(default=True)
+    VERI_TEMIZLIK_SAATI: str = Field(default="02:00", min_length=1, max_length=5)
+    VERI_TEMIZLIK_PARTI_BOYUTU: int = Field(default=1000, gt=0, le=10000)
+    PII_MASKELEME_AKTIF: bool = Field(default=True)
+    KULLANICI_SORULARINI_GIZLE: bool = Field(default=False)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -120,7 +126,8 @@ class Konfigurasyon(BaseSettings):
     @classmethod
     def yonetici_sifresini_dogrula(cls, deger: str) -> str:
         kucuk_deger = deger.lower()
-        if kucuk_deger == "yonetici123" or "buraya_yazin" in kucuk_deger:
+        yasakli_parcalar = ("yonetici123", "buraya_yazin")
+        if any(parca in kucuk_deger for parca in yasakli_parcalar):
             raise ValueError("Varsayilan yonetici sifresi guclu ve benzersiz olmalidir")
         return deger
 

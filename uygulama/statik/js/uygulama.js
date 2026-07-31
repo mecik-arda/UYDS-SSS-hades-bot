@@ -29,6 +29,22 @@ const Elemanlar = {
     cekmeceOrtusu: document.getElementById("cekmece-ortusu")
 };
 
+function markdownDonustur(metin) {
+    if (!metin) {
+        return "";
+    }
+    let temiz = metin;
+    temiz = temiz.replace(/&/g, "&");
+    temiz = temiz.replace(/</g, "<");
+    temiz = temiz.replace(/>/g, ">");
+    temiz = temiz.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    temiz = temiz.replace(/^\* (.*$)/gim, "<li>$1</li>");
+    temiz = temiz.replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>");
+    temiz = temiz.replace(/\[Kaynak (\d+)\]/g, '<span class="kaynak-rozet">Kaynak $1</span>');
+    temiz = temiz.replace(/\n/g, "<br>");
+    return temiz;
+}
+
 function metinElemani(etiket, sinifAdi, metin) {
     const eleman = document.createElement(etiket);
     if (sinifAdi) {
@@ -347,7 +363,7 @@ async function soruGonder(olay) {
                 }
                 if (veri.olay === "parca") {
                     cevap += String(veri.veri.metin || "");
-                    cevapParagrafi.textContent = cevap;
+                    cevapParagrafi.innerHTML = markdownDonustur(cevap);
                 }
                 if (veri.olay === "hata") {
                     throw new Error(String(veri.veri.mesaj || "Yanıt üretilemedi"));

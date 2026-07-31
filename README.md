@@ -3,13 +3,13 @@
 [![Faz 1-10 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-10-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-10-dogrulama.yml)
 [![CodeQL](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml)
 
-Sürüm 1.0.0 | Faz 1-10 kapsamı tamamlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-12 tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlayan, anlamsal olarak aranabilir hale getiren ve kaynak kontrollü yanıt üreten kurumsal bir destek asistanı olarak geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını, kimlik doğrulamalı API rotalarını, yönetici onaylı alternatif soru öğrenme döngüsünü ve responsive kurumsal web arayüzünü içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe retrieval benchmarkı ve kaynak ölçümü sonucuna bağlıdır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını, kimlik doğrulamalı API rotalarını, yönetici onaylı alternatif soru öğrenme döngüsünü, responsive kurumsal web arayüzünü, PII maskeleme ve veri saklama süresi temizliğini (Faz 12) içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe retrieval benchmarkı ve kaynak ölçümü sonucuna bağlıdır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -23,8 +23,8 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Tamamlandı |
 | Faz 9 | Kurumsal web arayüzü | Tamamlandı |
 | Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | Tamamlandı; Yargu ve Yggdrasil ile 25/25 benchmark ve 119/119 sızma testi başarıyla geçildi |
-| Faz 11 | Yapay Zeka Yanıt Kalitesi ve "Prompt" Optimizasyonu | Planlandı |
-| Faz 12 | Veri Gizliliği ve Analitik Kayıt Yönetimi | Planlandı |
+| Faz 11 | Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu (Gelecek Vizyonu) | Mimari tasarım dokümanı hazır; detaylar için `FAZ11_MIMARI_VIZYON.md` |
+| Faz 12 | Veri Gizliliği ve Analitik Kayıt Yönetimi | Tamamlandı; PII maskeleme, otomatik veri temizliği, yönetici gizlilik kontrolü |
 | Faz 13 | Gelişmiş Kurumsal Yetenekler ve Hata Toleransı | Planlandı |
 
 ## Veri Gizliliği

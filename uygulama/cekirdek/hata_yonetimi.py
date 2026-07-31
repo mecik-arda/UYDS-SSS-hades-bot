@@ -66,11 +66,10 @@ async def beklenmeyen_hata_yanitla(
     hata: Exception,
 ) -> JSONResponse:
     istek_kimligi = _istek_kimligini_al(istek)
-    gunlukleyici.error(
-        "Beklenmeyen API hatasi: istek_kimligi=%s, yol=%s, tur=%s",
+    gunlukleyici.exception(
+        "Beklenmeyen API hatasi: istek_kimligi=%s, yol=%s",
         istek_kimligi,
         istek.url.path,
-        type(hata).__name__,
     )
     return JSONResponse(
         status_code=500,
