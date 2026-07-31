@@ -387,6 +387,11 @@ async function soruGonder(olay) {
                 if (veri.olay === "eylem") {
                     eylemleriGoster(Array.isArray(veri.veri.eylemler) ? veri.veri.eylemler : []);
                 }
+                if (veri.olay === "tamamlandi") {
+                    Durum.sonCevap = cevapParagrafi.textContent;
+                    gecmiseEkle(soru, Durum.sonCevap);
+                    geriBildirimCubugunuGoster(cevapParagrafi, Boolean(veri.veri.cevaplandi));
+                }
                 if (veri.olay === "hata") {
                     throw new Error(String(veri.veri.mesaj || "Yanıt üretilemedi"));
                 }
@@ -643,6 +648,85 @@ function ayarlariHazirla() {
         localStorage.setItem("hadesbot_hareket_azalt", hareket.checked ? "1" : "0");
         Elemanlar.govde.classList.toggle("hareket-azalt", hareket.checked);
     });
+}
+
+function yildizlariOlustur(puan) {
+    let yildizlar = "";
+    for (let i = 1; i <= 5; i++) {
+        yildizlar += `<button class="yildiz-dugmesi ${i <= puan ? "dolu" : "bos"}" data-puan="${i}" aria-label="${i} yildiz">${i <= puan ? "★" : "☆"}</button>`;
+    }
+    return yildizlar;
+}
+
+function geriBildirimCubugunuGoster(cevapParagrafi, cevaplandi) {
+    const cubuk = document.createElement("div");
+    cubuk.className = "geri-bildirim-cubugu";
+    const puanMetni = metinElemani("span", "", "Bu yanit yararli oldu mu? ");
+    const evetDugmesi = document.createElement("button");
+    evetDugmesi.textContent = "Evet";
+    evetDugmesi.className = "geri-bildirim-dugmesi";
+    const hayirDugmesi = document.createElement("button");
+    hayirDugmesi.textContent = "Hayir";
+    hayirDugmesi.className = "geri-bildirim-dugmesi";
+    const puanGrubu = document.createElement("div");
+    puanGrubu.className = "yildiz-grubu";
+    puanGrubu.hidden = true;
+    puanGrubu.innerHTML = yildizlariOlustur(0);
+    const gonderDugmesi = document.createElement("button");
+    gonderDugmesi.textContent = "Gonder";
+    gonderDugmesi.className = "geri-bildirim-dugmesi";
+    gonderDugmesi.hidden = true;
+    let seciliPuan = 0;
+    evetDugmesi.addEventListener("click", async () => {
+        try {
+            await jsonIstegi("/api/v1/geri-bildirim", {
+                method: "POST",
+                body: JSON.stringify({
+                    sss_id: Durum.sonKaynaklar.length > 0 ? Durum.sonKaynaklar[0].sss_id : null,
+                    kullanici_sorusu: Durum.sonSoru,
+                    verilen_cevap: Durum.sonCevap,
+                    puan: 1,
+                    yorum: "Kullanici tarafindan yararli bulundu"
+                })
+            });
+            cubuk.replaceChildren(metinElemani("span", "", "Geri bildiriminiz alindi."));
+        } catch {
+            bildirimGoster("Geri bildirim gonderilemedi", "hata");
+        }
+    });
+    hayirDugmesi.addEventListener("click", () => {
+        puanGrubu.hidden = false;
+        gonderDugmesi.hidden = false;
+        evetDugmesi.disabled = true;
+        hayirDugmesi.disabled = true;
+    });
+    puanGrubu.addEventListener("click", (olay) => {
+        const dugme = olay.target.closest(".yildiz-dugmesi");
+        if (!dugme) {
+            return;
+        }
+        seciliPuan = Number(dugme.dataset.puan);
+        puanGrubu.innerHTML = yildizlariOlustur(seciliPuan);
+    });
+    gonderDugmesi.addEventListener("click", async () => {
+        try {
+            await jsonIstegi("/api/v1/geri-bildirim", {
+                method: "POST",
+                body: JSON.stringify({
+                    sss_id: Durum.sonKaynaklar.length > 0 ? Durum.sonKaynaklar[0].sss_id : null,
+                    kullanici_sorusu: Durum.sonSoru,
+                    verilen_cevap: Durum.sonCevap,
+                    puan: seciliPuan || 1,
+                    yorum: "Kullanici tarafindan yararsiz bulundu"
+                })
+            });
+            cubuk.replaceChildren(metinElemani("span", "", "Geri bildiriminiz alindi."));
+        } catch {
+            bildirimGoster("Geri bildirim gonderilemedi", "hata");
+        }
+    });
+    cubuk.append(puanMetni, evetDugmesi, hayirDugmesi, puanGrubu, gonderDugmesi);
+    cevapParagrafi.closest(".mesaj-govdesi").append(cubuk);
 }
 
 function temelEtkilesimleriHazirla() {
