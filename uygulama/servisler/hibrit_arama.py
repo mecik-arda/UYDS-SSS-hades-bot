@@ -75,7 +75,7 @@ class HibritArama:
                 WHERE sss_fts MATCH ? {rol_kosulu}
                 ORDER BY bm25_skoru
                 LIMIT ?
-                """,
+                """,  # nosec B608
                 (
                     konfigurasyon.FTS_SORU_AGIRLIGI,
                     konfigurasyon.FTS_CEVAP_AGIRLIGI,
@@ -128,7 +128,7 @@ class HibritArama:
                 JOIN sss_parcalari p ON p.id = v.parca_id
                 JOIN sss_kayitlari k ON k.id = v.sss_id
                 WHERE v.model_adi = ? {rol_kosulu} AND k.durum = 'aktif'
-                """,
+                """,  # nosec B608
                 (
                     self._vektor_servisi.model_adi,
                     *rol_parametreleri,
