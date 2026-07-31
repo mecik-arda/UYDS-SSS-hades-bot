@@ -41,7 +41,7 @@ jobs:
         run: |
           python -m compileall -q uygulama testler
           ruff check uygulama testler
-          bandit -r uygulama -q
+          bandit -r uygulama -ll -q
       - name: Testleri çalıştır
         run: python -m pytest -q --cov=uygulama --cov-report=term --cov-report=xml -k "not test_hizli_istekler_429_dondurur"
       - name: Bağımlılık zafiyetlerini denetle

@@ -396,8 +396,11 @@ class BelgeAyiklayici:
             )
             if meta and meta.get("content"):
                 return int(meta["content"])
-        except Exception:
-            pass
+        except Exception as hata:
+            gunlukleyici.warning(
+                "HTML yetki okuma hatasi: %s",
+                type(hata).__name__,
+            )
         return varsayilan
 
     def _docx_yetki_oku(
@@ -415,6 +418,9 @@ class BelgeAyiklayici:
                 )
                 if deger is not None:
                     return int(deger)
-        except Exception:
-            pass
+        except Exception as hata:
+            gunlukleyici.warning(
+                "DOCX yetki okuma hatasi: %s",
+                type(hata).__name__,
+            )
         return varsayilan
