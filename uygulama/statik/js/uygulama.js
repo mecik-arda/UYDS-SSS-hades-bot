@@ -661,7 +661,7 @@ function yildizlariOlustur(puan) {
 function geriBildirimCubugunuGoster(cevapParagrafi, cevaplandi) {
     const cubuk = document.createElement("div");
     cubuk.className = "geri-bildirim-cubugu";
-    const puanMetni = metinElemani("span", "", "Bu yanit yararli oldu mu? ");
+    const puanMetni = metinElemani("span", "", "Bu cevap faydali oldu mu? ");
     const evetDugmesi = document.createElement("button");
     evetDugmesi.textContent = "Evet";
     evetDugmesi.className = "geri-bildirim-dugmesi";
