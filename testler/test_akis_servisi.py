@@ -45,7 +45,11 @@ class SahteAramaServisi:
     def __init__(self, sonuc: AramaSonucu) -> None:
         self.sonuc = sonuc
 
-    def ara(self, soru: str) -> AramaSonucu:
+    def ara(
+        self,
+        soru: str,
+        kullanici_rolu: str | None = None,
+    ) -> AramaSonucu:
         return self.sonuc
 
 
@@ -191,9 +195,11 @@ class TestAkisServisi:
 
         assert [olayi_ayristir(olay)[0] for olay in olaylar] == [
             "meta",
-            "hata",
+            "fallback",
+            "tamamlandi",
         ]
-        assert mesajlar == ()
+        fallback_verisi = olayi_ayristir(olaylar[1])[1]
+        assert "kaynaklar" in fallback_verisi
         assert "Test hatasi" not in olaylar[-1]
 
     def test_sse_verisi_satir_enjeksiyonuna_karsi_jsonlanir(self):

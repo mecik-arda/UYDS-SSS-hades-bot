@@ -1,5 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["testler"]
+addopts = "-p no:cacheprovider"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]

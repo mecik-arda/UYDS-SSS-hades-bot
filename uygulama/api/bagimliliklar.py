@@ -19,6 +19,7 @@ from uygulama.servisler.api_servisi import ApiServisi
 from uygulama.servisler.arama_servisi import AramaServisi
 from uygulama.servisler.deepseek_servisi import DeepSeekServisi
 from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
+from uygulama.servisler.niyet_siniflandirici import NiyetSiniflandirici
 from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 from uygulama.servisler.oturum_sahipligi import OturumSahipligiServisi
 from uygulama.servisler.terim_haritasi import TerimHaritasi
@@ -72,11 +73,19 @@ def oturum_sahipligi_servisini_al() -> OturumSahipligiServisi:
 
 
 @lru_cache
+def niyet_siniflandiriciyi_al() -> NiyetSiniflandirici | None:
+    if not konfigurasyon.NIYET_SINIFLANDIRMA_AKTIF:
+        return None
+    return NiyetSiniflandirici()
+
+
+@lru_cache
 def akis_servisini_al() -> AkisServisi:
     return AkisServisi(
         arama_servisi=arama_servisini_al(),
         deepseek_servisi=DeepSeekServisi(),
         oturum_hafizasi=oturum_hafizasini_al(),
+        niyet_siniflandirici=niyet_siniflandiriciyi_al(),
     )
 
 
@@ -101,6 +110,7 @@ def bagimlilik_onbelleklerini_temizle() -> None:
     arama_servisini_al.cache_clear()
     oturum_hafizasini_al.cache_clear()
     oturum_sahipligi_servisini_al.cache_clear()
+    niyet_siniflandiriciyi_al.cache_clear()
     akis_servisini_al.cache_clear()
     api_servisini_al.cache_clear()
     geri_bildirim_servisini_al.cache_clear()

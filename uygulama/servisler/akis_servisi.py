@@ -6,6 +6,7 @@ from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.modeller.semalar import AramaAdayi
 from uygulama.servisler.arama_servisi import AramaServisi
 from uygulama.servisler.deepseek_servisi import DeepSeekServisi, DeepSeekServisiHatasi
+from uygulama.servisler.niyet_siniflandirici import NiyetSiniflandirici
 from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 
 _YETERSIZ_BILGI_YANITI = (
@@ -20,15 +21,18 @@ class AkisServisi:
         arama_servisi: AramaServisi,
         deepseek_servisi: DeepSeekServisi,
         oturum_hafizasi: OturumHafizasi,
+        niyet_siniflandirici: NiyetSiniflandirici | None = None,
     ) -> None:
         self._arama_servisi = arama_servisi
         self._deepseek_servisi = deepseek_servisi
         self._oturum_hafizasi = oturum_hafizasi
+        self._niyet_siniflandirici = niyet_siniflandirici
 
     async def yanit_akisini_uret(
         self,
         soru: str,
         oturum_id: str,
+        kullanici_rolu: str | None = None,
     ) -> AsyncIterator[str]:
         temiz_soru = soru.strip()
         if not temiz_soru:
@@ -38,6 +42,7 @@ class AkisServisi:
         arama_sonucu = await asyncio.to_thread(
             self._arama_servisi.ara,
             temiz_soru,
+            kullanici_rolu,
         )
         kaynaklar = tuple(
             arama_sonucu.adaylar[: konfigurasyon.DEEPSEEK_KAYNAK_SAYISI]
@@ -68,6 +73,24 @@ class AkisServisi:
             )
             yield self._olay_olustur("tamamlandi", {"cevaplandi": False})
             return
+        niyet_sonucu = None
+        if self._niyet_siniflandirici is not None:
+            niyet_sonucu = self._niyet_siniflandirici.siniflandir(temiz_soru)
+            if niyet_sonucu.eslesme_var_mi:
+                yield self._olay_olustur(
+                    "eylem",
+                    {
+                        "eylemler": [
+                            {
+                                "niyet_adi": e.niyet_adi,
+                                "buton_metni": e.buton_metni,
+                                "hedef_url": e.hedef_url,
+                                "buton_tipi": e.buton_tipi,
+                            }
+                            for e in niyet_sonucu.eslesmeler
+                        ]
+                    },
+                )
         gecmis = await self._oturum_hafizasi.mesajlari_al(oturum_id)
         yanit_parcalari = []
         try:
@@ -79,10 +102,22 @@ class AkisServisi:
                 yanit_parcalari.append(parca)
                 yield self._olay_olustur("parca", {"metin": parca})
         except DeepSeekServisiHatasi:
-            yield self._olay_olustur(
-                "hata",
-                {"mesaj": _URETIM_HATASI_YANITI},
+            fallback_kaynaklari = self._kaynak_ozetlerini_olustur(
+                kaynaklar[: konfigurasyon.FALLBACK_KAYNAK_SAYISI]
             )
+            yield self._olay_olustur(
+                "fallback",
+                {
+                    "mesaj": _URETIM_HATASI_YANITI,
+                    "kaynaklar": fallback_kaynaklari,
+                },
+            )
+            await self._oturum_hafizasi.konusmayi_ekle(
+                oturum_id,
+                temiz_soru,
+                _URETIM_HATASI_YANITI,
+            )
+            yield self._olay_olustur("tamamlandi", {"cevaplandi": False})
             return
         tam_yanit = "".join(yanit_parcalari).strip()
         if not tam_yanit:

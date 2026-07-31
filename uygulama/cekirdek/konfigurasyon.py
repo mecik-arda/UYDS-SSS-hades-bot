@@ -106,6 +106,10 @@ class Konfigurasyon(BaseSettings):
     VERI_TEMIZLIK_PARTI_BOYUTU: int = Field(default=1000, gt=0, le=10000)
     PII_MASKELEME_AKTIF: bool = Field(default=True)
     KULLANICI_SORULARINI_GIZLE: bool = Field(default=False)
+    FALLBACK_KAYNAK_SAYISI: int = Field(default=3, gt=0, le=10)
+    NIYET_SINIFLANDIRMA_AKTIF: bool = Field(default=True)
+    NIYET_GUVEN_ESIGI: float = Field(default=0.80, ge=0, le=1)
+    NIYET_EYLEMLERI_YOLU: str = Field(default="veriler/niyet_eylemleri.json")
 
     model_config = SettingsConfigDict(
         env_file=".env",

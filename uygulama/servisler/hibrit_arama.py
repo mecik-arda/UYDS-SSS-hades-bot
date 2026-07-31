@@ -48,17 +48,31 @@ class HibritArama:
     def __init__(self, vektor_servisi: VektorServisi) -> None:
         self._vektor_servisi = vektor_servisi
 
-    def fts_ile_ara(self, fts_sorgusu: str) -> list[_FtsSonucu]:
+    def fts_ile_ara(
+        self,
+        fts_sorgusu: str,
+        kullanici_rolu: str | None = None,
+    ) -> list[_FtsSonucu]:
         if not fts_sorgusu.strip():
             return []
+        rol_kosulu = ""
+        rol_parametreleri: list[Any] = []
+        if kullanici_rolu and kullanici_rolu != "YONETICI":
+            rol_kosulu = (
+                "AND (k.kullanici_rolu IS NULL "
+                "OR k.kullanici_rolu = '' "
+                "OR k.kullanici_rolu = ?)"
+            )
+            rol_parametreleri.append(kullanici_rolu)
         with baglam_yoneticisi() as baglanti:
             satirlar = baglanti.execute(
-                """
+                f"""
                 SELECT
                     fts.rowid AS sss_id,
                     bm25(sss_fts, ?, ?, ?, ?, ?, ?) AS bm25_skoru
                 FROM sss_fts AS fts
-                WHERE sss_fts MATCH ?
+                JOIN sss_kayitlari k ON k.id = fts.rowid
+                WHERE sss_fts MATCH ? {rol_kosulu}
                 ORDER BY bm25_skoru
                 LIMIT ?
                 """,
@@ -70,6 +84,7 @@ class HibritArama:
                     konfigurasyon.FTS_MODUL_AGIRLIGI,
                     konfigurasyon.FTS_ARAMA_METNI_AGIRLIGI,
                     fts_sorgusu,
+                    *rol_parametreleri,
                     konfigurasyon.FTS_ADAY_SAYISI,
                 ),
             ).fetchall()
@@ -84,11 +99,24 @@ class HibritArama:
             )
         return sonuc
 
-    def vektor_ile_ara(self, soru: str) -> tuple[list[_VektorSonucu], int]:
+    def vektor_ile_ara(
+        self,
+        soru: str,
+        kullanici_rolu: str | None = None,
+    ) -> tuple[list[_VektorSonucu], int]:
         beklenen_bayt = self._vektor_servisi.vektor_boyutu * np.dtype("<f4").itemsize
+        rol_kosulu = ""
+        rol_parametreleri: list[Any] = []
+        if kullanici_rolu and kullanici_rolu != "YONETICI":
+            rol_kosulu = (
+                "AND (k.kullanici_rolu IS NULL "
+                "OR k.kullanici_rolu = '' "
+                "OR k.kullanici_rolu = ?)"
+            )
+            rol_parametreleri.append(kullanici_rolu)
         with baglam_yoneticisi() as baglanti:
             satirlar = baglanti.execute(
-                """
+                f"""
                 SELECT
                     v.parca_id,
                     v.sss_id,
@@ -99,9 +127,12 @@ class HibritArama:
                 FROM sss_vektorleri v
                 JOIN sss_parcalari p ON p.id = v.parca_id
                 JOIN sss_kayitlari k ON k.id = v.sss_id
-                WHERE v.model_adi = ? AND k.durum = 'aktif'
+                WHERE v.model_adi = ? {rol_kosulu} AND k.durum = 'aktif'
                 """,
-                (self._vektor_servisi.model_adi,),
+                (
+                    self._vektor_servisi.model_adi,
+                    *rol_parametreleri,
+                ),
             ).fetchall()
         gecerli_vektorler = []
         parca_bilgileri = []

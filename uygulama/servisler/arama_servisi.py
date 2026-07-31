@@ -30,11 +30,21 @@ class AramaServisi:
         self._geri_bildirim_servisi = geri_bildirim_servisi
         self._vektor_servisi = vektor_servisi
 
-    def ara(self, soru: str) -> AramaSonucu:
+    def ara(
+        self,
+        soru: str,
+        kullanici_rolu: str | None = None,
+    ) -> AramaSonucu:
         baslangic = perf_counter()
         genisletilmis = self._sorgu_genisletici.genislet(soru)
-        fts_sonuclari = self._hibrit_arama.fts_ile_ara(genisletilmis.fts_sorgusu)
-        vektor_sonuclari, gecersiz_vektor = self._hibrit_arama.vektor_ile_ara(soru)
+        fts_sonuclari = self._hibrit_arama.fts_ile_ara(
+            genisletilmis.fts_sorgusu,
+            kullanici_rolu=kullanici_rolu,
+        )
+        vektor_sonuclari, gecersiz_vektor = self._hibrit_arama.vektor_ile_ara(
+            soru,
+            kullanici_rolu=kullanici_rolu,
+        )
         rrf_sonuclari = self._hibrit_arama.rrf_harmanla(fts_sonuclari, vektor_sonuclari)
         alternatif_sonuclar = self._alternatif_sorulari_tara(soru)
         rrf_sonuclari = self._alternatif_sonuclari_birlestir(

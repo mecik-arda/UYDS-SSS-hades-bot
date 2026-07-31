@@ -90,6 +90,7 @@ async def arama_yap(
             async for ham_olay in akis_servisi.yanit_akisini_uret(
                 istek_govdesi.soru,
                 oturum_id,
+                kullanici_rolu=kullanici.rol,
             ):
                 if await istek.is_disconnected():
                     return
