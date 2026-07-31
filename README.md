@@ -23,7 +23,7 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Tamamlandı |
 | Faz 9 | Kurumsal web arayüzü | Tamamlandı |
 | Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | Tamamlandı; Yargu ve Yggdrasil ile 25/25 benchmark ve 165/165 sızma testi başarıyla geçildi |
-| Faz 11 | Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu (Gelecek Vizyonu) | Mimari tasarım dokümanı hazır; detaylar için `FAZ11_MIMARI_VIZYON.md` |
+| Faz 11 | Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu | Devam ediyor; belge ayıklayıcı, yapısal parçalayıcı, senkronizasyon motoru, 7 yeni tablo, 14 test eklendi |
 | Faz 12 | Veri Gizliliği ve Analitik Kayıt Yönetimi | Tamamlandı; PII maskeleme, otomatik veri temizliği, yönetici gizlilik kontrolü |
 | Faz 13 | Gelişmiş Kurumsal Yetenekler (RBAC, Fallback, Niyet Sınıflandırma) | Tamamlandı; rol bazlı arama filtresi, çevrimdışı yedekleme modu, niyet tabanlı aksiyon butonları |
 
