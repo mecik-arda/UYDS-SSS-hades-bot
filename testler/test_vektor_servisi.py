@@ -3,7 +3,6 @@ import math
 import numpy as np
 import pytest
 
-from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.servisler.vektor_servisi import VektorModeliHatasi, VektorServisi
 
 _VEKTOR_BOYUTU = 384

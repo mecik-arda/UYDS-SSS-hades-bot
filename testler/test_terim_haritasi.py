@@ -3,8 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from uygulama.cekirdek import konfigurasyon as konfigurasyon_modulu
-from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.servisler.terim_haritasi import (
     AZAMI_TERIM_UZUNLUGU,
     TerimHaritasi,
