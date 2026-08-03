@@ -1,5 +1,6 @@
 import os
 
+os.environ["GITHUB_ACTIONS"] = "true"
 os.environ["VERITABANI_SIFRELEME_ANAHTARI"] = "test_anahtari_32_karakter_uzunlugunda_minimum"
 os.environ["JWT_GIZLI_ANAHTARI"] = "test_jwt_anahtari_32_karakter_uzunlugunda"
 os.environ["VARSAYILAN_YONETICI_SIFRESI"] = "test_sifresi_12_karakter_minimum"
