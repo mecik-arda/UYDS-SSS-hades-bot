@@ -31,6 +31,10 @@ venv/
 test_sonucu.txt
 /testler/benchmark/raporlar/
 /testler/karsilastirma/raporlar/
+/testler/test_tum_sorular_benchmark.py
+/testler/test_benchmark_lokal.py
+/0
+/test_gecici/
 .coverage
 coverage.xml
 htmlcov/
