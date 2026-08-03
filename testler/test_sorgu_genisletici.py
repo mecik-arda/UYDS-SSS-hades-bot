@@ -69,13 +69,20 @@ class TestSorguGenisleticiBosHarita:
 
 
 class TestSorguGenisleticiDoluHarita:
-    def test_grup_ici_or_gruplar_arasi_and(self, dolu_harita):
+    def test_kisa_sorgu_or_modu_kullanir(self, dolu_harita):
         genisletici = SorguGenisletici(dolu_harita)
         sonuc = genisletici.genislet("fatura iptal")
         assert "OR" in sonuc.fts_sorgusu
-        assert "AND" in sonuc.fts_sorgusu
+        assert sonuc.kullanilan_grup_sayisi == 2
         assert sonuc.genisletilen_terim_sayisi > 0
-        assert sonuc.kullanilan_grup_sayisi > 0
+
+    def test_uzun_sorgu_and_modu_kullanir(self, dolu_harita):
+        genisletici = SorguGenisletici(dolu_harita)
+        sonuc = genisletici.genislet(
+            "fatura iptali icin gerekli belgeleri nasil hazirlarim lutfen yardim edin acil"
+        )
+        assert "AND" in sonuc.fts_sorgusu
+        assert sonuc.kullanilan_grup_sayisi >= 1
 
     def test_cok_kelimeli_terim_once_eslesir(self, dolu_harita):
         genisletici = SorguGenisletici(dolu_harita)
