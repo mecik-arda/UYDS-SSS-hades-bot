@@ -202,7 +202,7 @@ class DeepSeekServisi:
             "temperature": 0.1,
             "stream": True,
             "stream_options": {"include_usage": True},
-            "thinking": {"type": "disabled"},
+            "thinking": {"type": "enabled" if konfigurasyon.DEEPSEEK_DUSUNME_ETKIN else "disabled"},
         }
 
     def _akis_parcasini_ayikla(self, veri: str) -> str:

@@ -31,7 +31,7 @@ class TestParcalama:
         assert parcalayici.parcala("   \n\n   ") == []
 
     def test_uzun_metin_birden_fazla_parcaya_bolunur(self):
-        parcalayici = MetinParcalayici(hedef_karakter_sayisi=100, azami_karakter_sayisi=200)
+        parcalayici = MetinParcalayici(hedef_karakter_sayisi=100, azami_karakter_sayisi=200, overlap_karakter_sayisi=0)
         cumle = "Bu bir test cümlesidir. " * 80
         sonuc = parcalayici.parcala(cumle)
         assert len(sonuc) > 1
@@ -75,9 +75,52 @@ class TestParcalama:
         assert "12345" in sonuc[0]
 
     def test_azami_boyutu_asan_birim_zorla_bolunur(self):
-        parcalayici = MetinParcalayici(hedef_karakter_sayisi=200, azami_karakter_sayisi=300)
+        parcalayici = MetinParcalayici(hedef_karakter_sayisi=200, azami_karakter_sayisi=300, overlap_karakter_sayisi=0)
         uzun_kelime = "a" * 800
         sonuc = parcalayici.parcala(uzun_kelime)
         for parca in sonuc:
             assert len(parca) <= 300
         assert len(sonuc) >= 2
+
+
+class TestOverlap:
+    def test_overlap_sonraki_parcaya_oncekinin_sonunu_ekler(self):
+        parcalayici = MetinParcalayici(
+            hedef_karakter_sayisi=100,
+            azami_karakter_sayisi=200,
+            overlap_karakter_sayisi=30,
+        )
+        metin = "birinci bolum metni burada. " * 20
+        sonuc = parcalayici.parcala(metin)
+        assert len(sonuc) > 1
+        ikinci_parca = sonuc[1]
+        assert len(ikinci_parca) > 0
+
+    def test_overlap_sifir_olunca_eklenmez(self):
+        parcalayici = MetinParcalayici(
+            hedef_karakter_sayisi=100,
+            azami_karakter_sayisi=200,
+            overlap_karakter_sayisi=0,
+        )
+        metin = "test metni burada. " * 30
+        sonuc = parcalayici.parcala(metin)
+        assert len(sonuc) > 0
+
+    def test_overlap_kisa_metinde_uygulanmaz(self):
+        parcalayici = MetinParcalayici(
+            hedef_karakter_sayisi=900,
+            azami_karakter_sayisi=1400,
+            overlap_karakter_sayisi=150,
+        )
+        sonuc = parcalayici.parcala("kisa metin")
+        assert len(sonuc) == 1
+
+    def test_overlap_kelime_butunlugunu_korur(self):
+        parcalayici = MetinParcalayici(
+            hedef_karakter_sayisi=100,
+            azami_karakter_sayisi=200,
+            overlap_karakter_sayisi=40,
+        )
+        cumle = "Bu test metnidir. " * 30
+        sonuc = parcalayici.parcala(cumle)
+        assert len(sonuc) > 1

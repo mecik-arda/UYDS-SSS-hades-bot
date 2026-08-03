@@ -1,11 +1,14 @@
 import re
 
+from uygulama.cekirdek.konfigurasyon import konfigurasyon
+
 
 class MetinParcalayici:
     def __init__(
         self,
         hedef_karakter_sayisi: int = 900,
         azami_karakter_sayisi: int = 1400,
+        overlap_karakter_sayisi: int | None = None,
     ) -> None:
         if hedef_karakter_sayisi < 100:
             raise ValueError("Hedef parca boyutu en az 100 karakter olmalidir")
@@ -13,6 +16,9 @@ class MetinParcalayici:
             raise ValueError("Azami parca boyutu hedef boyuttan kucuk olamaz")
         self.hedef_karakter_sayisi = hedef_karakter_sayisi
         self.azami_karakter_sayisi = azami_karakter_sayisi
+        if overlap_karakter_sayisi is None:
+            overlap_karakter_sayisi = konfigurasyon.PARCA_OVERLAP_KARAKTER
+        self.overlap_karakter_sayisi = max(overlap_karakter_sayisi, 0)
 
     def parcala(self, metin: str) -> list[str]:
         temiz_metin = self._metni_temizle(metin)
@@ -26,12 +32,25 @@ class MetinParcalayici:
                 aday = f"{guncel_parca}\n\n{uygun_birim}".strip()
                 if guncel_parca and len(aday) > self.hedef_karakter_sayisi:
                     parcalar.append(guncel_parca)
-                    guncel_parca = uygun_birim
+                    guncel_parca = self._overlap_ekle(guncel_parca, uygun_birim)
                 else:
                     guncel_parca = aday
         if guncel_parca:
             parcalar.append(guncel_parca)
         return parcalar
+
+    def _overlap_ekle(self, onceki_parca: str, yeni_birim: str) -> str:
+        if self.overlap_karakter_sayisi <= 0:
+            return yeni_birim
+        if len(onceki_parca) <= self.overlap_karakter_sayisi:
+            return yeni_birim
+        overlap_metni = onceki_parca[-self.overlap_karakter_sayisi :]
+        bosluk_konumu = overlap_metni.find(" ")
+        if bosluk_konumu > 0:
+            overlap_metni = overlap_metni[bosluk_konumu:].lstrip()
+        if not overlap_metni:
+            return yeni_birim
+        return f"{overlap_metni} {yeni_birim}"
 
     def _metni_temizle(self, metin: str) -> str:
         satirlar = [

@@ -38,6 +38,7 @@ class Konfigurasyon(BaseSettings):
         ge=1,
         le=1024,
     )
+    DEEPSEEK_DUSUNME_ETKIN: bool = Field(default=False)
     VERITABANI_YOLU: str = Field(default="veriler/veri_deposu.db")
     VERITABANI_SIFRELEME_ANAHTARI: str = Field(min_length=32)
     GUVEN_ESIGI: float = Field(default=0.70, ge=0, le=1)
@@ -100,6 +101,7 @@ class Konfigurasyon(BaseSettings):
         le=128,
     )
     YENIDEN_SIRALAMA_MAKS_TOKEN: int = Field(default=512, ge=64, le=512)
+    PARCA_OVERLAP_KARAKTER: int = Field(default=150, ge=0, le=500)
     FTS_SORU_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
     FTS_CEVAP_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
     FTS_KATEGORI_AGIRLIGI: float = Field(default=1.0, ge=0, le=100)
