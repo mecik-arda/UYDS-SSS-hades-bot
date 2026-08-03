@@ -55,8 +55,10 @@ class DeepSeekServisi:
         istek_govdesi = self._istek_govdesini_olustur(soru, kaynaklar, gecmis)
         deneme_sayisi = konfigurasyon.DEEPSEEK_YENIDEN_DENEME_SAYISI + 1
         icerik_aktarildi = False
-        toplam_karakter = 0
         for deneme in range(deneme_sayisi):
+            toplam_karakter = 0
+            aktarim_tamponu: list[str] = []
+            tampon_karakter_sayisi = 0
             try:
                 async for parca in self._tek_akis(
                     api_anahtari,
@@ -67,8 +69,19 @@ class DeepSeekServisi:
                         raise DeepSeekServisiHatasi(
                             "DeepSeek yaniti izin verilen boyutu asti"
                         )
+                    aktarim_tamponu.append(parca)
+                    tampon_karakter_sayisi += len(parca)
+                    if (
+                        tampon_karakter_sayisi
+                        >= konfigurasyon.DEEPSEEK_AKIS_PARCA_ASGARI_KARAKTER
+                    ):
+                        icerik_aktarildi = True
+                        yield "".join(aktarim_tamponu)
+                        aktarim_tamponu.clear()
+                        tampon_karakter_sayisi = 0
+                if aktarim_tamponu:
                     icerik_aktarildi = True
-                    yield parca
+                    yield "".join(aktarim_tamponu)
                 return
             except (httpx.TransportError, DeepSeekServisiHatasi) as hata:
                 yeniden_denenebilir = self._yeniden_denenebilir_mi(hata)

@@ -1,8 +1,6 @@
-import hashlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from uygulama.cekirdek.gunlukleyici import gunlukleyici
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
 
 
@@ -83,11 +81,11 @@ class BilgiGrafi:
                 key=lambda x: x[1],
                 reverse=True,
             )[:10]
-            if sayi >= max(2, en_yuksek * 0.3)
+            if sayi >= max(1, en_yuksek * 0.3)
         ]
 
     def _ner_kavram_cikar(self, metin: str) -> list[str]:
-        return []
+        return self._tfidf_kavram_cikar(metin)
 
     def graf_insa_et(
         self,

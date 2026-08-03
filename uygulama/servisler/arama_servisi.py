@@ -5,6 +5,7 @@ from uygulama.cekirdek.gunlukleyici import gunlukleyici
 from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 from uygulama.modeller.semalar import AramaAdayi, AramaSonucu
+from uygulama.servisler.belge_arama import BelgeArama
 from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
 from uygulama.servisler.hibrit_arama import HibritArama, _RrfSonucu
 from uygulama.servisler.sorgu_genisletici import SorguGenisletici
@@ -26,6 +27,7 @@ class AramaServisi:
     ) -> None:
         self._sorgu_genisletici = SorguGenisletici(terim_haritasi)
         self._hibrit_arama = HibritArama(vektor_servisi)
+        self._belge_arama = BelgeArama(vektor_servisi)
         self._yeniden_siralayici = yeniden_siralayici
         self._geri_bildirim_servisi = geri_bildirim_servisi
         self._vektor_servisi = vektor_servisi
@@ -52,6 +54,18 @@ class AramaServisi:
             alternatif_sonuclar,
         )
         zenginlestirilmis = self._kaynak_ve_metin_ekle(rrf_sonuclari)
+        belge_sonuclari = self._belge_arama.ara(
+            soru,
+            genisletilmis.fts_sorgusu,
+            kullanici_rolu,
+        )
+        zenginlestirilmis.extend(belge_sonuclari)
+        zenginlestirilmis.sort(
+            key=lambda aday: -aday.rrf_skoru
+        )
+        zenginlestirilmis = zenginlestirilmis[
+            : konfigurasyon.RRF_ADAY_SAYISI
+        ]
         yeniden_siralama_etkin = self._yeniden_siralayici is not None
         if yeniden_siralama_etkin:
             try:
@@ -74,9 +88,13 @@ class AramaServisi:
                 genisletilmis.genisletilen_terim_sayisi
             ),
             kullanilan_grup_sayisi=genisletilmis.kullanilan_grup_sayisi,
-            fts_aday_sayisi=len(fts_sonuclari),
-            vektor_aday_sayisi=len(vektor_sonuclari),
-            birlesik_aday_sayisi=len(rrf_sonuclari),
+            fts_aday_sayisi=len(fts_sonuclari) + sum(
+                aday.fts_sirasi is not None for aday in belge_sonuclari
+            ),
+            vektor_aday_sayisi=len(vektor_sonuclari) + sum(
+                aday.vektor_sirasi is not None for aday in belge_sonuclari
+            ),
+            birlesik_aday_sayisi=len(zenginlestirilmis),
             gecersiz_vektor_sayisi=gecersiz_vektor,
             yeniden_siralama_etkin=yeniden_siralama_etkin,
         )

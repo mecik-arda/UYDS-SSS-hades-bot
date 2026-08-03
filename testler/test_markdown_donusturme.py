@@ -5,9 +5,11 @@ def _markdown_donustur(metin):
     if not metin:
         return ""
     temiz = metin
-    temiz = temiz.replace("&", r"&")
-    temiz = temiz.replace("<", r"<")
-    temiz = temiz.replace(">", r">")
+    temiz = temiz.replace("&", "&amp;")
+    temiz = temiz.replace("<", "&lt;")
+    temiz = temiz.replace(">", "&gt;")
+    temiz = temiz.replace('"', "&quot;")
+    temiz = temiz.replace("'", "&#39;")
     temiz = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", temiz)
     temiz = re.sub(r"^\* (.*$)", r"<li>\1</li>", temiz, flags=re.M)
     temiz = re.sub(r"((?:<li>.*</li>\n?)+)", r"<ul>\1</ul>", temiz)
@@ -55,3 +57,27 @@ class TestMarkdownDonusturme:
     def test_duz_metin_degismez(self):
         sonuc = _markdown_donustur("Normal bir metin, hicbir ozel isaret yok.")
         assert sonuc == "Normal bir metin, hicbir ozel isaret yok."
+
+    def test_html_etiketleri_kodlanir(self):
+        sonuc = _markdown_donustur(
+            '<img src="gecersiz" onerror="alert(1)">'
+        )
+        assert "<img" not in sonuc
+        assert "&lt;img" in sonuc
+        assert "&quot;gecersiz&quot;" in sonuc
+
+    def test_markdown_icindeki_html_kodlanir(self):
+        sonuc = _markdown_donustur("**<script>alert('x')</script>**")
+        assert sonuc.startswith("<strong>&lt;script&gt;")
+        assert "<script>" not in sonuc
+
+
+def test_uygulama_betigi_gercek_html_kacisini_icerir():
+    from pathlib import Path
+
+    betik = Path("uygulama/statik/js/uygulama.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'replace(/&/g, "&amp;")' in betik
+    assert 'replace(/</g, "&lt;")' in betik
+    assert 'replace(/>/g, "&gt;")' in betik

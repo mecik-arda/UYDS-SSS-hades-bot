@@ -1,15 +1,17 @@
 # UYDS Akıllı SSS Destek Asistanı
 
-[![Faz 1-12 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-14-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-14-dogrulama.yml)
+[![Faz 1-14 doğrulama](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-14-dogrulama.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/faz1-14-dogrulama.yml)
 [![CodeQL](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml/badge.svg)](https://github.com/mecik-arda/UYDS-SSS-hades-bot/actions/workflows/codeql.yml)
 
-Sürüm 1.0.0 | Faz 1-14 tamamlandı, Faz 11 başlandı | Geliştirme sürümü | MIT Lisansı
+Sürüm 1.0.0 | Faz 1-9 ve 12-14 tamamlandı, Faz 10 ölçüm altyapısı ve Faz 11 çekirdek hattı tamamlandı | Geliştirme sürümü | MIT Lisansı
 
 ## Proje Durumu
 
 HadesBot, UYDS Sık Sorulan Sorular verilerini güvenli biçimde hazırlayan, anlamsal olarak aranabilir hale getiren ve kaynak kontrollü yanıt üreten kurumsal bir destek asistanı olarak geliştirilmektedir.
 
-Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını, kimlik doğrulamalı API rotalarını, yönetici onaylı alternatif soru öğrenme döngüsünü, responsive kurumsal web arayüzünü, PII maskeleme ve veri saklama süresi temizliğini (Faz 12), RBAC rol bazlı arama filtrelemeyi, DeepSeek API çökme durumunda çevrimdışı yedekleme modunu ve niyet sınıflandırma tabanlı aksiyon butonlarını (Faz 13) içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe retrieval benchmarkı ve kaynak ölçümü sonucuna bağlıdır.
+Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanını, Excel içe aktarımını, veri sürümlemeyi, metin parçalamayı, yerel anlamsal vektör üretimini, sorgu genişletmeyi, RRF tabanlı hibrit aramayı, güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanını, kaynak kontrollü DeepSeek istemcisini, güven eşiği kapısını, SSE olay üretimini, kullanıcıya bağlı oturum hafızasını, kimlik doğrulamalı API rotalarını, yönetici onaylı alternatif soru öğrenme döngüsünü, responsive kurumsal web arayüzünü, PII maskeleme ve veri saklama süresi temizliğini (Faz 12), RBAC rol bazlı arama filtrelemeyi, DeepSeek API çökme durumunda çevrimdışı yedekleme modunu ve niyet sınıflandırma tabanlı aksiyon butonlarını (Faz 13) içerir. Cross-Encoder varsayılan olarak kapalıdır; üretimde etkinleştirilmesi Faz 10 Türkçe arama karşılaştırması ve kaynak ölçümü sonucuna bağlıdır.
+
+Faz 11 çekirdek hattı, yerel PDF/DOCX/HTML/XLSX belgelerini otomatik olarak ayıklar, yapısal parçalara böler, yerel modelle vektörler ve sürümlemeli belge deposuna yazar. Belge FTS ve vektör sonuçları ACL ve tarihsel sürüm filtresinden sonra mevcut SSS sonuçlarıyla RRF üzerinden birleşerek kaynak kontrollü RAG akışına katılır.
 
 | Faz | Kapsam | Durum |
 |---|---|---|
@@ -17,15 +19,16 @@ Mevcut sürüm; güvenli uygulama altyapısını, SQLite ve FTS5 veri katmanın�
 | Faz 2 | SQLite, FTS5, veri modelleri ve şifreleme | Tamamlandı |
 | Faz 3 | Excel aktarımı, sürümleme ve metin parçalama | Tamamlandı |
 | Faz 4 | Vektör gömmeleri ve kurum içi terim haritası | Tamamlandı |
-| Faz 5 | Sorgu genişletme, hibrit arama, RRF ve güvenli Cross-Encoder katmanı | Tamamlandı; Cross-Encoder üretim aktivasyonu benchmark bekliyor |
+| Faz 5 | Sorgu genişletme, hibrit arama, RRF ve güvenli Cross-Encoder katmanı | Tamamlandı; Cross-Encoder üretim aktivasyonu karşılaştırma ölçümünü bekliyor |
 | Faz 6 | DeepSeek, kaynak kontrollü RAG, SSE ve oturum hafızası | Tamamlandı; canlı bağlantı sentetik ve kurum onaylı gerçek kaynaklarla doğrulandı |
 | Faz 7 | API rotaları, kimlik doğrulama ve merkezi hata yönetimi | Tamamlandı |
 | Faz 8 | Alternatif soru öğrenme döngüsü ve genişletilmiş analitik iş akışı | Tamamlandı |
-| Faz 9 | Kurumsal web arayüzü | Tamamlandı |
-| Faz 10 | Benchmark, kabul ölçümleri ve geniş güvenlik doğrulaması | Tamamlandı; Yargu ve Yggdrasil ile 25/25 benchmark ve 165/165 sızma testi başarıyla geçildi |
-| Faz 11 | Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu | Devam ediyor; belge ayıklayıcı, yapısal parçalayıcı, senkronizasyon motoru, 7 yeni tablo, 14 test eklendi |
+| Faz 9 | Kurumsal web arayüzü | Tamamlandı; sohbet, tam işlevli yönetici işletim merkezi ve gelişmiş analitik ekranı |
+| Faz 10 | Arama karşılaştırması, kabul ölçümleri ve geniş güvenlik doğrulaması | Ölçüm ve güvenlik altyapısı tamamlandı; en az 50 uzman etiketli arama senaryosu bekleniyor |
+| Faz 11 | Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu | Çekirdek tamamlandı; belge ETL, yapısal parçalama, yerel vektörleme, sürüm/silme yönetimi, zamanlayıcı, ACL'li belge araması, tarihsel sürüm seçimi, graf bonusu ve analitik paneli çalışıyor; harici SharePoint/Confluence ve Neo4j adaptörleri ileri ölçek adımıdır |
 | Faz 12 | Veri Gizliliği ve Analitik Kayıt Yönetimi | Tamamlandı; PII maskeleme, otomatik veri temizliği, yönetici gizlilik kontrolü |
 | Faz 13 | Gelişmiş Kurumsal Yetenekler (RBAC, Fallback, Niyet Sınıflandırma) | Tamamlandı; rol bazlı arama filtresi, çevrimdışı yedekleme modu, niyet tabanlı aksiyon butonları |
+| Faz 14 | Otomatik e-posta raporlama | Tamamlandı; haftalık HTML ve düz metin istatistik raporu, STARTTLS ve zamanlayıcı |
 
 ## Veri Gizliliği
 
@@ -45,28 +48,29 @@ Arama motoru seviyesinde veri sızıntısı koruması. `sss_kayitlari` tablosund
 
 ### Çevrimdışı Yedekleme Modu (Offline Fallback)
 
-DeepSeek API bağlantısı koptuğunda veya zaman aşımına uğradığında, sistem 500 hatası yerine en yüksek skorlu kaynakları doğrudan kullanıcıya listeleyen bir yedekleme modu sunar. `FALLBACK_KAYNAK_SAYISI` (varsayılan: 3) kadar kaynak `fallback` SSE olayıyla iletilir. Ön yüzde "Yapay zeka şu anda yanıt veremiyor, işte en alakalı kaynaklar" mesajı gösterilir.
+DeepSeek API bağlantısı koptuğunda veya zaman aşımına uğradığında, sistem 500 hatası yerine en yüksek skorlu kaynakları doğrudan kullanıcıya listeleyen bir yedekleme modu sunar. `YEDEK_KAYNAK_SAYISI` (varsayılan: 3) kadar kaynak `yedek` SSE olayıyla iletilir. Ön yüzde "Yapay zeka şu anda yanıt veremiyor, işte en alakalı kaynaklar" mesajı gösterilir.
 
 ### Niyet Sınıflandırma ve Aksiyon Butonları
 
-Anahtar kelime ve regex tabanlı hafif niyet tespit motoru (`uygulama/servisler/niyet_siniflandirici.py`). "Şifremi sıfırla", "Destek bileti aç" gibi kilit sorgular tespit edildiğinde, SSE `eylem` olayı ile aksiyon butonları ön yüze iletilir. Niyet eylemleri `veriler/niyet_eylemleri.json` dosyasından yapılandırılır. Örnek şablon `veriler/niyet_eylemleri.example.json` olarak depoda bulunur.
+Anahtar kelime ve regex tabanlı hafif niyet tespit motoru (`uygulama/servisler/niyet_siniflandirici.py`). "Şifremi sıfırla", "Destek bileti aç" gibi kilit sorgular tespit edildiğinde, SSE `eylem` olayı ile aksiyon butonları ön yüze iletilir. Niyet eylemleri `veriler/niyet_eylemleri.json` dosyasından yapılandırılır. Örnek şablon `veriler/niyet_eylemleri.example.json` olarak depoda bulunur. Özellik varsayılan olarak kapalıdır; şablondaki hedefler kurumun gerçek ve erişilebilir rotalarıyla değiştirildikten sonra etkinleştirilmelidir. Etkin durumda eksik, sembolik bağlantı olan veya boyut sınırını aşan yapılandırma uygulama başlangıcında reddedilir.
 
 | Değişken | Açıklama | Varsayılan |
 |---|---|---|
-| `FALLBACK_KAYNAK_SAYISI` | Fallback modunda gösterilecek kaynak sayısı | `3` |
-| `NIYET_SINIFLANDIRMA_AKTIF` | Niyet sınıflandırmayı etkinleştirir | `true` |
+| `YEDEK_KAYNAK_SAYISI` | Yedekleme modunda gösterilecek kaynak sayısı | `3` |
+| `NIYET_SINIFLANDIRMA_AKTIF` | Geçerli eylem dosyası hazırlandıktan sonra niyet sınıflandırmayı etkinleştirir | `false` |
 | `NIYET_GUVEN_ESIGI` | Niyet eşleşmesi için asgari güven skoru | `0.80` |
 | `NIYET_EYLEMLERI_YOLU` | Niyet eylem yapılandırma dosyası | `veriler/niyet_eylemleri.json` |
 
 ## Planlanan Özellikler
 
-- Türkçe retrieval benchmarkı sonrasında Cross-Encoder üretim aktivasyonu ve aday sayısı ayarı
-- **Veri Ambarı ve Çoklu Veri Kaynağı (Faz 11):** PDF, Word, HTML belge okuma, otomatik senkronizasyon, GraphRAG, belge ACL ve sürümleme. Detaylar için `FAZ11_MIMARI_VIZYON.md`
+- En az 50 uzman etiketli Türkçe arama senaryosunun hazırlanması; Top-1, Top-3, MRR@10, nDCG@10, p95 gecikme ve kaynak gösterme kabulünün çalıştırılması
+- Türkçe arama karşılaştırması sonrasında Cross-Encoder üretim aktivasyonu ve aday sayısı ayarı
+- **Faz 11 ileri ölçek adaptörleri:** Kurumsal kimlik doğrulamalı SharePoint/Confluence bağlayıcıları ile 10.000 graf düğümü veya karmaşık graf sorgusu eşiğinde Neo4j adaptörü. Yerel dosya ETL, ACL'li belge RAG ve hafif graf katkısı hazırdır. Detaylar için `FAZ11_MIMARI_VIZYON.md`.
 
 ## Son İyileştirmeler (Hotfix ve Ince Ayarlar)
 - TensorFlow ve Keras 3 uyumluluk sorunlarını gidermek için `tf-keras` ve `protobuf` bağımlılıkları ortamda güncellendi.
 - Geçerli ancak kısa soruların reddedilmesini önlemek amacıyla `GUVEN_ESIGI` (Kosinüs Benzerliği) değeri `0.70` seviyesinden `0.50` seviyesine optimize edildi ve bu değişiklik `hata_duzeltme_kaydi.md` kütüğüne işlendi.
-- Faz 13 eklendi: RBAC rol bazlı arama filtreleme, DeepSeek API çökme durumunda çevrimdışı fallback modu, niyet sınıflandırma tabanlı aksiyon butonları.
+- Faz 13 eklendi: RBAC rol bazlı arama filtreleme, DeepSeek API çökme durumunda çevrimdışı yedekleme modu, niyet sınıflandırma tabanlı aksiyon butonları.
 - `pyproject.toml` güncellendi: pytest önbellek sağlayıcısı devre dışı bırakıldı (Windows `Erişim engellendi` uyarısı giderildi).
 
 ## Teknoloji Yığını
@@ -84,7 +88,7 @@ Anahtar kelime ve regex tabanlı hafif niyet tespit motoru (`uygulama/servisler/
 | İstek sınırlama | SlowAPI | Aktif |
 | Konteyner | Docker ve Docker Compose | Aktif |
 | Vektör gömmeleri | Sentence-Transformers ve NumPy | Aktif |
-| Yeniden sıralama | Sentence-Transformers Cross-Encoder | Güvenli yerel entegrasyon hazır; üretim aktivasyonu benchmark bekliyor |
+| Yeniden sıralama | Sentence-Transformers Cross-Encoder | Güvenli yerel entegrasyon hazır; üretim aktivasyonu karşılaştırma ölçümünü bekliyor |
 | LLM istemcisi | HTTPX ve DeepSeek Chat Completions API | Aktif; sentetik ve kurum onaylı gerçek kaynaklarla canlı bağlantı doğrulandı |
 | Web arayüzü | Jinja2, HTML, CSS ve JavaScript | Aktif |
 
@@ -145,7 +149,7 @@ veriler/UYDS_SSS_Listesi.xlsx
 
 Gerçek Excel dosyasını Git'e eklemeyin.
 
-`veriler/es_anlamlilar.json` içeriğini yalnızca yetkili yerel ortamda kurum terimleriyle düzenleyin. Uygulama bu dosya eksikse örnek veya varsayılan kurumsal içerik kullanmaz ve açık hata verir. `veriler/niyet_eylemleri.json` dosyası eksikse niyet sınıflandırma sessizce devre dışı kalır.
+`veriler/es_anlamlilar.json` içeriğini yalnızca yetkili yerel ortamda kurum terimleriyle düzenleyin. Uygulama bu dosya eksikse örnek veya varsayılan kurumsal içerik kullanmaz ve açık hata verir. Niyet sınıflandırma varsayılan olarak kapalıdır. Etkinleştirilmeden önce `veriler/niyet_eylemleri.json` oluşturulmalı, şablondaki örnek hedefler gerçek kurum rotalarıyla değiştirilmeli ve her hedefin erişilebilir olduğu doğrulanmalıdır.
 
 ## Yapılandırma
 
@@ -164,6 +168,7 @@ Gerçek Excel dosyasını Git'e eklemeyin.
 | `DEEPSEEK_IZINLI_ALAN_ADLARI` | Üretimde kullanılabilecek virgülle ayrılmış API alan adları | `api.deepseek.com` |
 | `DEEPSEEK_YANIT_MAKS_KARAKTER` | Tek yanıtta alınabilecek azami toplam karakter | `32768` |
 | `DEEPSEEK_AKIS_MAKS_SANIYE` | Tek canlı akışın azami toplam süresi | `180` |
+| `DEEPSEEK_AKIS_PARCA_ASGARI_KARAKTER` | SSE'ye aktarılmadan önce birleştirilecek asgari DeepSeek karakter sayısı | `24` |
 | `VERITABANI_YOLU` | SQLite dosya yolu | `veriler/veri_deposu.db` |
 | `VERITABANI_SIFRELEME_ANAHTARI` | En az 32 karakterli şifreleme anahtarı | Zorunlu |
 | `GUVEN_ESIGI` | DeepSeek çağrısı için `0.0`–`1.0` arası asgari kosinüs benzerliği | `0.70` |
@@ -197,6 +202,7 @@ Gerçek Excel dosyasını Git'e eklemeyin.
 | `ISTEK_GOVDE_MAKS_BOYUT` | Genel istek gövdesi sınırı | `1048576` |
 | `DOSYA_YUKLEME_MAKS_BOYUT` | Excel yükleme sınırı | `52428800` |
 | `LOG_SEVIYESI` | Günlük seviyesi | `INFO` |
+| `API_DOKUMANTASYONU_AKTIF` | Swagger, ReDoc ve HTTP OpenAPI şemasını yayımlar; üretimde varsayılan kapalıdır | `false` |
 | `RRF_K` | Reciprocal Rank Fusion sabiti | `60` |
 | `FTS_ADAY_SAYISI` | FTS5 tarafından alınacak azami aday | `50` |
 | `VEKTOR_ADAY_SAYISI` | Vektör aramasından alınacak azami aday | `50` |
@@ -214,8 +220,8 @@ Gerçek Excel dosyasını Git'e eklemeyin.
 | `FTS_HARICI_KOD_AGIRLIGI` | BM25 harici kod alanı ağırlığı | `1.0` |
 | `FTS_MODUL_AGIRLIGI` | BM25 modül alanı ağırlığı | `1.0` |
 | `FTS_ARAMA_METNI_AGIRLIGI` | BM25 birleşik arama metni ağırlığı | `1.0` |
-| `FALLBACK_KAYNAK_SAYISI` | Fallback modunda gösterilecek azami kaynak sayısı | `3` |
-| `NIYET_SINIFLANDIRMA_AKTIF` | Niyet sınıflandırma motorunu etkinleştirir | `true` |
+| `YEDEK_KAYNAK_SAYISI` | Yedekleme modunda gösterilecek azami kaynak sayısı | `3` |
+| `NIYET_SINIFLANDIRMA_AKTIF` | Geçerli ve kurum rotalarına uyarlanmış eylem dosyasıyla niyet motorunu etkinleştirir | `false` |
 | `NIYET_GUVEN_ESIGI` | Niyet eşleşmesi için asgari güven skoru | `0.80` |
 | `NIYET_EYLEMLERI_YOLU` | Niyet eylem yapılandırma dosyası | `veriler/niyet_eylemleri.json` |
 | `MAKSIMUM_YEDEK_SAYISI` | Saklanacak yedek sayısı | `10` |
@@ -320,7 +326,7 @@ Cross-Encoder varsayılan olarak kapalıdır. Sabit revizyonlu ve SHA-256 doğru
 python yeniden_siralama_modelini_hazirla.py
 ```
 
-Türkçe retrieval benchmarkı doğruluk, p50/p95 gecikme ve tepe bellek açısından kabul edilebilir sonuç verirse `.env` içinde etkinleştirin:
+Türkçe arama karşılaştırması doğruluk, p50/p95 gecikme ve tepe bellek açısından kabul edilebilir sonuç verirse `.env` içinde etkinleştirin:
 
 ```text
 YENIDEN_SIRALAMA_ETKIN=true
@@ -396,10 +402,14 @@ Mevcut erişim adresleri:
 - Analitik görünümü: `http://localhost:8000/analitik`
 - Sağlık kontrolü: `http://localhost:8000/api/saglik`
 - Hazırlık kontrolü: `http://localhost:8000/api/hazirlik`
-- Swagger arayüzü: `http://localhost:8000/docs`
-- OpenAPI şeması: `http://localhost:8000/openapi.json`
+- Swagger arayüzü: geliştirme ve test profilinde `http://localhost:8000/docs`
+- OpenAPI şeması: geliştirme ve test profilinde `http://localhost:8000/openapi.json`
+
+Üretim profilinde Swagger, ReDoc ve HTTP OpenAPI şeması anonim saldırı yüzeyini azaltmak için varsayılan olarak yayımlanmaz. Gerektiğinde `API_DOKUMANTASYONU_AKTIF=true` yalnızca erişimi sınırlı bir yönetim ortamında kullanılmalıdır.
 
 Web arayüzü açıldığında kimlik doğrulama penceresi gösterilir. Kullanıcı rolü sohbet ekranına; `YONETICI` rolü ayrıca yönetici ve analitik panellerine erişir. Erişim ve yenileme belirteçleri yalnızca geçerli tarayıcı sekmesi oturumunda tutulur.
+
+Yönetici merkezi; geri bildirim onaylama/reddetme, doğru SSS kaydı seçme, SSS kataloğunda arama ve sayfalama, cevapsız sorgu sayfalama, FTS/vektör yeniden indeksleme, tam veya artımlı belge senkronizasyonu, haftalık e-posta raporu gönderimi ve tüm otomasyonların gizli değer açıklamayan durum envanterini sunar. Excel içe aktarma, veri sürümü geri alma ve şifreli yedek geri yükleme canlı SQLite bağlantılarıyla yarışmaması için ekranda bakım aracı olarak gösterilir ve uygulama süreci içinden tetiklenmez.
 
 ## API Durumu
 
@@ -419,7 +429,17 @@ Web arayüzü açıldığında kimlik doğrulama penceresi gösterilir. Kullanı
 | `GET` | `/api/v1/yonetici/cevapsiz-sorgular` | Cevapsız veya düşük güvenli sorguları sayfalı listeler | Yönetici |
 | `POST` | `/api/v1/yonetici/geri-bildirim/onay` | Geri bildirimi onaylar veya reddeder; yönetici doğru SSS seçimini değiştirebilir | Yönetici ve HMAC |
 | `POST` | `/api/v1/yonetici/yeniden-indeksle` | FTS ve vektör indekslerini yeniler | Yönetici ve HMAC |
+| `POST` | `/api/v1/yonetici/islem-imzasi` | İzinli tarayıcı yönetici işlemi için tek kullanımlı imza üretir | Yönetici |
+| `GET` | `/api/v1/yonetici/isletim-durumu` | Arama, belge, veri yönetimi ve otomasyon durumunu gizli değerler olmadan döndürür | Yönetici |
+| `POST` | `/api/v1/yonetici/olcum/arama` | Altın veri seti ölçümü için LLM çağırmadan ilk 10 sıralı SSS kimliğini döndürür | Yönetici |
+| `POST` | `/api/v1/yonetici/senkronizasyon` | Tam veya artımlı belge senkronizasyonu başlatır | Yönetici ve HMAC |
+| `POST` | `/api/v1/yonetici/eposta-raporu/gonder` | Yapılandırılmış haftalık raporu gönderir | Yönetici ve HMAC |
 | `GET` | `/api/v1/analitik` | Kullanım istatistiklerini döndürür | Yönetici |
+| `GET` | `/api/v1/analitik/belge-surumleri` | Belge sürüm zincirini listeler | Yönetici |
+| `GET` | `/api/v1/analitik/parca-istatistikleri` | Yapısal parça ve token istatistiklerini döndürür | Yönetici |
+| `GET` | `/api/v1/analitik/sorgu-trendi` | Son 30 günlük sorgu ve cevaplanma trendini döndürür | Yönetici |
+| `GET` | `/api/v1/analitik/yetim-kavramlar` | Bağlantısız graf kavramlarını listeler | Yönetici |
+| `GET` | `/api/v1/analitik/rapor/dokuman` | Birleşik doküman analitik raporunu döndürür | Yönetici |
 
 ### Yönetici istek imzası
 
@@ -434,6 +454,8 @@ ISTEK_GOVDESI_SHA256
 ```
 
 İmza anahtarı `YONETICI_ISTEK_IMZA_ANAHTARI` değeridir; bu değer boşsa `JWT_GIZLI_ANAHTARI` kullanılır. Süresi geçen zaman damgaları reddedilir ve kabul edilen nonce özetleri SQLite üzerinde saklanarak tekrar kullanım `409` yanıtıyla engellenir.
+
+Tarayıcı arayüzü gizli HMAC anahtarını almaz. Geçerli yönetici JWT'siyle yalnızca sunucu izin listesindeki hedef yol ve bire bir istek gövdesi için kısa ömürlü, tek kullanımlı imza ister; dönen nonce kritik işlemde tüketilir.
 
 ## Yedekleme ve Geri Yükleme
 
@@ -537,19 +559,20 @@ Canlı DeepSeek doğrulamasında:
 - API anahtarı, gerçek soru ve kaynak içerikleri doğrulama raporuna veya sürüm kontrolüne eklenmedi.
 - Bu teknik sorgunun gerçek veri yanıtında `[Kaynak N]` etiketi bulunmadı. Temsili gerçek soru setinde yüzde 100 kaynak gösterme oranı Faz 10 kabul ölçümü olarak korunmaktadır.
 
-Faz 1-14 için kalıcı pytest paketi mevcuttur. Toplam 182 test yerel ortamda çalıştırılmaktadır; canlı Chromium E2E testi yalnızca ayrılmış CI job'ında etkinleştirilir. Ruff, Bandit, Python derleme ve `git diff --check` denetimleri temizdir. Faz 9 arayüzü izole bir çalışma veritabanıyla gerçek Uvicorn sürecinde; masaüstü, 390 piksel mobil kırılım, JWT yönetici girişi, yönetici/analitik veri yükleme, statik dosya sunumu ve tarayıcı konsolu bakımından doğrulanmıştır. Python 3.11 kalite job'ı `pip check`, `pip-audit`, sır kalıbı, test ve statik analiz denetimlerini; Docker job'ı Compose doğrulaması, üretim imajı oluşturma, liveness ve readiness duman testlerini tekrarlar. Ayrı CodeQL workflow'u Python ve JavaScript kaynaklarını push, pull request ve haftalık zamanlamada analiz eder. Workflow'lar Node.js 24 tabanlı güncel `actions/checkout@v7`, `actions/setup-python@v7` ve desteklenen `github/codeql-action@v4` ana sürümleriyle yapılandırılmıştır. Retrieval benchmarkı, başarı metrikleri ve geniş penetrasyon doğrulaması Faz 10 kapsamında başarıyla tamamlanmıştır.
+Faz 1-14 için kalıcı pytest paketi mevcuttur; canlı Chromium E2E testi yalnızca ayrılmış CI işinde etkinleştirilir. Ruff, Bandit, Python derleme ve `git diff --check` denetimleri kalite kapısı olarak kullanılır. Faz 9 arayüzü gerçek şifreli veritabanı ve Docker süreciyle; masaüstü, 390 piksel mobil kırılım, JWT yönetici girişi, SSS kataloğu, işletim durumu, gelişmiş analitik veri yükleme, statik dosya sunumu ve tarayıcı konsolu bakımından doğrulanmıştır. Python 3.11 kalite işi `pip check`, `pip-audit`, sır kalıbı, test ve statik analiz denetimlerini; Docker işi Compose doğrulaması, üretim imajı oluşturma, liveness ve readiness duman testlerini tekrarlar. Ayrı CodeQL iş akışı Python ve JavaScript kaynaklarını push, pull request ve haftalık zamanlamada analiz eder. İş akışları Node.js 24 tabanlı güncel `actions/checkout@v7`, `actions/setup-python@v7` ve desteklenen `github/codeql-action@v4` ana sürümleriyle yapılandırılmıştır. Faz 10 güvenlik doğrulamaları ile arama karşılaştırma altyapısı tamamlanmıştır; arama kabulü uzman etiketli en az 50 senaryonun hazırlanmasını beklemektedir.
 
 Faz 10 doğrulamalarında (Kurumsal Güvenlik ve RAG Benchmark):
 
 - Gelişmiş siber güvenlik (Red Team) testleri ve RAG Zehirleme (Document Poisoning) senaryoları, sektör standartlarını belirleyen ve AI manipülasyonlarına karşı acımasız bir stres testi sunan [Yargu Security Framework](https://github.com/mecik-arda/Yargu-Framework) kullanılarak icra edilmiştir. HadesBot, Yargu'nun AI-vs-AI manipülasyonlarına, Token Splitting ve Unicode Homoglyph saldırılarına karşı devrilmez bir kale olduğunu kanıtlamıştır.
 - Yggdrasil-Security altyapısından alınan WAF-Evader payload'ları (XSS, SQLi, RCE) ve Loki mutasyon teknikleri (Unicode bypass, SQL comment injection, çift URL encoding, boşluk manipülasyonu, case randomization), Pydantic ve HTTP katmanlarında %100 başarıyla (182/182 test, 0 500 hatası) filtrelenmiştir. TestClient rate-limiter GitHub Actions kararsızlıkları izole edilmiş ve pipeline istikrarı sağlanmıştır.
 - SQLite üzerinde oluşturulan yapay eşzamanlı yazma (Concurrent Write / DoS) bombardımanları, WAL mimarisi sayesinde sıfır kilitlenme (0 lock) ile atlatılmıştır.
-- Kapsamlı Benchmark testinde (25/25 senaryo), hibrit aramanın doğruluğu %100 olarak tescillenmiştir; sistem, veri tabanında bulunmayan sorulara halüsinasyon (hallucination) görmeden dürüstçe ret yanıtı (güven eşiği koruması) vermeyi başarmıştır.
+- Mevcut 25 senaryo, HTTP/SSE davranışını, güven eşiği reddini ve saldırı girdilerine karşı kontrollü yanıtı doğrular. Bu senaryolar uzman doğrulamalı beklenen SSS kimlikleri taşımadığı için hibrit aramanın arama doğruluğu hakkında yüzde değer üretmez.
+- Benchmark motoru `beklenen_sss_id` veya `beklenen_sss_idler` alanlarıyla etiketlenen senaryolarda Top-1, Top-3, MRR@10 ve nDCG@10; tüm senaryolarda cevap vermeme, kaynak gösterme ve p50/p95 gecikme metriklerini hesaplar. HTML, JSON ve CSV raporları üretir ve kabul eşikleri karşılanmadığında başarısız çıkış kodu döndürür.
 
 Faz 13 doğrulamalarında:
 
 - RBAC rol bazlı arama filtresi FTS5 ve vektör sorgularına başarıyla entegre edildi. 168 birim test hatasız geçti.
-- DeepSeek API çökme durumunda `fallback` SSE olayı ile en iyi 3 kaynak başarıyla iletiliyor.
+- DeepSeek API çökme durumunda `yedek` SSE olayı ile en iyi 3 kaynak başarıyla iletiliyor.
 - Niyet sınıflandırma motoru anahtar kelime ve regex tabanlı eşleştirme ile `eylem` SSE olayı üretiyor.
 - Tüm yeni değişkenler `.env.example` şablonuna ve `konfigurasyon.py`'ye eklendi.
 
@@ -583,7 +606,9 @@ HadesBot/
 │   │   └── analitik.html
 │   ├── statik/
 │   │   ├── css/stil.css
-│   │   └── js/uygulama.js
+│   │   ├── js/uygulama.js
+│   │   ├── js/yonetici.js
+│   │   └── js/analitik.js
 │   ├── cekirdek/
 │   │   ├── gunlukleyici.py
 │   │   ├── guvenlik.py
@@ -628,7 +653,7 @@ HadesBot/
 │   ├── test_hibrit_arama.py
 │   ├── test_istek_boyutu.py
 │   ├── test_konfigurasyon.py
-│   ├── test_llm_api_cokme_ve_fallback.py
+│   ├── test_llm_api_cokme_ve_yedekleme.py
 │   ├── test_markdown_donusturme.py
 │   ├── test_openapi_sozlesmesi.py
 │   ├── test_oturum_hafizasi.py
@@ -640,7 +665,7 @@ HadesBot/
 │   ├── test_sqlite_eszamanlilik_ve_wal_lock.py
 │   ├── test_veri_temizligi_zamanlama_mock.py
 │   ├── test_yeniden_siralayici.py
-│   ├── benchmark/
+│   ├── karsilastirma/
 │   │   ├── degerlendirme.py
 │   │   └── test_senaryolari.json
 ├── veriler/
@@ -667,7 +692,7 @@ HadesBot/
 
 ## Bilinen Sınırlamalar
 
-- Cross-Encoder güvenli yerel entegrasyonu hazırdır ve varsayılan olarak kapalıdır; üretim aktivasyonu Türkçe retrieval benchmarkı, p50/p95 gecikme ve tepe bellek ölçümü sonrasına bırakılmıştır.
+- Cross-Encoder güvenli yerel entegrasyonu hazırdır ve varsayılan olarak kapalıdır; üretim aktivasyonu Türkçe arama karşılaştırması, p50/p95 gecikme ve tepe bellek ölçümü sonrasına bırakılmıştır.
 - DeepSeek sağlayıcı bağlantısı sentetik ve kurum sahibinin açıkça onayladığı gerçek UYDS kaynaklarıyla doğrulanmıştır. Üretim kullanımı kurumun veri işleme politikası ve etkin API anahtarı gerektirir.
 - Desteklenen varsayılan dağıtım tek Uvicorn worker kullanır.
 - Bellek içi oturum sahipliği tek worker dağıtımı içindir; standart ortam değişkenleriyle çok worker başlatma girişimi reddedilir. Gerçek çok-worker desteği kalıcı paylaşımlı oturum deposu gerektirir.

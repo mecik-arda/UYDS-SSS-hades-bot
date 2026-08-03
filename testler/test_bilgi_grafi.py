@@ -1,4 +1,4 @@
-from uygulama.servisler.bilgi_grafi import BilgiGrafi, GrafIliskisi
+from uygulama.servisler.bilgi_grafi import BilgiGrafi
 
 
 def test_tfidf_kavram_cikar_bos_metin():

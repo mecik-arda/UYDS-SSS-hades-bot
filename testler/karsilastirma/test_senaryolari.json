@@ -1,7 +1,8 @@
 {
   "surum": "1.0.0",
   "olusturulma_tarihi": "2026-07-30",
-  "aciklama": "HadesBot Faz 10 benchmark ve guvenlik test senaryolari. Zorluk seviyeleri: kolay, orta, zor, es_anlamli, yazim_hatali, cevapsiz, zehirlenmis, model_dos, rate_limit.",
+  "etiketleme_durumu": "DAVRANIS_ETIKETLI_ARAMA_ETIKETSIZ",
+  "aciklama": "HadesBot Faz 10 karsilastirma ve guvenlik test senaryolari. Zorluk seviyeleri: kolay, orta, zor, es_anlamli, yazim_hatali, cevapsiz, zehirlenmis ve model_dos.",
   "senaryolar": [
     {
       "id": "T-001",

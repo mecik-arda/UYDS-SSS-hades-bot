@@ -75,7 +75,7 @@ class TestDeepSeekServisi:
         )
         asyncio.run(istemci.aclose())
 
-        assert parcalar == ["Merhaba", " dünya"]
+        assert parcalar == ["Merhaba dünya"]
         assert istekler[0].headers["authorization"] == (
             "Bearer test_deepseek_anahtari"
         )
@@ -132,6 +132,41 @@ class TestDeepSeekServisi:
         assert parcalar == ["Tamam"]
         assert istek_sayisi == 2
         assert beklemeler == [0.25]
+
+    def test_kucuk_akis_parcalari_yapilandirilan_esikte_birlestirilir(
+        self,
+        monkeypatch,
+    ):
+        def yanitla(istek: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text=(
+                    'data: {"choices":[{"delta":{"content":"Bir"}}]}\n\n'
+                    'data: {"choices":[{"delta":{"content":" iki"}}]}\n\n'
+                    'data: {"choices":[{"delta":{"content":" uc"}}]}\n\n'
+                    "data: [DONE]\n\n"
+                ),
+            )
+
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_API_ANAHTARI",
+            "test_deepseek_anahtari",
+        )
+        monkeypatch.setattr(
+            konfigurasyon,
+            "DEEPSEEK_AKIS_PARCA_ASGARI_KARAKTER",
+            7,
+        )
+        istemci = httpx.AsyncClient(transport=httpx.MockTransport(yanitla))
+        servis = DeepSeekServisi(istemci=istemci)
+
+        parcalar = akisi_topla(
+            servis.yanit_akisini_uret("Soru", [aday_olustur()])
+        )
+        asyncio.run(istemci.aclose())
+
+        assert parcalar == ["Bir iki", " uc"]
 
     def test_istemci_hatasi_yeniden_denenmez(self, monkeypatch):
         istek_sayisi = 0

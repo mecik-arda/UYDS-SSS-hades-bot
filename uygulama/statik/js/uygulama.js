@@ -34,9 +34,11 @@ function markdownDonustur(metin) {
         return "";
     }
     let temiz = metin;
-    temiz = temiz.replace(/&/g, "&");
-    temiz = temiz.replace(/</g, "<");
-    temiz = temiz.replace(/>/g, ">");
+    temiz = temiz.replace(/&/g, "&amp;");
+    temiz = temiz.replace(/</g, "&lt;");
+    temiz = temiz.replace(/>/g, "&gt;");
+    temiz = temiz.replace(/"/g, "&quot;");
+    temiz = temiz.replace(/'/g, "&#39;");
     temiz = temiz.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     temiz = temiz.replace(/^\* (.*$)/gim, "<li>$1</li>");
     temiz = temiz.replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>");
@@ -184,6 +186,7 @@ async function girisYap(olay) {
         Elemanlar.girisFormu.reset();
         bildirimGoster("Oturum başarıyla açıldı.");
         await sayfaVerisiniYukle();
+        document.dispatchEvent(new CustomEvent("hadesbot:oturum-acildi"));
     } catch (hata) {
         Elemanlar.girisHatasi.textContent = hata.message;
     } finally {
@@ -380,7 +383,7 @@ async function soruGonder(olay) {
                     cevap += String(veri.veri.metin || "");
                     cevapParagrafi.innerHTML = markdownDonustur(cevap);
                 }
-                if (veri.olay === "fallback") {
+                if (veri.olay === "yedek") {
                     cevapParagrafi.innerHTML = markdownDonustur(String(veri.veri.mesaj || ""));
                     kaynaklariGoster(Array.isArray(veri.veri.kaynaklar) ? veri.veri.kaynaklar : []);
                 }
@@ -747,7 +750,6 @@ function temelEtkilesimleriHazirla() {
     document.getElementById("uyari-kapat").addEventListener("click", () => {
         Elemanlar.uyariBandi.hidden = true;
     });
-    document.getElementById("yonetici-yenile")?.addEventListener("click", yoneticiVerisiniYukle);
     document.addEventListener("keydown", (olay) => {
         if (olay.key === "Escape") {
             cekmeceleriKapat();

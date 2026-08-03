@@ -90,13 +90,13 @@ python -m pytest testler/ -v
 Benchmark degerlendirmesi icin:
 
 ```bash
-python testler/benchmark/degerlendirme.py
+python testler/karsilastirma/degerlendirme.py
 ```
 
 RAG zehirleme testleri dahil:
 
 ```bash
-python testler/benchmark/degerlendirme.py --zehirleme-testi
+python testler/karsilastirma/degerlendirme.py --zehirleme-testi
 ```
 
 ## Yedekleme

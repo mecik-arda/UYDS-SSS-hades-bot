@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import time
+from types import SimpleNamespace
 
 import jwt
 import pytest
@@ -12,10 +13,13 @@ from fastapi.testclient import TestClient
 from uygulama.api.bagimliliklar import (
     akis_semaforunu_al,
     akis_servisini_al,
+    arama_servisini_al,
     api_servisini_al,
     geri_bildirim_servisini_al,
+    eposta_raporlayiciyi_al,
     oturum_hafizasini_al,
     oturum_sahipligi_servisini_al,
+    senkronizasyon_motorunu_al,
 )
 from uygulama.api.rotalar.analitik import router as analitik_router
 from uygulama.api.rotalar.arama import router as arama_router
@@ -52,6 +56,41 @@ class SahteAkisServisi:
         )
         yield 'event: parca\ndata: {"metin":"Sentetik yanit"}\n\n'
         yield 'event: tamamlandi\ndata: {"cevaplandi":true}\n\n'
+
+
+class SahteSenkronizasyonSonucu:
+    islenen_belge_sayisi = 2
+    yeni_parca_sayisi = 4
+    silinen_parca_sayisi = 1
+    karantina_sayisi = 0
+    surumlenen_belge_sayisi = 1
+    hata_sayisi = 0
+    sure_saniye = 0.25
+
+
+class SahteSenkronizasyonMotoru:
+    def artimsal_senkronizasyon(self):
+        return SahteSenkronizasyonSonucu()
+
+    def tam_senkronizasyon(self):
+        return SahteSenkronizasyonSonucu()
+
+
+class SahteEpostaRaporlayici:
+    async def haftalik_raporu_gonder(self):
+        return True
+
+
+class SahteAramaServisi:
+    def ara(self, soru: str, kullanici_rolu: str | None = None):
+        return SimpleNamespace(
+            adaylar=tuple(
+                SimpleNamespace(sss_id=kimlik)
+                for kimlik in range(1, 13)
+            ),
+            gecen_sure_ms=12.5,
+            yeniden_siralama_etkin=False,
+        )
 
 
 @pytest.fixture
@@ -119,6 +158,7 @@ def faz7_istemcisi(tmp_path, monkeypatch, mock_vektor_servisi):
     sahiplik = OturumSahipligiServisi()
     hafiza = OturumHafizasi()
     uygulama.dependency_overrides[akis_servisini_al] = SahteAkisServisi
+    uygulama.dependency_overrides[arama_servisini_al] = SahteAramaServisi
     uygulama.dependency_overrides[api_servisini_al] = lambda: api_servisi
     uygulama.dependency_overrides[
         geri_bildirim_servisini_al
@@ -132,6 +172,12 @@ def faz7_istemcisi(tmp_path, monkeypatch, mock_vektor_servisi):
     uygulama.dependency_overrides[
         akis_semaforunu_al
     ] = lambda: asyncio.Semaphore(2)
+    uygulama.dependency_overrides[
+        senkronizasyon_motorunu_al
+    ] = SahteSenkronizasyonMotoru
+    uygulama.dependency_overrides[
+        eposta_raporlayiciyi_al
+    ] = SahteEpostaRaporlayici
     with TestClient(
         uygulama,
         raise_server_exceptions=False,
@@ -156,6 +202,32 @@ def giris_yap(
 
 def yetki_basligi(belirtec: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {belirtec}"}
+
+
+def test_olcum_aramasi_yalniz_yoneticiye_ilk_on_adayi_dondurur(
+    faz7_istemcisi,
+):
+    kullanici = giris_yap(faz7_istemcisi, "kullanici1")
+    yetkisiz = faz7_istemcisi.post(
+        "/api/v1/yonetici/olcum/arama",
+        json={"soru": "Sentetik soru"},
+        headers=yetki_basligi(kullanici["erisim_belirteci"]),
+    )
+    assert yetkisiz.status_code == 403
+
+    yonetici = giris_yap(faz7_istemcisi, "yonetici")
+    yanit = faz7_istemcisi.post(
+        "/api/v1/yonetici/olcum/arama",
+        json={"soru": "Sentetik soru"},
+        headers=yetki_basligi(yonetici["erisim_belirteci"]),
+    )
+
+    assert yanit.status_code == 200
+    assert yanit.json() == {
+        "sirali_sss_idleri": list(range(1, 11)),
+        "gecen_sure_ms": 12.5,
+        "yeniden_siralama_etkin": False,
+    }
 
 
 def yonetici_imza_basliklari(
@@ -395,3 +467,116 @@ def test_dogrulama_hatasi_girdi_degerini_geri_yansitmaz(
     assert yanit.status_code == 422
     assert "gizli-deger" not in yanit.text
     assert "istek_kimligi" in yanit.json()
+
+
+def test_tarayici_yonetici_imzasi_yalniz_izinli_isleme_verilir(
+    faz7_istemcisi,
+):
+    belirtecler = giris_yap(faz7_istemcisi, "yonetici")
+    basliklar = yetki_basligi(belirtecler["erisim_belirteci"])
+    govde = json.dumps(
+        {
+            "geri_bildirim_id": 1,
+            "islem": "REDDET",
+            "secili_sss_id": None,
+        },
+        separators=(",", ":"),
+    )
+    izinli = faz7_istemcisi.post(
+        "/api/v1/yonetici/islem-imzasi",
+        json={
+            "hedef_yol": "/api/v1/yonetici/geri-bildirim/onay",
+            "govde": govde,
+        },
+        headers=basliklar,
+    )
+    assert izinli.status_code == 200
+    assert len(izinli.json()["imza"]) == 64
+    reddedilen = faz7_istemcisi.post(
+        "/api/v1/yonetici/islem-imzasi",
+        json={"hedef_yol": "/api/v1/kimlik-dogrulama/giris", "govde": ""},
+        headers=basliklar,
+    )
+    assert reddedilen.status_code == 400
+
+
+def test_isletim_durumu_gizli_degerleri_aciklamaz(faz7_istemcisi):
+    belirtecler = giris_yap(faz7_istemcisi, "yonetici")
+    yanit = faz7_istemcisi.get(
+        "/api/v1/yonetici/isletim-durumu",
+        headers=yetki_basligi(belirtecler["erisim_belirteci"]),
+    )
+    assert yanit.status_code == 200
+    metin = yanit.text.lower()
+    assert "api_anahtari" not in metin
+    assert "jwt_gizli" not in metin
+    assert set(yanit.json()) == {
+        "arama",
+        "belgeler",
+        "veri_yonetimi",
+        "otomasyon",
+    }
+
+
+def test_sss_katalogu_metin_ve_kayit_numarasi_ile_aranabilir(
+    faz7_istemcisi,
+):
+    belirtecler = giris_yap(faz7_istemcisi, "yonetici")
+    basliklar = yetki_basligi(belirtecler["erisim_belirteci"])
+    metin_arama = faz7_istemcisi.get(
+        "/api/v1/sss?arama=Sentetik",
+        headers=basliklar,
+    )
+    kimlik_arama = faz7_istemcisi.get(
+        "/api/v1/sss?arama=1",
+        headers=basliklar,
+    )
+    assert metin_arama.status_code == 200
+    assert metin_arama.json()["toplam"] == 1
+    assert kimlik_arama.status_code == 200
+    assert kimlik_arama.json()["kayitlar"][0]["id"] == 1
+
+
+@pytest.mark.parametrize(
+    ("yol", "govde", "beklenen_alan"),
+    [
+        (
+            "/api/v1/yonetici/senkronizasyon",
+            '{"tur":"artimsal"}',
+            "islenen_belge_sayisi",
+        ),
+        (
+            "/api/v1/yonetici/eposta-raporu/gonder",
+            "",
+            "gonderildi",
+        ),
+    ],
+)
+def test_imzali_isletim_islemleri_frontend_akisi_ile_calistirilir(
+    faz7_istemcisi,
+    yol,
+    govde,
+    beklenen_alan,
+):
+    belirtecler = giris_yap(faz7_istemcisi, "yonetici")
+    yetki = yetki_basligi(belirtecler["erisim_belirteci"])
+    imza_yaniti = faz7_istemcisi.post(
+        "/api/v1/yonetici/islem-imzasi",
+        json={"hedef_yol": yol, "govde": govde},
+        headers=yetki,
+    )
+    imza = imza_yaniti.json()
+    basliklar = {
+        **yetki,
+        "Content-Type": "application/json",
+        "X-UYDS-Zaman": imza["zaman"],
+        "X-UYDS-Nonce": imza["nonce"],
+        "X-UYDS-Imza": imza["imza"],
+    }
+    yanit = faz7_istemcisi.post(
+        yol,
+        content=govde.encode("utf-8"),
+        headers=basliklar,
+    )
+    assert yanit.status_code == 200
+    assert beklenen_alan in yanit.json()

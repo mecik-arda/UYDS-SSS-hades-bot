@@ -15,6 +15,7 @@ async def sss_kayitlarini_listele(
     sayfa: int = Query(default=1, ge=1),
     sayfa_basina: int = Query(default=20, ge=1, le=100),
     kategori: str | None = Query(default=None, max_length=200),
+    arama: str | None = Query(default=None, max_length=200),
     kullanici: KullaniciBilgisi = Depends(mevcut_kullaniciyi_al),
     servis: ApiServisi = Depends(api_servisini_al),
 ) -> SssListesiYaniti:
@@ -23,6 +24,7 @@ async def sss_kayitlarini_listele(
         sayfa,
         sayfa_basina,
         kategori,
+        arama,
     )
     return SssListesiYaniti(
         kayitlar=kayitlar,

@@ -19,12 +19,23 @@ def test_faz9_sayfalari_guvenli_sablonlarla_sunulur():
         assert all(metin in yanit.text for metin in metinler)
         assert '/statik/js/uygulama.js" defer' in yanit.text
         assert '/statik/css/stil.css"' in yanit.text
+        if yol == "/analitik":
+            assert '/statik/js/analitik.js" defer' in yanit.text
+            assert "belge-surum-listesi" in yanit.text
+            assert "sorgu-trendi-listesi" in yanit.text
+        if yol == "/yonetici":
+            assert '/statik/js/yonetici.js" defer' in yanit.text
+            assert "yeniden-indeksle" in yanit.text
+            assert "data-senkronizasyon" in yanit.text
+            assert "sss-arama-formu" in yanit.text
         assert "<script>" not in yanit.text
 
 
 def test_faz9_statik_dosyalari_sunulur():
     stil = istemci.get("/statik/css/stil.css")
     betik = istemci.get("/statik/js/uygulama.js")
+    analitik_betigi = istemci.get("/statik/js/analitik.js")
+    yonetici_betigi = istemci.get("/statik/js/yonetici.js")
     assert stil.status_code == 200
     assert stil.headers["content-type"].startswith("text/css")
     assert "--arkaplan" in stil.text
@@ -34,6 +45,14 @@ def test_faz9_statik_dosyalari_sunulur():
     assert 'Durum.rol === "YONETICI"' in betik.text
     assert ".innerHTML" in betik.text
     assert ".outerHTML" not in betik.text
+    assert analitik_betigi.status_code == 200
+    assert "grafikVerileriniYukle" in analitik_betigi.text
+    assert yonetici_betigi.status_code == 200
+    assert "imzaliYoneticiIstegi" in yonetici_betigi.text
+    assert "geriBildirimKarariVer" in yonetici_betigi.text
+    assert "hadesbot:oturum-acildi" in yonetici_betigi.text
+    assert "hadesbot:oturum-acildi" in betik.text
+    assert "innerHTML" not in yonetici_betigi.text
 
 
 def test_faz9_csp_ve_guvenlik_basliklari_sayfalarda_etkin():

@@ -8,6 +8,12 @@
     <title>{{ baslik }} | HadesBot</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/stil.css') }}">
     <script src="{{ url_for('static', path='/js/uygulama.js') }}" defer></script>
+    {% if sayfa == "yonetici" %}
+    <script src="{{ url_for('static', path='/js/yonetici.js') }}" defer></script>
+    {% endif %}
+    {% if sayfa == "analitik" %}
+    <script src="{{ url_for('static', path='/js/analitik.js') }}" defer></script>
+    {% endif %}
 </head>
 <body data-sayfa="{{ sayfa }}">
     <a class="atlama-baglantisi" href="#ana-icerik">Ana içeriğe geç</a>

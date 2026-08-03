@@ -33,6 +33,11 @@ class Konfigurasyon(BaseSettings):
         le=1000000,
     )
     DEEPSEEK_AKIS_MAKS_SANIYE: float = Field(default=180, gt=0, le=900)
+    DEEPSEEK_AKIS_PARCA_ASGARI_KARAKTER: int = Field(
+        default=24,
+        ge=1,
+        le=1024,
+    )
     VERITABANI_YOLU: str = Field(default="veriler/veri_deposu.db")
     VERITABANI_SIFRELEME_ANAHTARI: str = Field(min_length=32)
     GUVEN_ESIGI: float = Field(default=0.70, ge=0, le=1)
@@ -73,6 +78,7 @@ class Konfigurasyon(BaseSettings):
     DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
     LOG_SEVIYESI: str = Field(default="INFO")
     ORTAM_PROFILI: str = Field(default="prod")
+    API_DOKUMANTASYONU_AKTIF: bool = Field(default=False)
     RRF_K: int = Field(default=60, gt=0)
     FTS_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
     VEKTOR_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
@@ -106,8 +112,8 @@ class Konfigurasyon(BaseSettings):
     VERI_TEMIZLIK_PARTI_BOYUTU: int = Field(default=1000, gt=0, le=10000)
     PII_MASKELEME_AKTIF: bool = Field(default=True)
     KULLANICI_SORULARINI_GIZLE: bool = Field(default=False)
-    FALLBACK_KAYNAK_SAYISI: int = Field(default=3, gt=0, le=10)
-    NIYET_SINIFLANDIRMA_AKTIF: bool = Field(default=True)
+    YEDEK_KAYNAK_SAYISI: int = Field(default=3, gt=0, le=10)
+    NIYET_SINIFLANDIRMA_AKTIF: bool = Field(default=False)
     NIYET_GUVEN_ESIGI: float = Field(default=0.80, ge=0, le=1)
     NIYET_EYLEMLERI_YOLU: str = Field(default="veriler/niyet_eylemleri.json")
     EPOSTA_RAPORLAMA_AKTIF: bool = Field(default=False)
@@ -120,7 +126,7 @@ class Konfigurasyon(BaseSettings):
     EPOSTA_RAPOR_GUNU: str = Field(default="pazartesi")
     EPOSTA_RAPOR_SAATI: str = Field(default="09:00")
     BELGE_DIZINLERI: str = Field(default="veriler/belgeler/,veriler/mevzuat/")
-    BELGE_TARAMA_RECURSIVE: bool = Field(default=True)
+    BELGE_ALT_DIZINLER_DAHIL: bool = Field(default=True)
     BELGE_DESTEK_FORMATLAR: str = Field(default="xlsx,pdf,docx,html")
     BELGE_VARSAYILAN_YETKI: int = Field(default=0, ge=0, le=4)
     BELGE_MAKS_BOYUT_MB: int = Field(default=50, gt=0, le=500)
@@ -129,7 +135,7 @@ class Konfigurasyon(BaseSettings):
     BELGE_SURUMLE_AKTIF: bool = Field(default=True)
     BELGE_MAKS_SURUM_SAKLA: int = Field(default=10, gt=0, le=100)
     PDF_TABLO_MOTORU: str = Field(default="auto")
-    PDF_TABLO_MIN_GUVEN: float = Field(default=0.7, ge=0, le=1)
+    PDF_TABLO_ASGARI_GUVEN: float = Field(default=0.7, ge=0, le=1)
     SENKRONIZASYON_AKTIF: bool = Field(default=True)
     SENKRONIZASYON_SAATI: str = Field(default="03:00")
     ARTIMSAL_SENKRONIZASYON_DAKIKA: int = Field(default=30, gt=0, le=1440)
@@ -237,6 +243,21 @@ class Konfigurasyon(BaseSettings):
         if imza_anahtari and len(imza_anahtari) < 32:
             raise ValueError(
                 "Yonetici istek imza anahtari en az 32 karakter olmalidir"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def niyet_yapilandirmasini_dogrula(self) -> "Konfigurasyon":
+        if not self.NIYET_SINIFLANDIRMA_AKTIF:
+            return self
+        eylem_yolu = Path(self.NIYET_EYLEMLERI_YOLU)
+        if (
+            not eylem_yolu.is_file()
+            or eylem_yolu.is_symlink()
+            or eylem_yolu.stat().st_size > 1048576
+        ):
+            raise ValueError(
+                "Niyet siniflandirma icin gecerli bir eylem dosyasi gereklidir"
             )
         return self
 

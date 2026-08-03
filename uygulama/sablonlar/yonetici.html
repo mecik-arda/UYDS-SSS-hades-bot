@@ -14,7 +14,7 @@
     <div class="metrik-karti">
         <span class="metrik-etiketi">Bilgi tabanı durumu</span>
         <strong id="hazirlik-metrigi">Denetleniyor</strong>
-        <small>FTS ve veritabanı hazırlığı</small>
+        <small>FTS, vektör ve veritabanı hazırlığı</small>
     </div>
 </section>
 <section class="panel-karti">
@@ -29,6 +29,22 @@
         <div class="iskelet-satiri"></div>
         <div class="iskelet-satiri"></div>
     </div>
+    <nav class="sayfalama" id="geri-bildirim-sayfalama" aria-label="Geri bildirim sayfaları"></nav>
+</section>
+<section class="panel-karti">
+    <div class="panel-basligi">
+        <div>
+            <p class="ust-etiket">Bilgi tabanı</p>
+            <h2>SSS kataloğu ve doğru kayıt seçimi</h2>
+        </div>
+        <form class="satir-formu" id="sss-arama-formu">
+            <label class="ekran-okuyucu" for="sss-arama">SSS ara</label>
+            <input id="sss-arama" maxlength="200" placeholder="Soru, kategori, modül veya kayıt no">
+            <button type="submit" class="ikincil-dugme">Ara</button>
+        </form>
+    </div>
+    <div class="veri-listesi" id="sss-listesi"><div class="iskelet-satiri"></div></div>
+    <nav class="sayfalama" id="sss-sayfalama" aria-label="SSS sayfaları"></nav>
 </section>
 <section class="panel-karti">
     <div class="panel-basligi">
@@ -37,9 +53,50 @@
             <h2>Cevapsız ve düşük güvenli sorular</h2>
         </div>
     </div>
-    <div class="veri-listesi" id="cevapsiz-sorgu-listesi">
-        <div class="iskelet-satiri"></div>
-        <div class="iskelet-satiri"></div>
-    </div>
+    <div class="veri-listesi" id="cevapsiz-sorgu-listesi"><div class="iskelet-satiri"></div></div>
+    <nav class="sayfalama" id="cevapsiz-sayfalama" aria-label="Cevapsız sorgu sayfaları"></nav>
+</section>
+<section class="isletim-izgara">
+    <article class="panel-karti isletim-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Arama altyapısı</p><h2>İndeks yönetimi</h2></div>
+        </div>
+        <div class="isletim-govdesi">
+            <p>FTS5, yerel embedding ve onaylı alternatif soruları yeniden üretir.</p>
+            <div id="arama-durumu" class="durum-listesi"></div>
+            <button type="button" class="birincil-dugme" id="yeniden-indeksle">İndeksleri yeniden oluştur</button>
+        </div>
+    </article>
+    <article class="panel-karti isletim-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Belge ambarı</p><h2>Senkronizasyon</h2></div>
+        </div>
+        <div class="isletim-govdesi">
+            <p>PDF, DOCX, HTML ve XLSX belgelerini sürümleyerek RAG hattına alır.</p>
+            <div id="belge-durumu" class="durum-listesi"></div>
+            <div class="dugme-grubu">
+                <button type="button" class="ikincil-dugme" data-senkronizasyon="artimsal">Artımlı tara</button>
+                <button type="button" class="birincil-dugme" data-senkronizasyon="tam">Tam tara</button>
+            </div>
+        </div>
+    </article>
+    <article class="panel-karti isletim-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Otomasyon</p><h2>Raporlama ve gizlilik</h2></div>
+        </div>
+        <div class="isletim-govdesi">
+            <div id="otomasyon-durumu" class="durum-listesi"></div>
+            <button type="button" class="ikincil-dugme" id="eposta-raporu-gonder">Haftalık raporu şimdi gönder</button>
+        </div>
+    </article>
+    <article class="panel-karti isletim-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Bakım araçları</p><h2>Veri yaşam döngüsü</h2></div>
+        </div>
+        <div class="isletim-govdesi">
+            <div id="veri-yonetimi-durumu" class="durum-listesi"></div>
+            <p class="ikincil-metin">Excel içe aktarma, sürüm geri alma ve şifreli yedek geri yükleme bakım modunda çalışır. Canlı uygulamadan tetiklenmez.</p>
+        </div>
+    </article>
 </section>
 {% endblock %}

@@ -20,6 +20,11 @@ def mock_vektor_servisi():
             vektor = np.ones(self.vektor_boyutu, dtype=np.float32)
             return vektor / np.linalg.norm(vektor)
 
+        def metinleri_vektore_donustur(self, metinler: list[str]) -> np.ndarray:
+            return np.vstack(
+                [self.metni_vektore_donustur(metin) for metin in metinler]
+            )
+
         def vektoru_bloba_donustur(self, vektor: np.ndarray) -> bytes:
             dizi = np.asarray(vektor, dtype="<f4")
             if dizi.shape != (self.vektor_boyutu,):

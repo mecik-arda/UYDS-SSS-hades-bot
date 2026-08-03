@@ -102,14 +102,14 @@ class AkisServisi:
                 yanit_parcalari.append(parca)
                 yield self._olay_olustur("parca", {"metin": parca})
         except DeepSeekServisiHatasi:
-            fallback_kaynaklari = self._kaynak_ozetlerini_olustur(
-                kaynaklar[: konfigurasyon.FALLBACK_KAYNAK_SAYISI]
+            yedek_kaynaklari = self._kaynak_ozetlerini_olustur(
+                kaynaklar[: konfigurasyon.YEDEK_KAYNAK_SAYISI]
             )
             yield self._olay_olustur(
-                "fallback",
+                "yedek",
                 {
                     "mesaj": _URETIM_HATASI_YANITI,
-                    "kaynaklar": fallback_kaynaklari,
+                    "kaynaklar": yedek_kaynaklari,
                 },
             )
             await self._oturum_hafizasi.konusmayi_ekle(

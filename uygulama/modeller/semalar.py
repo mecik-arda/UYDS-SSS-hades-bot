@@ -66,6 +66,21 @@ class YoneticiOnayYaniti(BaseModel):
     mesaj: str
 
 
+class YoneticiImzaIstegi(BaseModel):
+    hedef_yol: str = Field(min_length=1, max_length=256)
+    govde: str = Field(default="", max_length=65536)
+
+
+class YoneticiImzaYaniti(BaseModel):
+    zaman: str
+    nonce: str
+    imza: str
+
+
+class SenkronizasyonIstegi(BaseModel):
+    tur: str = Field(default="artimsal", pattern="^(artimsal|tam)$")
+
+
 class AnalitikVerisi(BaseModel):
     toplam_soru_sayisi: int
     toplam_geri_bildirim_sayisi: int
@@ -171,7 +186,7 @@ class CevapsizSorguListesi(BaseModel):
 
 @dataclass(frozen=True)
 class AramaAdayi:
-    sss_id: int
+    sss_id: int | None
     parca_id: int | None
     aday_metni: str
     kaynak_dokuman: str | None

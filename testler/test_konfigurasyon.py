@@ -69,3 +69,19 @@ def test_coklu_worker_yapilandirmasi_reddedilir():
 def test_gecersiz_guvenlik_bakim_araligi_reddedilir():
     with pytest.raises(ValidationError):
         konfigurasyon_olustur(GUVENLIK_BAKIM_ARALIGI_SAAT=0)
+
+
+def test_uretimde_api_dokumantasyonu_varsayilan_olarak_kapalidir():
+    sonuc = konfigurasyon_olustur()
+
+    assert sonuc.API_DOKUMANTASYONU_AKTIF is False
+
+
+def test_etkin_niyet_siniflandirma_eylem_dosyasi_gerektirir(tmp_path):
+    eksik_dosya = tmp_path / "eksik.json"
+
+    with pytest.raises(ValidationError, match="eylem dosyasi"):
+        konfigurasyon_olustur(
+            NIYET_SINIFLANDIRMA_AKTIF=True,
+            NIYET_EYLEMLERI_YOLU=str(eksik_dosya),
+        )

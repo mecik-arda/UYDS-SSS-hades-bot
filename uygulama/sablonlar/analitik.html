@@ -48,4 +48,76 @@
         </div>
     </div>
 </section>
+<section class="yonetici-izgara analitik-metrikleri">
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Senkronizasyon</span>
+        <strong id="senkro-durum-metrigi">—</strong>
+        <small id="senkro-bekleyen-metrigi">— bekleyen belge</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Graf düğümü</span>
+        <strong id="graf-dugum-metrigi">—</strong>
+        <small>Bilgi grafı varlıkları</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Graf ilişkisi</span>
+        <strong id="graf-iliski-metrigi">—</strong>
+        <small>Belge ve kavram bağlantıları</small>
+    </div>
+    <div class="metrik-karti">
+        <span class="metrik-etiketi">Belge vektörleri</span>
+        <strong id="vektor-toplam-metrigi">—</strong>
+        <small id="vektor-eksik-metrigi">— eksik vektör</small>
+    </div>
+</section>
+<section class="analitik-izgara">
+    <div class="panel-karti">
+        <div class="panel-basligi"><h2>Belge formatları</h2></div>
+        <canvas id="belge-dagilim-grafigi" role="img" aria-label="Belge formatı dağılım grafiği"></canvas>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi"><h2>Yetki dağılımı</h2></div>
+        <canvas id="yetki-dagilim-grafigi" role="img" aria-label="Belge yetki seviyesi dağılım grafiği"></canvas>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi"><h2>Kavram bulutu</h2></div>
+        <canvas id="kavram-bulutu-grafigi" role="img" aria-label="Belge kavram sıklığı grafiği"></canvas>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi"><h2>Karantina kuyruğu</h2></div>
+        <div class="veri-listesi" id="karantina-listesi"><div class="iskelet-satiri"></div></div>
+    </div>
+</section>
+<section class="analitik-izgara analitik-ayraci">
+    <div class="panel-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Son 30 gün</p><h2>Sorgu ve cevaplanma trendi</h2></div>
+        </div>
+        <div class="veri-listesi" id="sorgu-trendi-listesi"><div class="iskelet-satiri"></div></div>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">RAG içeriği</p><h2>Yapısal parça istatistikleri</h2></div>
+        </div>
+        <div class="veri-listesi" id="parca-istatistik-listesi"><div class="iskelet-satiri"></div></div>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Sürüm geçmişi</p><h2>Belge sürümleri</h2></div>
+            <form class="satir-formu" id="belge-surum-formu">
+                <label class="ekran-okuyucu" for="belge-yolu">Belge yolu</label>
+                <input id="belge-yolu" maxlength="1024" placeholder="İsteğe bağlı tam belge yolu">
+                <button type="submit" class="ikincil-dugme">Filtrele</button>
+            </form>
+        </div>
+        <div class="veri-listesi" id="belge-surum-listesi"><div class="iskelet-satiri"></div></div>
+    </div>
+    <div class="panel-karti">
+        <div class="panel-basligi">
+            <div><p class="ust-etiket">Graf kalitesi</p><h2>Bağlantısız kavramlar</h2></div>
+            <button type="button" class="ikincil-dugme" id="dokuman-raporu-indir">JSON raporunu indir</button>
+        </div>
+        <div class="veri-listesi" id="yetim-kavram-listesi"><div class="iskelet-satiri"></div></div>
+    </div>
+</section>
 {% endblock %}

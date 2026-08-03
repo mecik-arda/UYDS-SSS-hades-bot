@@ -195,11 +195,11 @@ class TestAkisServisi:
 
         assert [olayi_ayristir(olay)[0] for olay in olaylar] == [
             "meta",
-            "fallback",
+            "yedek",
             "tamamlandi",
         ]
-        fallback_verisi = olayi_ayristir(olaylar[1])[1]
-        assert "kaynaklar" in fallback_verisi
+        yedek_verisi = olayi_ayristir(olaylar[1])[1]
+        assert "kaynaklar" in yedek_verisi
         assert "Test hatasi" not in olaylar[-1]
 
     def test_sse_verisi_satir_enjeksiyonuna_karsi_jsonlanir(self):

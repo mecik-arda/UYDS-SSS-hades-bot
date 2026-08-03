@@ -1,5 +1,11 @@
 from uygulama.cekirdek.gunlukleyici import gunlukleyici
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
+from uygulama.modeller.belge_deposu_modelleri import (
+    BELGE_DEPOSU_TABLOLARI,
+    BELGE_FTS_TABLOSU,
+    BELGE_FTS_TETIKLEYICI_ADLARI,
+    BELGE_FTS_TETIKLEYICILERI,
+)
 
 SSS_KAYITLARI_TABLOSU = """
 CREATE TABLE IF NOT EXISTS sss_kayitlari (
@@ -658,6 +664,28 @@ def _vektor_kayitlarini_bir_kez_temizle(baglanti) -> None:
     )
 
 
+def _belge_fts_tablosunu_hazirla(baglanti) -> None:
+    mevcut_kolonlar = [
+        satir["name"]
+        for satir in baglanti.execute(
+            "PRAGMA table_info('belge_fts')"
+        ).fetchall()
+    ]
+    beklenen_kolonlar = ["metin", "baslik_zinciri_json"]
+    yeniden_olusturulmali = mevcut_kolonlar != beklenen_kolonlar
+    for tetikleyici_adi in BELGE_FTS_TETIKLEYICI_ADLARI:
+        baglanti.execute(f"DROP TRIGGER IF EXISTS {tetikleyici_adi}")
+    if yeniden_olusturulmali:
+        baglanti.execute("DROP TABLE IF EXISTS belge_fts")
+    baglanti.execute(BELGE_FTS_TABLOSU)
+    for sorgu in BELGE_FTS_TETIKLEYICILERI:
+        baglanti.execute(sorgu)
+    if yeniden_olusturulmali:
+        baglanti.execute(
+            "INSERT INTO belge_fts(belge_fts) VALUES ('rebuild')"
+        )
+
+
 def tablolari_olustur() -> None:
     with baglam_yoneticisi() as baglanti:
         for sorgu in TABLO_SORGULARI:
@@ -707,6 +735,14 @@ def tablolari_olustur() -> None:
         for sorgu in DOGRULAMA_TETIKLEYICILERI:
             baglanti.execute(sorgu)
         _fts_tablosunu_hazirla(baglanti)
+        for sorgu in BELGE_DEPOSU_TABLOLARI:
+            baglanti.execute(sorgu)
+        _eksik_kolonlari_ekle(
+            baglanti,
+            "belge_kayitlari",
+            {"dosya_boyutu": "INTEGER"},
+        )
+        _belge_fts_tablosunu_hazirla(baglanti)
     gunlukleyici.info(
         "Veritabani tablolari, genisletmeleri ve FTS tetikleyicileri hazirlandi"
     )

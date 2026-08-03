@@ -42,7 +42,11 @@ class NiyetSiniflandirici:
             with yol.open(encoding="utf-8") as dosya:
                 veri = json.load(dosya)
             if isinstance(veri, dict) and isinstance(veri.get("eylemler"), list):
-                self._eylemler = veri["eylemler"]
+                self._eylemler = [
+                    eylem
+                    for eylem in veri["eylemler"]
+                    if self._eylem_gecerli_mi(eylem)
+                ]
             else:
                 gunlukleyici.warning("Niyet eylemleri dosyasi gecersiz format")
         except (json.JSONDecodeError, OSError) as hata:
@@ -72,21 +76,45 @@ class NiyetSiniflandirici:
         anahtar_kelimeler = eylem.get("anahtar_kelimeler", [])
         if not anahtar_kelimeler:
             return 0.0
-        eslesen = 0
-        for kelime in anahtar_kelimeler:
-            if kelime.lower() in temiz_soru:
-                eslesen += 1
-        kelime_skoru = eslesen / len(anahtar_kelimeler) if anahtar_kelimeler else 0.0
+        eslesen = sum(
+            1
+            for kelime in anahtar_kelimeler
+            if kelime.lower() in temiz_soru
+        )
+        gerekli_kelime_sayisi = min(2, len(anahtar_kelimeler))
+        kelime_skoru = min(eslesen / gerekli_kelime_sayisi, 1.0)
         kaliplar = eylem.get("kaliplar", [])
         kalip_skoru = 0.0
         if kaliplar:
-            eslesen_kalip = 0
             for kalip in kaliplar:
                 try:
                     if re.search(kalip, temiz_soru, re.IGNORECASE):
-                        eslesen_kalip += 1
+                        kalip_skoru = 1.0
+                        break
                 except re.error:
                     gunlukleyici.warning("Gecersiz regex kalibi: %s", kalip)
                     continue
-            kalip_skoru = eslesen_kalip / len(kaliplar)
         return round(kelime_skoru * 0.6 + kalip_skoru * 0.4, 4)
+
+    def _eylem_gecerli_mi(self, eylem: object) -> bool:
+        if not isinstance(eylem, dict):
+            return False
+        zorunlu_metinler = (
+            eylem.get("niyet_adi"),
+            eylem.get("buton_metni"),
+            eylem.get("hedef_url"),
+        )
+        if not all(isinstance(deger, str) and deger.strip() for deger in zorunlu_metinler):
+            return False
+        hedef_url = eylem["hedef_url"]
+        if not hedef_url.startswith("/") or hedef_url.startswith("//"):
+            return False
+        anahtar_kelimeler = eylem.get("anahtar_kelimeler")
+        kaliplar = eylem.get("kaliplar", [])
+        return (
+            isinstance(anahtar_kelimeler, list)
+            and bool(anahtar_kelimeler)
+            and all(isinstance(kelime, str) and kelime for kelime in anahtar_kelimeler)
+            and isinstance(kaliplar, list)
+            and all(isinstance(kalip, str) and kalip for kalip in kaliplar)
+        )

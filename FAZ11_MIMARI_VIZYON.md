@@ -4,6 +4,12 @@
 
 Bu doküman, HadesBot (UYDS Akıllı SSS Destek Asistanı) projesinin Faz 10 teslimi sonrasında hayata geçirilmesi planlanan Faz 11'in eksiksiz sistem tasarımını, mimari kararlarını, gerekçelerini ve geçiş tetikleyicilerini tanımlar. Doküman, uygulama öncesinde tüm teknik belirsizlikleri gidermek ve jüri değerlendirmesine hazır bir vizyon belgesi sunmak amacıyla hazırlanmıştır.
 
+## Uygulama Durumu
+
+01.08.2026 itibarıyla yerel çoklu belge çekirdek hattı tamamlanmıştır. Belge ayıklama, yapısal parçalama, yerel vektörleme, external-content FTS, tam ve artımlı zamanlanmış senkronizasyon, karantina, belge sürüm/silme yönetimi, belge ve parça ACL filtresi, tarihsel sürüm seçimi, hafif graf bonusu ve genişletilmiş analitik paneli canlı RAG akışına bağlıdır. Güncel doğrulama paketi `226 passed, 1 skipped` sonucunu vermektedir.
+
+SharePoint/Confluence bağlayıcıları kurumsal hedef ve kimlik doğrulama bilgileri sağlandığında; Neo4j adaptörü ise graf ölçek eşiği aşıldığında uygulanacak ileri ölçek bileşenleridir. Aşağıdaki 99 testlik matris eksiksiz hedef kapsamı korur; çekirdek güvenlik ve entegrasyon senaryoları güncel pakette uygulanmıştır.
+
 Faz 10 itibarıyla sistem tekil Excel kaynağından (2.403 SSS kaydı) beslenen, FTS5 + vektör hibrit arama + DeepSeek RAG boru hattına sahip, Docker konteynerinde izole çalışan, 134 test ile doğrulanmış, sıfır hatalı ve production-ready durumdadır. Faz 11 bu temel üzerine inşa edilir.
 
 ## Vizyon
@@ -37,7 +43,7 @@ PDF Belgeleri -------------┤
 Word Belgeleri ------------┤
 HTML (SharePoint/Confluence)┤--> Belge Ayiklayici --> Yapisal Parcalayici
                             │    (format algilama +     (baslik/tablo/madde
-                            │     fallback zinciri +     butunlugu korunur)
+                            │     yedekleme zinciri +    butunlugu korunur)
                             │     yetki meta verisi)          │
                             │              │                  ▼
                             │              │         ACL Filtresi
@@ -141,7 +147,7 @@ pdf_tablolari_ayikla(sayfa)
 │
 ├── 1. ADIM: PyMuPDF (fitz) ile tablo tespiti
 │   Sayfada dikdortgen tablo yapisi var mi?
-│   ├── VAR + cizgili + guven_skoru >= PDF_TABLO_MIN_GUVEN
+│   ├── VAR + cizgili + guven_skoru >= PDF_TABLO_ASGARI_GUVEN
 │   │   └── fitz ile oku, basarili
 │   └── YOK veya cizgisiz veya guven_skoru < esik
 │       │
@@ -163,12 +169,12 @@ Motor secimi .env uzerinden yapilir:
 - PDF_TABLO_MOTORU=fitz (sadece PyMuPDF)
 - PDF_TABLO_MOTORU=pdfplumber (sadece pdfplumber)
 - PDF_TABLO_MOTORU=ham_metin (tablo ayiklama yok, duz metin)
-- PDF_TABLO_MIN_GUVEN=0.7 (fitz'in verdigi guven skoru altinda fallback'e gecilir)
+- PDF_TABLO_ASGARI_GUVEN=0.7 (fitz'in verdigi guven skoru altinda yedeklemeye gecilir)
 
 ### Yeni Bagimliliklar
 
 Zorunlu: PyMuPDF (fitz), python-docx, beautifulsoup4, lxml
-Opsiyonel: pdfplumber (yuklu degilse ham_metin fallback)
+Opsiyonel: pdfplumber (yuklu degilse ham_metin yedeklemesi)
 
 ---
 
@@ -320,26 +326,27 @@ belge_fts sanal tablosu, metni kendi icinde tutmaz. Bunun yerine SQLite FTS5'in 
 
 ```sql
 CREATE VIRTUAL TABLE belge_fts USING fts5(
-    parca_id UNINDEXED,
-    baslik_zinciri,
-    belge_adi,
+    metin,
+    baslik_zinciri_json,
     content='yapisal_parcalar',
     content_rowid='id',
     tokenize='unicode61 remove_diacritics 2'
 );
 ```
 
-Yazma islemi:
+External-content FTS kolonlari, kaynak `yapisal_parcalar` tablosundaki kolon adlariyla birebir ayni olmalidir. Belge adi ve diger ust veriler arama sonucunda `belge_id` uzerinden `belge_kayitlari` tablosuna baglanarak alinir.
+
+Ekleme, guncelleme ve silme islemleri `yapisal_parcalar_fts_ekle`, `yapisal_parcalar_fts_guncelle` ve `yapisal_parcalar_fts_sil` tetikleyicileriyle FTS indeksine yansitilir. Silme tetikleyicisinin temel islemi:
 
 ```python
 veritabani.execute(
-    "INSERT INTO belge_fts(belge_fts, rowid, parca_id, baslik_zinciri, belge_adi) "
-    "VALUES ('delete', ?, ?, ?, ?)",
-    (yeni_parca.id, yeni_parca.id, baslik_zinciri_json, belge_adi)
+    "INSERT INTO belge_fts(belge_fts, rowid, metin, baslik_zinciri_json) "
+    "VALUES ('delete', ?, ?, ?)",
+    (eski_parca.id, eski_parca.metin, eski_parca.baslik_zinciri_json)
 )
 ```
 
-Bu yapi, yapisal_parcalar tablosundan DELETE yapildiginda FTS indeksini otomatik temizler. Mevcut sss_fts tablosu icin de ayni optimizasyon Faz 11 kapsaminda opsiyonel olarak uygulanabilir.
+Bu tetikleyiciler sayesinde `yapisal_parcalar` degisiklikleri FTS indeksinde yetim veya eski kayit birakmaz. Mevcut sss_fts tablosu icin de ayni optimizasyon Faz 11 kapsaminda opsiyonel olarak uygulanabilir.
 
 ### Vektor Izleme Kolonlari
 
@@ -556,7 +563,7 @@ Birincil graf motoru Neo4j'dur. Ancak Neo4j bir dis bagimliliktir ve air-gapped 
 - NEO4J_AKTIF=true: Neo4j baglantisi kurulur, graf islemleri Cypher sorgulari ile yapilir
 - Gecis otomatiktir: NEO4J_AKTIF degeri degistiginde sistem yeniden baslatilir, graf yeniden insa edilir
 
-NetworkX fallback, kucuk olcekli (10.000 dugum alti) graflar icin yeterlidir. Neo4j, graf 10.000 dugumu astiginda veya karmasik graf sorgulari (PageRank, Community Detection) gerektiginde devreye alinmalidir.
+NetworkX yedeklemesi, kucuk olcekli (10.000 dugum alti) graflar icin yeterlidir. Neo4j, graf 10.000 dugumu astiginda veya karmasik graf sorgulari (PageRank, Community Detection) gerektiginde devreye alinmalidir.
 
 ---
 
@@ -669,9 +676,9 @@ requirements.txt
 
 ### Opsiyonel
 
-- pdfplumber >= 0.10.0 — yuklu degilse PDF tablo ayiklama ham_metin fallback ile calisir
+- pdfplumber >= 0.10.0 — yuklu degilse PDF tablo ayiklama ham_metin yedeklemesi ile calisir
 - spacy >= 3.7, tr_core_news_md — yuklu degilse kavram cikarma "hafif" strateji ile calisir
-- neo4j >= 5.15.0 — yuklu degilse NetworkX fallback ile calisir
+- neo4j >= 5.15.0 — yuklu degilse NetworkX yedeklemesi ile calisir
 
 ---
 
@@ -680,7 +687,7 @@ requirements.txt
 ```
 # Belge Deposu
 BELGE_DIZINLERI=veriler/belgeler/,veriler/mevzuat/
-BELGE_TARAMA_RECURSIVE=true
+BELGE_ALT_DIZINLER_DAHIL=true
 BELGE_DESTEK_FORMATLAR=xlsx,pdf,docx,html
 BELGE_VARSAYILAN_YETKI=0
 BELGE_MAKS_BOYUT_MB=50
@@ -695,7 +702,7 @@ BELGE_MAKS_SURUM_SAKLA=10
 
 # PDF Tablo
 PDF_TABLO_MOTORU=auto
-PDF_TABLO_MIN_GUVEN=0.7
+PDF_TABLO_ASGARI_GUVEN=0.7
 
 # Senkronizasyon
 SENKRONIZASYON_AKTIF=true
@@ -735,10 +742,10 @@ VEKTOR_GECIS_YANIT_SURESI_SN=2
 
 | Test Dosyasi | Hedef Test Sayisi | Kapsam |
 |---|---|---|
-| test_belge_ayiklayici.py | 18 | PDF/DOCX/HTML/Excel okuma, format algilama, fallback zinciri, yetki meta verisi okuma, hata durumlari |
+| test_belge_ayiklayici.py | 18 | PDF/DOCX/HTML/Excel okuma, format algilama, yedekleme zinciri, yetki meta verisi okuma, hata durumlari |
 | test_yapisal_parcalayici.py | 15 | Baslik hiyerarsisi, tablo butunlugu, madde imi gruplama, token siniri |
 | test_senkronizasyon_motoru.py | 16 | Tam/artimsal senkronizasyon, degisiklik tespiti, silinen dosya temizligi, karantina durumlari (7 hata kodu), surumleme zinciri, hata toleransi |
-| test_bilgi_grafi.py | 10 | Kavram cikarma (3 strateji), graf olusturma, komsuluk skoru, NetworkX fallback |
+| test_bilgi_grafi.py | 10 | Kavram cikarma (3 strateji), graf olusturma, komsuluk skoru, NetworkX yedeklemesi |
 | test_analitik_api.py | 13 | 13 endpoint, parametre dogrulama, yetkilendirme, karantina durumu, surum sorgulama, vektor durumu esik kontrolu, ACL yetki filtreleme |
 | test_acl_rag_boru_hatti.py | 8 | Uctan uca RAG filtreleme: %99 cosine similarity olsa bile yetkisiz parca RAG promptuna sizmaz, filtre RRF sonrasi/LLM oncesi dogru konumda, tum yetki seviyeleri icin pozitif/negatif testler |
 | test_surum_bazli_arama.py | 7 | Tarih referansli sorgularda aktif=false filtresi otomatik kalkar, dogru surum bulunur; tarihsiz sorguda her zaman en guncel surum; "eski yonetmelige gore" gibi referanssiz ifadelerde en yakin onceki surume yonlendirme |
@@ -751,7 +758,7 @@ VEKTOR_GECIS_YANIT_SURESI_SN=2
 ## Basari Kriterleri
 
 - PDF, DOCX, HTML ve XLSX formatlarinin tamami hatasiz okunabilmeli
-- PDF tablo fallback zinciri her seviyede dogru calismali (fitz -> pdfplumber -> ham_metin)
+- PDF tablo yedekleme zinciri her seviyede dogru calismali (fitz -> pdfplumber -> ham_metin)
 - Yapisal parcalama, tablo iceren belgelerde tablolari bolmemeli (butunluk orani: yuzde 100)
 - Belge ACL filtreleme ile yetkisiz erisimde veri sizintisi orani: yuzde 0
 - Yetki seviyesi tum belge formatlarindan dogru okunabilmeli; bulunamadiginda varsayilan deger kullanilmali
@@ -763,7 +770,7 @@ VEKTOR_GECIS_YANIT_SURESI_SN=2
 - Artimsal senkronizasyon 2.403 SSS + 50 ek belge icin 30 saniyeden kisa surmeli
 - Bilgi grafi sorguya eklenen SSS kayitlari icin Top-1 dogrulugunu en az yuzde 2 artirmali
 - FTS5 external content tablosu disk kullanimini yariya indirmeli
-- Neo4j kapaliyken NetworkX fallback sorunsuz calismali
+- Neo4j kapaliyken NetworkX yedeklemesi sorunsuz calismali
 - Kavram cikarma onbellegi ayni belge icin tekrar API cagrisi yapmamali
 - 99 yeni test, tumu mevcut 134 testle birlikte yesil olmali
 - Canvas grafikleri harici kutuphane olmadan render edilmeli (tarayicida 1 saniyeden kisa sure)
@@ -789,7 +796,7 @@ Faz 10 itibariyla HadesBot, tekil Excel kaynagindan beslenen, 134 test ile dogru
 
 6. **Yapisal Parcalama:** Baslik hiyerarsisi, tablo butunlugu ve madde imi gruplamasi ile baglam kopmasini (chunking loss) tamamen cozen ileri seviye metin parcalama.
 
-7. **GraphRAG:** TF-IDF -> SpaCy NER -> LLM kademeli stratejisiyle kavram cikaran, Neo4j / NetworkX fallback mimarisiyle satici bagimliligi olusturmayan bilgi grafi katmani.
+7. **GraphRAG:** TF-IDF -> SpaCy NER -> LLM kademeli stratejisiyle kavram cikaran, Neo4j / NetworkX yedekleme mimarisiyle satici bagimliligi olusturmayan bilgi grafi katmani.
 
 Sistemin vektor arama kapasitesi sinirlarina yaklasmasi durumunda (50.000 parca, 200ms p95 gecikme, 10 eszamanli kullanici) sqlite-vec veya pgvector gecisi icin tetikleyici esikler tanimlanmistir. Tum mimari kararlar; veri guvenligi (ACL), sistem dayanikliligi (karantina), veri yonetisimi (surumleme), maliyet optimizasyonu ve graceful degradation prensipleri gozetilerek gerekcelendirilmistir.
 

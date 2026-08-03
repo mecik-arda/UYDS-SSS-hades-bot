@@ -9,6 +9,9 @@ data/
 *.sqlite
 *.sqlite3
 .env
+.env.dev
+.env.prod
+.env.test
 __pycache__/
 .codex_pytest_temp/
 *.pyc
@@ -24,12 +27,15 @@ venv/
 /hata_duzeltme_kaydi.md
 /uygulama/varsayilanlar/es_anlamlilar.json
 
-# Test ve Benchmark Sonuçları
+# Test ve karşılaştırma sonuçları
 test_sonucu.txt
 /testler/benchmark/raporlar/
+/testler/karsilastirma/raporlar/
 .coverage
 coverage.xml
 htmlcov/
 .pytest_cache/
+.pytest_tmp*/
+.pytest_sandbox_*/
 playwright-report/
 test-results/

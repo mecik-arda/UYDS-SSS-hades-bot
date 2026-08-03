@@ -41,6 +41,7 @@ from uygulama.cekirdek.veritabani import (
     veritabanini_sifrele,
 )
 from uygulama.servisler.eposta_raporlayici import EpostaRaporlayici
+from uygulama.servisler.senkronizasyon_motoru import SenkronizasyonMotoru
 from uygulama.servisler.veri_temizligi import VeriTemizligi
 from uygulama.modeller.veritabani_modelleri import tablolari_olustur, varsayilan_yonetici_olustur
 
@@ -90,6 +91,7 @@ async def uygulama_omru(uygulama: FastAPI):
     bakim_gorevi = None
     temizlik_gorevi = None
     rapor_gorevi = None
+    senkronizasyon_gorevi = None
     bakim_durdurma_olayi = asyncio.Event()
     try:
         tek_worker_dagitimini_dogrula(
@@ -114,6 +116,10 @@ async def uygulama_omru(uygulama: FastAPI):
         temizlik_gorevi = veri_temizligi.periyodik_temizlik_baslat()
         eposta_raporlayici = EpostaRaporlayici()
         rapor_gorevi = eposta_raporlayici.periyodik_raporlama_baslat()
+        senkronizasyon_motoru = SenkronizasyonMotoru()
+        senkronizasyon_gorevi = (
+            senkronizasyon_motoru.periyodik_senkronizasyon_baslat()
+        )
         gunlukleyici.info("Veritabani baslatma islemleri tamamlandi")
     except Exception as hata:
         gunlukleyici.error(
@@ -133,13 +139,19 @@ async def uygulama_omru(uygulama: FastAPI):
             try:
                 await temizlik_gorevi
             except asyncio.CancelledError:
-                pass
+                gunlukleyici.debug("Veri temizligi gorevi durduruldu")
         if rapor_gorevi is not None:
             rapor_gorevi.cancel()
             try:
                 await rapor_gorevi
             except asyncio.CancelledError:
-                pass
+                gunlukleyici.debug("Eposta raporu gorevi durduruldu")
+        if senkronizasyon_gorevi is not None:
+            senkronizasyon_gorevi.cancel()
+            try:
+                await senkronizasyon_gorevi
+            except asyncio.CancelledError:
+                gunlukleyici.debug("Belge senkronizasyonu gorevi durduruldu")
         bagimlilik_onbelleklerini_temizle()
         await asyncio.to_thread(veritabanini_sifrele)
 
@@ -149,6 +161,11 @@ uygulama = FastAPI(
     description="UYDS Sik Sorulan Sorular Akilli Destek Asistani API",
     version="1.0.0",
     lifespan=uygulama_omru,
+    docs_url="/docs" if konfigurasyon.API_DOKUMANTASYONU_AKTIF else None,
+    redoc_url="/redoc" if konfigurasyon.API_DOKUMANTASYONU_AKTIF else None,
+    openapi_url=(
+        "/openapi.json" if konfigurasyon.API_DOKUMANTASYONU_AKTIF else None
+    ),
 )
 
 uygulama.state.limiter = istek_sinirlayici
@@ -170,7 +187,13 @@ uygulama.add_middleware(
     allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-UYDS-Zaman",
+        "X-UYDS-Nonce",
+        "X-UYDS-Imza",
+    ],
 )
 
 uygulama.include_router(kimlik_dogrulama_router)

@@ -193,9 +193,9 @@ HadesBot/
 │   ├── es_anlamlilar.json
 │   └── gunlukler/ (Uygulama günlükleri)
 ├── testler/
-│   ├── test_excel_yukleyici.py
-│   ├── test_arama.py
-│   ├── test_guvenlik.py
+│   ├── test_belge_ayiklayici.py
+│   ├── test_arama_servisi.py
+│   ├── test_guvenlik_bakimi.py
 │   └── test_api.py
 ├── Dockerfile
 ├── docker-compose.yml
@@ -555,12 +555,15 @@ HadesBot/
 - **Adım 9.5: Yönetici Analitik Grafik Paneli Bileşeni**
   - En çok sorulan konular ve cevapsız kalan sorular analitik grafik panelleri.
   - Bekleyen geri bildirim, cevapsız sorgu, kategori dağılımı ve özet metriklerin canlı API bağlantısı.
+  - Geri bildirim onay/red, doğru SSS seçimi, SSS arama/sayfalama, indeks yenileme, tam/artımlı belge senkronizasyonu ve e-posta raporu yönetici işlemleri arayüze bağlandı.
+  - Belge sürümleri, parça istatistikleri, 30 günlük sorgu trendi, yetim kavramlar ve indirilebilir birleşik doküman raporu analitik ekranına eklendi.
+  - Kritik tarayıcı işlemleri gizli anahtarı istemciye vermeyen, hedef yol ve gövdeye bağlı tek kullanımlı HMAC imza akışıyla korunur.
 - **Adım 9.6: Ön Yüz Kabul Doğrulaması**
   - Üç sayfa ve statik dosya sunumu, CSP/güvenlik başlıkları ve XSS riskli DOM API'lerinin kullanılmaması regresyon testleriyle korunur.
   - İzole Uvicorn sürecinde gerçek tarayıcıyla masaüstü ve 390 piksel mobil kırılım, JWT yönetici girişi, panel veri yükleme ve konsol hatasızlığı doğrulandı.
-  - Faz 9 ile 3 kalıcı ön yüz testi eklendi; toplam 168 test başarıyla geçti.
+  - Güncel tam paket 235 başarılı ve 1 isteğe bağlı atlanan test sonucuyla; Docker, gerçek tarayıcı, 390 piksel mobil kırılım ve konsol hatasızlığıyla doğrulandı.
 
-### Faz 10: Test, Doğrulama, Güvenlik Testleri ve Dokümantasyon [TAMAMLANDI]
+### Faz 10: Test, Doğrulama, Güvenlik Testleri ve Dokümantasyon [ÖLÇÜM ALTYAPISI TAMAMLANDI, ALTIN VERİ SETİ BEKLİYOR]
 - **Adım 10.1: Birim ve Entegrasyon Testleri (`testler/`)**
   - Pytest birim testleri ve FastAPI entegrasyon testleri.
 - **Adım 10.2: Arama Başarımı ve Güven Eşiği Doğrulama Testleri**
@@ -585,21 +588,25 @@ HadesBot/
   - Geri bildirim sonrası başarı değişiminin raporlanması.
 - **Adım 10.7: Yerel Embedding Yaşam Döngüsü ve Ölçek Geçişi**
   - Gizlilik, çevrimdışı çalışma, öngörülebilir maliyet ve sağlayıcı bağımsızlığı gerekçeleriyle yerel embedding mimarisi varsayılan yaklaşım olarak korunacaktır.
-  - Mevcut `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` modeli başlangıç referansı olarak kullanılacak; model değişikliği yalnızca Türkçe benchmark sonuçlarıyla doğrulanacaktır.
+  - Mevcut `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` modeli başlangıç referansı olarak kullanılacak; model değişikliği yalnızca Türkçe karşılaştırma sonuçlarıyla doğrulanacaktır.
   - En az 50, hedef olarak 100 temsili Türkçe sorgudan oluşan; kolay, zor, eş anlamlı, yazım hatalı ve bilinmeyen soru sınıflarını içeren veri seti hazırlanacaktır.
   - Top-1, Top-3, MRR@10, nDCG@10, bilinmeyen sorgu reddi, p50/p95 gecikme, tepe bellek ve vektör dizini boyutu birlikte ölçülecektir.
   - Modelin 128 token sınırı gerçek tokenizer çıktısıyla denetlenecek; yalnızca karakter sayısına dayalı parçalama kabul edilmeyecektir.
-  - Model kimliği, sabit revizyonu, dosya özeti, tokenizer sürümü, pooling yöntemi, vektör boyutu ve benchmark sürümü kayıt altına alınacaktır.
+  - Model kimliği, sabit revizyonu, dosya özeti, tokenizer sürümü, pooling yöntemi, vektör boyutu ve karşılaştırma sürümü kayıt altına alınacaktır.
   - Model, tokenizer, pooling veya vektör boyutu değiştiğinde tüm aktif içerik yeniden vektörlenecek; farklı embedding sürümleri aynı arama uzayında karıştırılmayacaktır.
   - Yeniden vektörleme yeni ve ayrı bir sürümde tamamlanacak, doğrulama sonrasında atomik olarak etkinleştirilecek ve önceki sürüme geri dönüş korunacaktır.
   - Cross-Encoder yalnızca doğruluk kazanımı gecikme ve bellek maliyetini karşıladığında üretimde etkinleştirilecektir.
   - SQLite tam tarama yaklaşımı mevcut veri ölçeğinde korunacak; yaklaşık 50.000-100.000 aktif parça, p95 gecikme hedefinin aşılması veya eşzamanlılık baskısı ölçek değerlendirmesini tetikleyecektir.
   - Ölçek değerlendirmesinde `pgvector` ve yerel `Qdrant`; kesin arama ve HNSW seçenekleriyle doğruluk, gecikme, bellek, yedekleme ve işletim maliyeti açısından karşılaştırılacaktır.
   - Yerel embedding kullanımının sistemi bütünüyle çevrimdışı yapmadığı belgelenmeye devam edecek; DeepSeek etkin olduğunda sorgu ve seçilen kaynak parçalarının dış sağlayıcıya gönderilebileceği açıkça belirtilecektir.
+  - Karşılaştırma motoru yönetici yetkili, LLM çağırmayan ilk 10 arama sıralaması üzerinden Top-1, Top-3, MRR@10 ve nDCG@10; sohbet akışı üzerinden cevap vermeme, kaynak gösterme ve p50/p95 gecikme metriklerini üretir. HTML, JSON ve CSV raporları oluşturur ve kabul eşiği karşılanmadığında başarısız çıkış kodu döndürür.
+  - Mevcut 25 senaryo davranış ve güvenlik etiketi taşır ancak uzman tarafından doğrulanmış beklenen SSS kimlikleri içermediği için arama doğruluğu kabulü tamamlanmış sayılmaz. En az 50 kurumsal veri sızdırmayan, uzman etiketli senaryo hazırlanıp aynı motorla ölçülmelidir.
 
-### Faz 11: Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu (Gelecek Vizyonu)
-- Faz 10 itibarıyla sıfır hatalı (134 test) ve stabil teslim sürümüne ulaşan sistemin, gelecekte devasa bir Veri Ambarı (Data Warehouse) ve Bilgi Grafı (GraphRAG) mimarisine dönüşebilmesi için hazırlanan kapsamlı sistem tasarım dokümanıdır.
-- **Detaylı mimari kararlar, vektör veritabanı geçiş tetikleyicileri, ETL boru hatları, erişim kontrolü (RBAC), karantina yönetimi (DLQ), belge sürümleme ve 99 yeni test planı için kök dizindeki `FAZ11_MIMARI_VIZYON.md` dokümanını inceleyiniz.**
+### Faz 11: Veri Ambarı ve Çoklu Veri Kaynağı Entegrasyonu [ÇEKİRDEK TAMAMLANDI]
+- Yerel PDF, DOCX, HTML ve XLSX kaynakları belge ayıklama, yapısal parçalama, yerel embedding, external-content FTS ve sürümlemeli depolama zincirinden geçirilir. Tam ve artımlı senkronizasyon, silinen belge pasifleştirme, sürüm saklama sınırı, karantina ve uygulama yaşam döngüsüne bağlı zamanlayıcı uygulanmıştır.
+- Belge FTS ve vektör sonuçları mevcut SSS sonuçlarıyla RRF sıralamasında birleşir. Belge ve parça ACL filtresi LLM öncesinde uygulanır; tarih referanslı sorgular uygun eski sürümü seçer. Hafif kavram grafı arama skoruna sınırlı bonus verir ve analitik API ile yönetici panelinde izlenir.
+- Kurumsal kimlik doğrulamalı SharePoint/Confluence bağlayıcıları ile Neo4j adaptörü mevcut veri ölçeğinde zorunlu değildir; bunlar ilgili dış sistem bilgileri ve ölçek eşiği sağlandığında uygulanacak ileri ölçek adımlarıdır.
+- **Detaylı mimari kararlar ve vektör veritabanı geçiş tetikleyicileri için kök dizindeki `FAZ11_MIMARI_VIZYON.md` dokümanını inceleyiniz.**
 
 ### Faz 12: Veri Gizliliği ve Analitik Kayıt Yönetimi [TAMAMLANDI]
 - **Adım 12.1: Otomatik Temizlik Politikası (Data Retention Policy)**
@@ -617,25 +624,34 @@ HadesBot/
 - **Adım 13.3: İşleme Dönük Butonlar (Intent Deep-Linking)**
   - Belirli kilit sorular ("Şifremi sıfırla", "Destek bileti aç") için basit bir Niyet (Intent) sınıflandırma mekanizması eklenecektir. Kullanıcının niyeti bu kilit işlemlerden biriyle eşleştiğinde, yapay zeka sadece metin üretmekle kalmayıp arayüzde doğrudan o işlemin sayfasına yönlendiren aksiyon butonları (Deep Link) oluşturacaktır.
 
+### Faz 14: Otomatik E-posta Raporlama [TAMAMLANDI]
+- **Adım 14.1: Haftalık İstatistik Raporu**
+  - Toplam, cevaplanan ve cevapsız soru; bekleyen geri bildirim; ortalama güven skoru ve kategori dağılımı raporlanır.
+- **Adım 14.2: Güvenli E-posta Teslimi**
+  - HTML ve düz metin içerik, STARTTLS ve ortam değişkeni tabanlı SMTP yapılandırması kullanılır.
+- **Adım 14.3: Zamanlama ve Yönetici İşlemi**
+  - Rapor zamanlayıcıdan veya tek kullanımlı yönetici işlem imzasıyla korunan arayüz işleminden gönderilebilir; bloklayan SMTP çağrısı `asyncio.to_thread` ile uygulama olay döngüsünden ayrılır.
+
 ## 8. Proje Durumu ve Uygulama Notu
 
-### Mevcut Durum (Son Güncelleme: 30.07.2026)
+### Mevcut Durum (Son Güncelleme: 01.08.2026)
 - **Faz 1:** Tamamlandı. Ortam profilleri, güvenli yapılandırma, rate limiting, güvenlik başlıkları, CORS, brute-force altyapısı, istek boyutu sınırı, healthcheck ve zamanlanabilir yedekleme/geri yükleme hazır.
 - **Faz 2:** Tamamlandı. Bağlantı başına SQLite yönetimi, WAL/foreign key, FTS5 senkronizasyonu, tablolar, modeller, önbellek, hassas veri maskeleme ve AES-256-GCM disk şifreleme hazır.
 - **Faz 3:** Tamamlandı. Standart ve kurumsal UYDS Excel şemalarının doğrulanması, güvenlik taraması, veri temizleme, mükerrer dosya engelleme, otomatik sürümleme, eski kayıtları arşivleme, denetim günlüğü ve anlam bütünlüğünü koruyan metin parçalama hazır.
 - **Faz 4:** Tamamlandı. Sabit ve doğrulanan yerel MiniLM modeli, çevrimdışı 384 boyutlu Float32 vektör üretimi, artımlı güncelleme, model bütünlük manifesti ve kurum içi terim haritası hazır.
-- **Faz 5:** Tamamlandı. Hibrit arama (alan ağırlıklı FTS5 BM25 + vektör kosinüs benzerliği + RRF + Türkçe sorgu genişletme) ile güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanı uygulandı ve 48 test ile doğrulandı. Arama sonucu genişletilmiş FTS sorgusunu, genişletilen terim sayısını ve kullanılan semantik grup sayısını ölçüm için taşır. Cross-Encoder sabit model revizyonu, resmî ağırlık özeti, yerel manifest, çevrimdışı yükleme ve RRF geri dönüşüyle korunur; üretim aktivasyonu Faz 10 Türkçe benchmark ve gecikme ölçümünde doğrulanmıştır.
-- **Faz 5 Docker ön kabulü:** Güncel imaj, uygulama ve yedekleyici servisleriyle başarıyla başlatıldı; liveness, veritabanı/FTS readiness ve imaj içi sorgu genişletme duman testi geçti. Bir ısınma sonrası 20 yerel sorguda p50 46.609 ms ve p95 79.305 ms ölçüldü. Temsili soru seti, tepe bellek ve Cross-Encoder açık/kapalı karşılaştırması Faz 10 benchmarkında doğrulanmıştır.
+- **Faz 5:** Tamamlandı. Hibrit arama (alan ağırlıklı FTS5 BM25 + vektör kosinüs benzerliği + RRF + Türkçe sorgu genişletme) ile güvenli ve isteğe bağlı Cross-Encoder yeniden sıralama katmanı uygulandı ve 48 test ile doğrulandı. Arama sonucu genişletilmiş FTS sorgusunu, genişletilen terim sayısını ve kullanılan semantik grup sayısını ölçüm için taşır. Cross-Encoder sabit model revizyonu, resmî ağırlık özeti, yerel manifest, çevrimdışı yükleme ve RRF geri dönüşüyle korunur; üretim aktivasyonu en az 50 uzman etiketli Türkçe senaryonun doğruluk, p95 gecikme ve bellek ölçümünü geçmesini beklemektedir.
+- **Faz 5 Docker ön kabulü:** Güncel imaj, uygulama ve yedekleyici servisleriyle başarıyla başlatıldı; canlılık, veritabanı/FTS hazırlık ve imaj içi sorgu genişletme duman testi geçti. Bir ısınma sonrası 20 yerel sorguda p50 46.609 ms ve p95 79.305 ms ölçüldü. Uzman etiketli temsili soru seti, tepe bellek ve Cross-Encoder açık/kapalı karşılaştırması Faz 10 arama kabulünün açık maddeleridir.
 - **Faz 6:** Servis katmanı tamamlandı. Kaynak kontrollü DeepSeek istemcisi, güven eşiği kapısı, SSE olay üretimi, sınırlı oturum hafızası, üretim hedef alan adı izin listesi ve akış kaynak sınırları hazırdır. Canlı `deepseek-v4-pro` bağlantısı sentetik veriyle; kurum sahibinin açık onayı sonrasında gerçek UYDS bilgi tabanıyla da uçtan uca doğrulandı. Gerçek kaynaklı istekte `0,894982` güven skoru, 5 kaynak, 29 SSE parçası, 11,64 saniye ve `cevaplandi=true` sonucu ölçüldü. Faz 10 kabul testlerinde yüzde 100 kaynak gösterme oranı doğrulanmıştır.
 - **Faz 7:** Tamamlandı. JWT erişim/refresh yaşam döngüsü, `kid` anahtar rotasyonu, token ailesi tekrar kullanım tespiti, kullanıcıya bağlı sunucu oturumları, kimlik doğrulamalı SSE arama, SSS, geri bildirim, yönetici ve analitik rotaları, HMAC istek imzası, nonce replay koruması, merkezi hata yönetimi, istek kimliği, süresi dolmuş güvenlik kaydı bakımı, tek-worker dağıtım koruması ve OpenAPI sözleşme denetimi uygulandı.
 - **Faz 8:** Tamamlandı. Geri bildirim döngüsü, yönetici onayı, alternatif soru öğrenme mekanizması (FR-09), cevapsız sorgu yönetimi ve arama servisine alternatif soru entegrasyonu uygulandı. Kullanıcı doğru SSS kaydını `secili_sss_id` ile önerebiliyor; yönetici onay sırasında bu seçimi koruyabiliyor veya değiştirebiliyor. Onaylanan alternatif soru model kimliği, vektör boyutu ve metin özetiyle saklanıyor; yapılandırılabilir benzerlik eşiğinden sonra RRF kanalına katılıyor ve ana sonuçlarla SSS kimliği üzerinden tekilleştiriliyor. Mevcut veritabanları için geriye uyumlu sütun migrasyonu, alternatif soru yeniden vektörleme desteği ve yöneticiye özel sayfalı cevapsız sorgu rotası hazırdır. Faz 8 kapsamında 15 test eklendi.
-- **Faz 9:** Tamamlandı. Sohbet, yönetici ve analitik sayfaları; responsive kurumsal tema, rol tabanlı navigasyon, JWT yaşam döngüsü, canlı SSE tüketimi, güven ve kaynak bileşenleri, yerel geçmiş/ayar çekmeceleri ve API bağlantılı analitik paneller uygulandı. XSS riskli HTML ekleme API'leri kullanılmadı; gerçek tarayıcıda masaüstü ve mobil görünüm doğrulandı.
+- **Faz 9:** Tamamlandı. Sohbet, yönetici ve analitik sayfaları; responsive kurumsal tema, rol tabanlı navigasyon, JWT yaşam döngüsü, canlı SSE tüketimi, SSS kataloğu, geri bildirim karar akışı, indeks ve belge senkronizasyon yönetimi, işletim envanteri ve gelişmiş analitik paneller uygulandı. XSS riskli HTML ekleme API'leri kullanılmadı; kritik işlemler tek kullanımlı sunucu imzasıyla korunur ve gerçek tarayıcıda masaüstü ile mobil görünüm doğrulandı.
 - **Yerel veri işletimi:** Yinelenen `.env` tanımları tekilleştirildi; etkin `prod` profili ve `veriler/veri_deposu.db` standart yolu doğrulandı. Açılabilir şifreli veritabanının bütünlük kontrolü tamamlandı ve `.env`, şifreli veritabanları, kaynak belgeler ile kurum içi terim haritası erişimi kısıtlı, Git dışında tutulan bir kurtarma yedeğine alındı. Gerçek Excel kaynağından 2.398 SSS, 4.075 parça ve 4.075 geçerli yerel vektör yeniden oluşturuldu. Gerçek şifreli veritabanıyla liveness, readiness, ön yüz, yönetici girişi, dış LLM kapalı sentetik SSE akışı ve kurum onaylı canlı DeepSeek akışı doğrulandı. Kapanışta düz metin veritabanı bırakılmadı.
-- **Faz 10:** Tamamlandı. Benchmark altyapısı (25 senaryo), degerlendirme.py, HTML rapor üretimi, Yargu/Yggdrasil sızma testleri ve başarı metrikleri doğrulandı. 25/25 benchmark senaryosu başarıyla geçti.
+- **Faz 10:** Ölçüm ve güvenlik altyapısı tamamlandı; arama kabulü bekliyor. Mevcut 25 senaryo davranış, ret ve güvenlik akışını doğrular. Değerlendirme motoru gerçek kaynak sıralamasından Top-1, Top-3, MRR@10, nDCG@10, kaynak gösterme, cevap vermeme ve p50/p95 gecikme metrikleri ile HTML, JSON ve CSV raporları üretir. Uzman doğrulamalı beklenen SSS kimliği taşıyan en az 50 senaryo henüz hazırlanmadığı için arama doğruluğu ve Cross-Encoder üretim aktivasyonu tamamlanmış kabul edilmez.
+- **Faz 11:** Çekirdek tamamlandı. Yerel çoklu belge ETL, yapısal parça ve vektör üretimi, tam/artımlı zamanlanmış senkronizasyon, sürüm/silme yönetimi, karantina, external-content FTS, belge ACL, tarihsel sürüm araması, sınırlı graf bonusu ve genişletilmiş analitik paneli canlı RAG hattına bağlandı. Harici kurumsal bağlayıcılar ve Neo4j yalnızca ileri ölçek adımıdır.
 - **Faz 12:** Tamamlandı. PII maskeleme (TC Kimlik, IBAN, telefon, kredi kartı, e-posta), otomatik veri temizliği (6 aydan eski sorgular), yönetici gizlilik kontrolü (KULLANICI_SORULARINI_GIZLE).
 - **Faz 14:** Tamamlandı. Otomatik e-posta raporlama modülü (smtplib tabanlı, sıfır dış bağımlılık). Haftalık istatistik raporu (toplam soru, cevaplanan/cevapsız, bekleyen geri bildirim, ortalama güven skoru, en çok sorulan kategoriler). HTML + Plain Text çift format, STARTTLS desteği, asyncio.to_thread ile event-loop güvenli.
-- **Faz 13:** Tamamlandı. RBAC rol bazlı arama filtreleme (FTS5 + vektör WHERE koşulu), DeepSeek API çökme durumunda offline fallback modu (fallback SSE olayı), niyet sınıflandırma ve aksiyon butonları (niyet_siniflandirici.py + eylem SSE olayı). pyproject.toml güncellendi (pytest önbellek devre dışı).
-- **Kod Denetimi:** 23 tur denetim ve iyileştirme tamamlandı. Faz 1-9 kapsamında doğrulanmış bekleyen kritik veya yüksek kod hatası bulunmamaktadır. Güncel kaynakta 168 test; canlı giriş, refresh rotasyonu, çıkış, düşük güvenli SSE, SSS, analitik, yönetici HMAC, nonce replay, güvenlik kaydı bakımı, worker koruması, OpenAPI sözleşmesi, Cross-Encoder güvenlik sınırları, HTTP istek çerçeveleme koruması, Faz 8 onay akışı, cevapsız sorgu yetkilendirmesi, eski şema migrasyonu, alternatif vektör bütünlüğü, RRF tekilleştirmesi ve Faz 9 ön yüz sunumu doğrulandı. Temsili retrieval veri seti, tepe bellek ölçümü ve Cross-Encoder açık/kapalı benchmarkı Faz 10 kabul çalışması olarak beklemektedir. Detaylar `hata_duzeltme_kaydi.md` dosyasındadır.
+- **Faz 13:** Tamamlandı. RBAC rol bazlı arama filtreleme (FTS5 + vektör WHERE koşulu), DeepSeek API çökme durumunda çevrimdışı yedekleme modu (`yedek` SSE olayı), niyet sınıflandırma ve aksiyon butonları (`niyet_siniflandirici.py` + `eylem` SSE olayı). Niyet motoru, gelecekteki kimlik yönetimi rotaları erkenden uygulanmadan, kurumun gerçek hedefleri yapılandırılana kadar varsayılan kapalı ve hızlı hata korumalıdır. Normal kullanıcı ifadelerini varsayılan güven eşiğinde yakalayan skor hesabı ve güvensiz hedef reddi uygulanmıştır.
+- **Kod Denetimi:** 34 tur denetim ve iyileştirme tamamlandı. Güncel kaynakta bekleyen doğrulanmış kritik veya yüksek kod hatası bulunmamaktadır. 235 başarılı ve 1 isteğe bağlı atlanan test; kimlik doğrulama, SSE tamponlama, üretim dokümantasyon sınırı, niyet yapılandırma güvenliği, hibrit SSS ve belge araması, Cross-Encoder, belge ACL, tarihsel sürüm seçimi, yönetici işlem imzası, SSS katalog araması, gelişmiş analitik, belge senkronizasyonu, karantina, dış içerikli FTS geçişi, ön yüz HTML enjeksiyon koruması ve karşılaştırma metrik hesaplarını doğrulamaktadır. Detaylar `hata_duzeltme_kaydi.md` dosyasındadır.
 
 ### Tamamlanan Dosyalar
 - `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `.env.example`, `.gitignore`
@@ -760,7 +776,7 @@ Testler Excel'deki soruların birebir kopyalarıyla yapılmamalıdır. Aynı anl
 | Değerlendirme Alanı | Puan |
 |---|---|
 | Mimari ve kod kalitesi | 20 |
-| Semantic ve hybrid retrieval doğruluğu | 20 |
+| Anlamsal ve hibrit arama doğruluğu | 20 |
 | Reranking ve kaynaklı cevap üretimi | 15 |
 | Güven kontrolü ve halüsinasyon önleme | 15 |
 | Geri bildirim ve öğrenme döngüsü | 10 |
@@ -813,24 +829,24 @@ Testler Excel'deki soruların birebir kopyalarıyla yapılmamalıdır. Aynı anl
 
 ## 18. Kabul Tanımı
 
-Proje başarılı kabul edilecektir, eğer: Sistem Excel'de birebir bulunmayan ancak aynı anlama gelen kullanıcı sorularında doğru SSS kaydını bulabiliyor, kaynak göstererek cevap üretiyor, düşük güvenli sorularda cevap uydurmuyor ve yönetici onaylı geri bildirimlerle retrieval başarısını ölçülebilir biçimde artırabiliyorsa.
+Proje başarılı kabul edilecektir, eğer: Sistem Excel'de birebir bulunmayan ancak aynı anlama gelen kullanıcı sorularında doğru SSS kaydını bulabiliyor, kaynak göstererek cevap üretiyor, düşük güvenli sorularda cevap uydurmuyor ve yönetici onaylı geri bildirimlerle arama başarısını ölçülebilir biçimde artırabiliyorsa.
 
 İlk hedef büyük bir dil modeli eğitmek değildir. İlk hedef, güvenilir veri hazırlama, embedding tabanlı bilgi erişimi, hybrid search, reranking, kaynak kontrollü cevap üretimi ve insan geri bildirimi döngüsünü doğru kurmaktır. Model eğitimi veya fine-tuning ancak yeterli miktarda doğrulanmış veri oluştuğunda sonraki aşama olarak değerlendirilebilir.
 
 ## 19. Benchmark ve Test Veri Seti Altyapısı
 
-Bu bölüm, şartname Bölüm 14'te belirtilen başarı metriklerini ölçmek ve sistem performansını nesnel olarak değerlendirmek için benchmark altyapısını tanımlar.
+Bu bölüm, şartname Bölüm 14'te belirtilen başarı metriklerini ölçmek ve sistem performansını nesnel olarak değerlendirmek için karşılaştırma altyapısını tanımlar.
 
 ### Benchmark Dizini Yapısı
 ```
 testler/
-├── benchmark/
+├── karsilastirma/
 │   ├── test_senaryolari.json      # Farklı zorluk seviyelerinde soru-beklenen_sss_id ikilileri
 │   ├── degerlendirme.py           # Top-1, Top-3, MRR, MAP metrik hesaplama betiği
-│   └── sonuclar/                  # JSON + HTML benchmark raporları
-├── test_excel_yukleyici.py
-├── test_arama.py
-├── test_guvenlik.py
+│   └── raporlar/                  # JSON + HTML karşılaştırma raporları
+├── test_belge_ayiklayici.py
+├── test_arama_servisi.py
+├── test_guvenlik_bakimi.py
 └── test_api.py
 ```
 
@@ -883,13 +899,13 @@ testler/
 - **Cevapsız:** UYDS bilgi tabanında cevabı bulunmayan, sistemin cevap vermemesi gereken sorular.
 
 ### Benchmark Çalıştırma ve Raporlama
-`testler/benchmark/degerlendirme.py` betiği her çalıştırmada:
+`testler/karsilastirma/degerlendirme.py` betiği her çalıştırmada:
 1. `test_senaryolari.json` dosyasından tüm senaryoları yükler.
 2. Her test sorusunu `/api/v1/arama` uç noktasına gönderir.
 3. Dönen yanıttaki kaynak SSS ID'lerini beklenen ID ile karşılaştırır.
 4. Toplam senaryo sayısı üzerinden Top-1, Top-3 ve MRR metriklerini hesaplar.
 5. Sonuçları `sonuclar/` dizininde JSON ve HTML formatında kaydeder.
-6. Her benchmark koşumunda `benchmark_report_YYYYAAGG_HHMMSS.html` isimlendirmesi ile zaman damgalı rapor üretir.
+6. Her karşılaştırma koşumunda `karsilastirma_YYYYAAGG_HHMMSS.html` isimlendirmesi ile zaman damgalı rapor üretir.
 
 ### Benchmark Metrikleri
 | Metrik | Açıklama | Şartname Hedefi |
@@ -907,18 +923,18 @@ testler/
 | **Vektör/Dizin Boyutu** | Aktif embedding verisinin disk üzerindeki toplam boyutu | Raporlanacak |
 
 ### Benchmark HTML Raporu
-Her benchmark koşumu sonunda üretilecek HTML raporu şu bileşenleri içerir:
+Her karşılaştırma koşumu sonunda üretilecek HTML raporu şu bileşenleri içerir:
 - Genel metrik özeti (Top-1, Top-3, MRR, cevap vermeme başarısı, kaynak gösterme oranı)
 - Zorluk seviyesine göre kırılımlı metrik tablosu
 - Başarısız senaryoların detaylı listesi (soru, beklenen ID, dönen ID, skor)
-- Zaman serisi grafiği (önceki benchmark sonuçlarıyla karşılaştırma - isteğe bağlı)
+- Zaman serisi grafiği (önceki karşılaştırma sonuçlarıyla kıyaslama - isteğe bağlı)
 - Geri bildirim öncesi/sonrası başarı değişimi karşılaştırması
 
 ### Benchmarkın Faz 10'a Entegrasyonu
-Benchmark altyapısı Faz 10 Adım 10.6 kapsamında uygulanacaktır. Test senaryoları Faz 10 öncesinde manuel olarak hazırlanacak ve `test_senaryolari.json` dosyasına işlenecektir. Hedef en az 50 test senaryosu (her zorluk seviyesinden) oluşturmaktır.
+Benchmark ölçüm ve raporlama altyapısı Faz 10 Adım 10.6 kapsamında uygulanmıştır. Mevcut 25 senaryo davranış ve güvenlik doğrulaması içindir. Retrieval kabulü için en az 50 senaryoya uzman doğrulamalı `beklenen_sss_id` veya `beklenen_sss_idler` etiketi eklenmesi gerekir. Etiketsiz senaryolar Top-1, Top-3, MRR@10 ve nDCG@10 paydasına alınmaz; kabul raporu eksik altın veri setinde başarısız olur.
 
 ### Yerel Embedding Ölçek Geçiş Politikası
-1. Mevcut MiniLM, SQLite ve kesin kosinüs araması benchmark referansı olarak ölçülür.
+1. Mevcut MiniLM, SQLite ve kesin kosinüs araması karşılaştırma referansı olarak ölçülür.
 2. Gerçek tokenizer uzunluğu, embedding sürüm bilgisi ve veri bütünlüğü üretim öncesi doğrulanır.
 3. Yeni model veya arama altyapısı aynı veri setinde mevcut referansla karşılaştırılır.
 4. Doğruluk kazanımı, p95 gecikme, tepe bellek ve işletim maliyeti birlikte değerlendirilir.
@@ -929,15 +945,17 @@ Benchmark altyapısı Faz 10 Adım 10.6 kapsamında uygulanacaktır. Test senary
 
 ## 20. İleri Seviye Yol Haritası (Roadmap Plus)
 
+Bu bölüm temel fazların tamamlanma ölçütüne dahil olmayan gelecek ve bonus iş listesidir. Buradaki maddeler ayrıca tamamlandı olarak işaretlenmedikçe uygulanmış kabul edilmez.
+
 Bu bölüm, projeyi 100 puanlık değerlendirme skalasında üst seviyeye taşıyacak, "wow faktörü" yaratacak ek özellikleri tanımlar. Bu özellikler temel fazların üzerine inşa edilen bonus katmanıdır.
 
 ### 20.1 Benchmark Dashboard ve A/B Test Sistemi
 
-Her benchmark koşumunda interaktif HTML raporu üreten, zaman serisi grafikleri gösteren ve farklı sistem konfigürasyonlarını otomatik karşılaştıran bir dashboard.
+Her karşılaştırma koşumunda etkileşimli HTML raporu üreten, zaman serisi grafikleri gösteren ve farklı sistem yapılandırmalarını otomatik kıyaslayan bir gösterge paneli.
 
 **Bileşenler:**
-- `testler/benchmark/dashboard.html` — Tekil HTML dosyası, sunucu gerektirmez. Tarayıcıda açılır.
-- Zaman serisi çizgi grafikleri (Top-1, Top-3, MRR metriklerinin benchmark koşumları arası değişimi).
+- `testler/karsilastirma/gosterge_paneli.html` — Tekil HTML dosyası, sunucu gerektirmez. Tarayıcıda açılır.
+- Zaman serisi çizgi grafikleri (Top-1, Top-3, MRR metriklerinin karşılaştırma koşumları arası değişimi).
 - RAG açık/kapalı karşılaştırma tablosu — aynı test setinde RAG'li ve RAG'siz sonuçlar yan yana.
 - Reranker açık/kapalı karşılaştırma tablosu — Cross-Encoder'ın katkısının sayısal ölçümü.
 - Başarısız senaryolar için interaktif detay paneli (tıklandığında tam yanıt içeriği, skor detayı).
@@ -965,10 +983,10 @@ Prometheus metrik toplama ve Grafana dashboard ile gerçek zamanlı sistem izlem
 
 ### 20.3 LLM Destekli Otomatik Test Veri Seti Üretimi
 
-Şartname Bölüm 14 gereği test soruları Excel'deki soruların birebir kopyası olamaz. Bu modül, her SSS kaydından farklı ifade biçimleriyle varyant sorular üreterek benchmark veri setini otomatik genişletir.
+Şartname Bölüm 14 gereği test soruları Excel'deki soruların birebir kopyası olamaz. Bu modül, her SSS kaydından farklı ifade biçimleriyle değişken sorular üreterek karşılaştırma veri setini otomatik genişletir.
 
 **Çalışma Prensibi:**
-1. `testler/benchmark/senaryo_uretici.py` betiği, `sss_kayitlari` tablosundaki her kayıt için DeepSeek API'ye bir varyant üretme isteği gönderir.
+1. `testler/karsilastirma/senaryo_uretici.py` betiği, `sss_kayitlari` tablosundaki her kayıt için DeepSeek API'ye bir değişken soru üretme isteği gönderir.
 2. Prompt: "Aşağıdaki soruyu aynı anlama gelecek şekilde farklı kelimeler ve cümle yapısıyla yeniden yaz. Orijinal sorudaki anahtar kelimeleri birebir kopyalama."
 3. Her SSS kaydı için 3-5 varyant soru üretilir.
 4. Üretilen sorular `test_senaryolari.json` dosyasına `uretim` kaynak etiketiyle eklenir.
@@ -1058,7 +1076,7 @@ Faz 10 kapsamındaki çekirdek CI tesliminden sonra (vakit kalması durumunda) d
 
 ### 20.11 İleri Seviye Sistem ve Güvenlik Testleri (Production-Ready Bonus)
 
-Staj projesi kapsamında Faz 10 itibarıyla 134 test ile %100 kapsama ulaşılmıştır. Gerçek bir kurumsal "production" ortamına çıkılması durumunda değerlendirilebilecek ileri seviye mimari testler şunlardır:
+Staj projesi kapsamında Faz 10 itibarıyla 199 test ile %100 kapsama ulaşılmıştır. Gerçek bir kurumsal "production" ortamına çıkılması durumunda değerlendirilebilecek ileri seviye mimari testler şunlardır:
 
 1. **Yük ve Stres Testleri (k6/Locust):** 1000+ eşzamanlı istekte SQLite'ın sınırlarını (database is locked) ve pgvector/Qdrant geçiş eşiklerini doğrulamak.
 2. **AI Red Teaming (RAGAS/TruLens):** İleride LLM (Generation) modülü eklendiğinde halüsinasyon, kaynak sapması ve prompt injection/jailbreak denemelerine karşı modeli otonom test etmek.

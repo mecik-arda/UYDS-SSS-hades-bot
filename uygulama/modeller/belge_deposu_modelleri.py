@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS belge_kayitlari (
     orijinal_yol TEXT NOT NULL,
     son_degistirilme_tarihi DATETIME,
     sha256_ozeti TEXT NOT NULL,
+    dosya_boyutu INTEGER,
     sayfa_sayisi INTEGER,
     yetki_seviyesi INTEGER DEFAULT 0,
     islenme_durumu TEXT DEFAULT 'beklemede'
@@ -103,14 +104,68 @@ CREATE TABLE IF NOT EXISTS graf_iliskileri (
 
 BELGE_FTS_TABLOSU = """
 CREATE VIRTUAL TABLE IF NOT EXISTS belge_fts USING fts5(
-    parca_id UNINDEXED,
-    baslik_zinciri,
-    belge_adi,
+    metin,
+    baslik_zinciri_json,
     content='yapisal_parcalar',
     content_rowid='id',
     tokenize='unicode61 remove_diacritics 2'
 )
 """
+
+BELGE_FTS_TETIKLEYICI_ADLARI = [
+    "yapisal_parcalar_fts_ekle",
+    "yapisal_parcalar_fts_sil",
+    "yapisal_parcalar_fts_guncelle",
+]
+
+BELGE_FTS_TETIKLEYICILERI = [
+    """
+    CREATE TRIGGER yapisal_parcalar_fts_ekle
+    AFTER INSERT ON yapisal_parcalar
+    BEGIN
+        INSERT INTO belge_fts(rowid, metin, baslik_zinciri_json)
+        VALUES (new.id, new.metin, new.baslik_zinciri_json);
+    END
+    """,
+    """
+    CREATE TRIGGER yapisal_parcalar_fts_sil
+    AFTER DELETE ON yapisal_parcalar
+    BEGIN
+        INSERT INTO belge_fts(
+            belge_fts,
+            rowid,
+            metin,
+            baslik_zinciri_json
+        )
+        VALUES (
+            'delete',
+            old.id,
+            old.metin,
+            old.baslik_zinciri_json
+        );
+    END
+    """,
+    """
+    CREATE TRIGGER yapisal_parcalar_fts_guncelle
+    AFTER UPDATE ON yapisal_parcalar
+    BEGIN
+        INSERT INTO belge_fts(
+            belge_fts,
+            rowid,
+            metin,
+            baslik_zinciri_json
+        )
+        VALUES (
+            'delete',
+            old.id,
+            old.metin,
+            old.baslik_zinciri_json
+        );
+        INSERT INTO belge_fts(rowid, metin, baslik_zinciri_json)
+        VALUES (new.id, new.metin, new.baslik_zinciri_json);
+    END
+    """,
+]
 
 BELGE_DEPOSU_TABLOLARI = [
     BELGE_KAYITLARI_TABLOSU,
@@ -119,5 +174,4 @@ BELGE_DEPOSU_TABLOLARI = [
     BELGE_KAVRAMLARI_TABLOSU,
     GRAF_DUGUMLERI_TABLOSU,
     GRAF_ILISKILERI_TABLOSU,
-    BELGE_FTS_TABLOSU,
 ]

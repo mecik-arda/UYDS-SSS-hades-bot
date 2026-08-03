@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import re
+import secrets
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Annotated
@@ -22,6 +23,8 @@ from uygulama.servisler.geri_bildirim_servisi import GeriBildirimServisi
 from uygulama.servisler.niyet_siniflandirici import NiyetSiniflandirici
 from uygulama.servisler.oturum_hafizasi import OturumHafizasi
 from uygulama.servisler.oturum_sahipligi import OturumSahipligiServisi
+from uygulama.servisler.eposta_raporlayici import EpostaRaporlayici
+from uygulama.servisler.senkronizasyon_motoru import SenkronizasyonMotoru
 from uygulama.servisler.terim_haritasi import TerimHaritasi
 from uygulama.servisler.vektor_servisi import VektorServisi
 from uygulama.servisler.yeniden_siralayici import (
@@ -100,6 +103,16 @@ def geri_bildirim_servisini_al() -> GeriBildirimServisi:
 
 
 @lru_cache
+def senkronizasyon_motorunu_al() -> SenkronizasyonMotoru:
+    return SenkronizasyonMotoru(vektor_servisi=vektor_servisini_al())
+
+
+@lru_cache
+def eposta_raporlayiciyi_al() -> EpostaRaporlayici:
+    return EpostaRaporlayici()
+
+
+@lru_cache
 def akis_semaforunu_al() -> asyncio.Semaphore:
     return asyncio.Semaphore(konfigurasyon.ESZAMANLI_AKIS_MAKS_SAYI)
 
@@ -114,6 +127,8 @@ def bagimlilik_onbelleklerini_temizle() -> None:
     akis_servisini_al.cache_clear()
     api_servisini_al.cache_clear()
     geri_bildirim_servisini_al.cache_clear()
+    senkronizasyon_motorunu_al.cache_clear()
+    eposta_raporlayiciyi_al.cache_clear()
     akis_semaforunu_al.cache_clear()
 
 
@@ -208,3 +223,25 @@ async def yonetici_istek_imzasini_dogrula(
             detail="Yonetici istek imzasi tekrar kullanildi",
         )
     return yonetici
+
+
+def yonetici_istek_imzasi_olustur(
+    hedef_yol: str,
+    govde: str,
+) -> dict[str, str]:
+    zaman = str(int(datetime.now(timezone.utc).timestamp()))
+    nonce = secrets.token_urlsafe(32)
+    govde_ozeti = hashlib.sha256(govde.encode("utf-8")).hexdigest()
+    imzalanan_metin = "\n".join(
+        (zaman, nonce, "POST", hedef_yol, govde_ozeti)
+    )
+    imza_anahtari = (
+        konfigurasyon.YONETICI_ISTEK_IMZA_ANAHTARI.strip()
+        or konfigurasyon.JWT_GIZLI_ANAHTARI
+    )
+    imza = hmac.new(
+        imza_anahtari.encode("utf-8"),
+        imzalanan_metin.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return {"zaman": zaman, "nonce": nonce, "imza": imza}

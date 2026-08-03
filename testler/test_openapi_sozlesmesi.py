@@ -1,4 +1,5 @@
 from uygulama.ana import uygulama
+from uygulama.cekirdek.konfigurasyon import konfigurasyon
 
 
 def test_faz7_openapi_rota_sozlesmesi_sabit():
@@ -16,6 +17,11 @@ def test_faz7_openapi_rota_sozlesmesi_sabit():
         "/api/v1/yonetici/cevapsiz-sorgular": {"get"},
         "/api/v1/yonetici/geri-bildirim/onay": {"post"},
         "/api/v1/yonetici/yeniden-indeksle": {"post"},
+        "/api/v1/yonetici/islem-imzasi": {"post"},
+        "/api/v1/yonetici/isletim-durumu": {"get"},
+        "/api/v1/yonetici/olcum/arama": {"post"},
+        "/api/v1/yonetici/senkronizasyon": {"post"},
+        "/api/v1/yonetici/eposta-raporu/gonder": {"post"},
         "/api/v1/analitik": {"get"},
     }
 
@@ -38,6 +44,8 @@ def test_kritik_yonetici_rotalari_hmac_basliklarini_zorunlu_tutar():
     for yol in (
         "/api/v1/yonetici/geri-bildirim/onay",
         "/api/v1/yonetici/yeniden-indeksle",
+        "/api/v1/yonetici/senkronizasyon",
+        "/api/v1/yonetici/eposta-raporu/gonder",
     ):
         parametreler = sema["paths"][yol]["post"]["parameters"]
         zorunlu_basliklar = {
@@ -50,3 +58,12 @@ def test_kritik_yonetici_rotalari_hmac_basliklarini_zorunlu_tutar():
             "X-UYDS-Nonce",
             "X-UYDS-Imza",
         }.issubset(zorunlu_basliklar)
+
+
+def test_uretim_profilinde_dokumantasyon_rotalari_yayinlanmaz():
+    if konfigurasyon.ORTAM_PROFILI != "prod":
+        return
+
+    assert uygulama.docs_url is None
+    assert uygulama.redoc_url is None
+    assert uygulama.openapi_url is None
