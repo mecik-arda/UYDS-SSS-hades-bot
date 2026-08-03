@@ -167,10 +167,17 @@ class DeepSeekServisi:
             raise DeepSeekServisiHatasi("Kaynaksiz DeepSeek cagrisi yapilamaz")
         kaynak_parcalari = []
         for sira, kaynak in enumerate(secilen_kaynaklar, 1):
-            dokuman = kaynak.kaynak_dokuman or "SSS"
-            sayfa_bilgisi = f' sayfa="{kaynak.kaynak_sayfa}"' if kaynak.kaynak_sayfa else ""
+            dokuman = (kaynak.kaynak_dokuman or "SSS").replace('"', "'")
+            sayfa_bilgisi = (
+                f' sayfa="{kaynak.kaynak_sayfa}"'.replace('"', "'")
+                if kaynak.kaynak_sayfa
+                else ""
+            )
             satir_bilgisi = f' satir="{kaynak.kaynak_satir}"' if kaynak.kaynak_satir else ""
-            kaynak_metni = kaynak.aday_metni[: konfigurasyon.DEEPSEEK_KAYNAK_MAKS_KARAKTER]
+            kaynak_metni = (
+                kaynak.aday_metni[: konfigurasyon.DEEPSEEK_KAYNAK_MAKS_KARAKTER]
+                .replace("</kaynak>", "< / kaynak>")
+            )
             kaynak_parcalari.append(
                 f'<kaynak no="{sira}" dokuman="{dokuman}"{sayfa_bilgisi}{satir_bilgisi}>\n'
                 f"{kaynak_metni}\n"

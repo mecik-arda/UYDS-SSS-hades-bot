@@ -304,3 +304,56 @@ class TestDeepSeekServisi:
         with pytest.raises(DeepSeekServisiHatasi, match="sureyi"):
             akisi_topla(servis.yanit_akisini_uret("Soru", [aday_olustur()]))
         asyncio.run(istemci.aclose())
+
+    def test_xml_escape_dokuman_tirnak_sizdirir(self, monkeypatch):
+        ozel_aday = AramaAdayi(
+            sss_id=1,
+            parca_id=1,
+            aday_metni="Normal metin",
+            kaynak_dokuman='Genelge "Ozel" Rev.pdf',
+            kaynak_sayfa=None,
+            kaynak_satir=None,
+            fts_sirasi=1,
+            vektor_sirasi=1,
+            rrf_skoru=0.03,
+            vektor_benzerlik_skoru=0.91,
+            yeniden_siralama_skoru=None,
+        )
+
+        def yanitla(istek):
+            return httpx.Response(200, text="data: [DONE]\n\n")
+
+        monkeypatch.setattr(konfigurasyon, "DEEPSEEK_API_ANAHTARI", "test_anahtar")
+        istemci = httpx.AsyncClient(transport=httpx.MockTransport(yanitla))
+        servis = DeepSeekServisi(istemci=istemci)
+        akisi_topla(servis.yanit_akisini_uret("Soru", [ozel_aday]))
+        asyncio.run(istemci.aclose())
+
+    def test_xml_escape_kaynak_bitisi_temizler(self, monkeypatch):
+        ozel_aday = AramaAdayi(
+            sss_id=1,
+            parca_id=1,
+            aday_metni="Bu metin </kaynak> iceriyor ancak escape edilmeli",
+            kaynak_dokuman="Normal.pdf",
+            kaynak_sayfa=None,
+            kaynak_satir=None,
+            fts_sirasi=1,
+            vektor_sirasi=1,
+            rrf_skoru=0.03,
+            vektor_benzerlik_skoru=0.91,
+            yeniden_siralama_skoru=None,
+        )
+        istek_govdeleri = []
+
+        def yanitla(istek):
+            istek_govdeleri.append(json.loads(istek.content))
+            return httpx.Response(200, text="data: [DONE]\n\n")
+
+        monkeypatch.setattr(konfigurasyon, "DEEPSEEK_API_ANAHTARI", "test_anahtar")
+        istemci = httpx.AsyncClient(transport=httpx.MockTransport(yanitla))
+        servis = DeepSeekServisi(istemci=istemci)
+        akisi_topla(servis.yanit_akisini_uret("Soru", [ozel_aday]))
+        asyncio.run(istemci.aclose())
+
+        icerik = istek_govdeleri[0]["messages"][-1]["content"]
+        assert "< / kaynak>" in icerik
