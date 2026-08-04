@@ -1,0 +1,53 @@
+# ============================================================
+# UYDS SSS Veri Ayıklama Konfigürasyonu — v3.0
+# Tüm eşik değerleri ve ayarlar bu dosyadan yönetilir.
+# ============================================================
+
+# --- Embedding Model ---
+model:
+  adi: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+  batch_size: 64
+  fp16: true  # Sadece CUDA varsa etkinleşir
+
+# --- Benzerlik / Yinelenen Tespiti ---
+benzerlik:
+  guclu_aday_esik: 0.95   # Cosine > bu değer → GÜÇLÜ_ADAY
+  incele_esik: 0.88        # Cosine > bu değer → İNCELE
+  top_k: 10                # semantic_search top-k
+
+# --- Outlier Tespiti ---
+outlier:
+  dbscan_eps: 0.35
+  dbscan_min_samples: 5
+  # contamination veri boyutuna göre dinamik (Hücre 10)
+
+# --- Kategori Centroid ---
+kategori:
+  uyumsuzluk_esik: 0.25   # Cosine < bu değer → İNCELE
+  min_kayit: 4             # Leave-one-out için minimum kayıt
+
+# --- Yapısal Kontroller ---
+yapisal:
+  kisa_metin_esik: 5       # Token < bu → kısa
+  uzun_metin_esik: 300     # Token > bu → uzun
+  dusuk_ttr_esik: 0.25     # TTR < bu → düşük bilgi
+  dusuk_ttr_min_kelime: 10
+
+# --- Dil Tespiti ---
+dil:
+  min_kelime: 8            # Bu kelimeden az metinde dil tespiti yapılmaz
+
+# --- Yazım Denetimi ---
+yazim:
+  esik: 0.35               # Hata oranı > bu → İNCELE
+  min_kelime: 10           # Bu kelimeden az metinde yazım denetimi yapılmaz
+
+# --- Doğrulama Seti ---
+dogrulama:
+  boyut: 200               # Kaç satırlık doğrulama seti
+  random_state: 42
+
+# --- Çıktı ---
+cikti:
+  tarihli_klasor: true     # data/output/2026-08-04_0830/ şeklinde
+  checkpoint: true         # Her hücreden sonra .pkl kaydı

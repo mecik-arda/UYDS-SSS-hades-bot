@@ -1,0 +1,16 @@
+# ============================================================
+# Google Colab için bağımlılıklar
+# torch hariç — Colab'ın mevcut CUDA sürümü kullanılır
+# ============================================================
+sentence-transformers==3.4.1
+transformers==4.47.1
+pandas==2.2.3
+openpyxl==3.1.5
+scikit-learn==1.6.0
+numpy==1.26.4
+lingua-language-detector==2.0.2
+hunspell==0.5.5
+tqdm==4.67.1
+accelerate==1.2.1
+pyyaml>=6.0
+matplotlib>=3.8
