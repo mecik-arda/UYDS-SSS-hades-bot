@@ -1,6 +1,35 @@
-data/
-checkpoints/
-ciktilar/
+# ============================================================
+# HadesBot v4.1 — Google Colab Eğitim — .gitignore
+# ============================================================
+
+# --- Veri / kaynak klasörleri (gerçek dosyalar Git'e girmez) ---
+data/input/*
+!data/input/.gitkeep
+
+data/kaynaklar/*
+!data/kaynaklar/.gitkeep
+!data/kaynaklar/01_mevzuat/
+!data/kaynaklar/01_mevzuat/.gitkeep
+!data/kaynaklar/02_resmi_uyds_kilavuzlari/
+!data/kaynaklar/02_resmi_uyds_kilavuzlari/.gitkeep
+!data/kaynaklar/03_modul_dokumanlari/
+!data/kaynaklar/03_modul_dokumanlari/.gitkeep
+!data/kaynaklar/04_teknik_cozumler/
+!data/kaynaklar/04_teknik_cozumler/.gitkeep
+!data/kaynaklar/05_onayli_destek_kayitlari/
+!data/kaynaklar/05_onayli_destek_kayitlari/.gitkeep
+!data/kaynaklar/06_surum_notlari/
+!data/kaynaklar/06_surum_notlari/.gitkeep
+!data/kaynaklar/referans_metin.txt
+
+# --- Çıktı ve checkpoint klasörleri (tamamen dışla) ---
+data/output_v4/
+checkpoints_v4/
+
+# --- Kaynak envanteri hariç (üretilecek) ---
+!data/kaynaklar/kaynak_envanteri.csv
+
+# --- Genel temizlik ---
 __pycache__/
 .ipynb_checkpoints/
 *.pyc
@@ -8,6 +37,10 @@ __pycache__/
 *.pickle
 *.npy
 *.xlsx
+*.xls
+*.parquet
+*.jsonl
+*.bin
 .env
 .env.*
 !.env.example

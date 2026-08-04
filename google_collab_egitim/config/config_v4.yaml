@@ -1,0 +1,72 @@
+# ============================================================
+# UYDS SSS Cevap Doğrulama Konfigürasyonu — v4.1.0
+# Tüm eşik değerleri ve ayarlar bu dosyadan yönetilir.
+# ============================================================
+
+v4:
+  # --- Pipeline Sürüm Bilgileri ---
+  pipeline:
+    surum: "4.1.0"
+    prompt_surumu: "4.1.0"
+    kural_seti_surumu: "2026-08-04.1"
+    chunk_algoritma_surumu: "1.0"
+    retrieval_algoritma_surumu: "1.0"
+
+  # --- LLM Model ---
+  model:
+    birincil: "Qwen/Qwen3-32B-AWQ"              # Birincil model (önerilen)
+    yedek: "Qwen/Qwen2.5-32B-Instruct-AWQ"      # Yedek model
+
+  # --- Embedding Model ---
+  embedding:
+    model: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    batch_size: 2               # GPU OOM önleme (batch_size=1'e otomatik düşer)
+    soru_batch_size: 2          # CPU'da çalışır, düşük batch yeterli
+
+  # --- vLLM Ayarları ---
+  vllm:
+    max_model_len: 4096         # A100 40GB için güvenli ayar
+    gpu_memory_utilization: 0.75  # 0.82'den düşürüldü (tokenizer + embedding)
+    batch_size: 4               # Güvenli batch büyüklüğü
+
+  # --- Tokenizer Tabanlı Chunking ---
+  chunk:
+    token_boyut: 110            # Hedef token sayısı (~embedding 128 limitine uygun)
+    token_overlap: 25           # Chunk'lar arası overlap token sayısı
+    min_token: 20               # Alt sınır (daha kısası komşuyla birleşir)
+
+  # --- RAG Retrieval ---
+  rag:
+    top_k: 10                   # Dense retrieval aday sayısı
+    son_k: 3                    # Modele gönderilecek kaynak parçası sayısı
+    min_skor: 0.3               # Minimum cosine benzerlik eşiği
+    ayni_dokuman_chunk_limit: 2 # Aynı dokümandan en fazla N chunk
+
+  # --- Güven Eşiği (KALİBRE EDİLMEMİŞ) ---
+  guven:
+    esik: 0.85
+
+  # --- Checkpoint ---
+  checkpoint:
+    aralik: 100                 # Her N kayıtta bir checkpoint yaz
+
+  # --- Sampling ---
+  sampling:
+    temperature: 0.2
+    top_p: 0.9
+    max_tokens: 256
+
+  # --- Maksimum Tekrar Deneme ---
+  retry:
+    maks_tekrar: 2              # İşlem hatası alan kayıtları en fazla N kez tekrar dene
+
+  # --- Benchmark ---
+  benchmark:
+    kayit_sayisi: 100           # Benchmark için işlenecek kayıt sayısı
+
+  # --- Smoke Test ---
+  smoke_test:
+    kayit_sayisi: 20            # Smoke test kayıt sayısı
+    maks_islem_hatasi_oran: 0.05  # %5'ten fazla işlem hatası = durdur
+    maks_kanit_yetersiz_oran: 0.80  # %80'den fazla kanıt yetersiz = uyarı
+    min_ortalama_kaynak: 1.0    # Ortalama sunulan kaynak < 1 = durdur
