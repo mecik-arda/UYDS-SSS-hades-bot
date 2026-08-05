@@ -152,7 +152,7 @@ def eksik_kayitlari_bul(
     # Eksik = hiç sonucu olmayan veya benchmark dışı kalan
     eksik = sorted([
         i for i in range(toplam_kayit)
-        if i not in tamamlanan and i not in hatali
+        if i not in tamamlanan
     ])
 
     # Benchmark kayıtları tamamlanan sayılır (onlar ayrı checkpoint'te)
