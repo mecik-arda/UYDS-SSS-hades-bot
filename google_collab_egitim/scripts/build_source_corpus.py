@@ -55,7 +55,9 @@ def main():
     # 1. Kaynak envanteri
     print(f"\n📋 Kaynak envanteri taranıyor: {kaynak}")
     envanter = envanter_olustur(
-        kaynak, cikti_yolu=os.path.join(CIKTI_KOK_DIZINI, "kaynak_envanteri.csv")
+        kaynak,
+        cikti_yolu=os.path.join(CIKTI_KOK_DIZINI, "kaynak_envanteri.csv"),
+        mevcut_envanter_yolu=os.path.join(CIKTI_KOK_DIZINI, "kaynak_envanteri.csv"),
     )
     if not envanter:
         raise RuntimeError(f"Hiç kaynak belge bulunamadı: {kaynak}")
@@ -63,6 +65,17 @@ def main():
     print(f"   {ozet['benzersiz_kaynak']} benzersiz kaynak (toplam {ozet['toplam_kaynak']})")
     if ozet["kopya"]:
         print(f"   ⚠️ {ozet['kopya']} kopya tespit edildi")
+
+    # Desteklenmeyen dosyaları raporla
+    doc_dosyalari = []
+    for kok, _, ds in os.walk(kaynak):
+        for d in ds:
+            if d.lower().endswith(".doc") and not d.lower().endswith(".docx"):
+                doc_dosyalari.append(os.path.join(kok, d))
+    if doc_dosyalari:
+        print(f"   ⚠️ {len(doc_dosyalari)} .doc dosyası desteklenmiyor (DOCX'e dönüştürülmeli):")
+        for dd in doc_dosyalari:
+            print(f"      - {os.path.basename(dd)}")
     z.kontrol("envanter")
 
     # 2. Belgeleri oku (envanter metadata + ilgililik filtresi ile)

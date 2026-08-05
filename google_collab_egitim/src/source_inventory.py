@@ -33,8 +33,12 @@ ENVANTER_ALANLARI = [
     "kaynak_id",
     "dosya_yolu",
     "dosya_adi",
+    "baslik",
     "kaynak_tipi",
+    "guven_sinifi",
     "kurum",
+    "domain",
+    "kaynak_url",
     "modul",
     "alt_konu",
     "yayin_tarihi",
@@ -42,9 +46,8 @@ ENVANTER_ALANLARI = [
     "gecerlilik_bitis",
     "surum",
     "resmiyet_seviyesi",
-    "kaynak_url",
     "sha256",
-    "dosya_boyutu_kb",
+    "dosya_boyutu",
     "durum",
     "not",
 ]
@@ -162,16 +165,61 @@ def _dizinden_tip_cikar(dizin_adi: str) -> str:
 
 
 # ============================================================
+# Başlık Çıkarma (Dosya Adından)
+# ============================================================
+def _dosya_adindan_baslik(dosya_adi: str) -> str:
+    ad = os.path.splitext(dosya_adi)[0]
+    ad = re.sub(r"[_\-]+", " ", ad)
+    ad = re.sub(r"\s+", " ", ad).strip()
+    if not ad:
+        return dosya_adi
+    return ad[0].upper() + ad[1:] if len(ad) > 1 else ad.upper()
+
+
+# ============================================================
+# Mevcut Envanter Yükleme (Merge için)
+# ============================================================
+_METADATA_ALANLARI = [
+    "baslik", "guven_sinifi", "kurum", "domain",
+    "kaynak_url", "modul", "alt_konu", "durum", "not",
+]
+
+
+def _mevcut_envanteri_yukle(yol: str) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
+    sha256_harita = {}
+    ad_harita = {}
+    if not yol or not os.path.exists(yol):
+        return sha256_harita, ad_harita
+    with open(yol, "r", encoding="utf-8-sig") as f:
+        for kayit in csv.DictReader(f):
+            sha = kayit.get("sha256", "")
+            ad = kayit.get("dosya_adi", "")
+            if sha:
+                sha256_harita[sha] = kayit
+            if ad:
+                ad_harita[ad] = kayit
+    return sha256_harita, ad_harita
+
+
+# ============================================================
 # Ana Envanter Oluşturma
 # ============================================================
 def envanter_olustur(
     kaynak_dizini: str,
     cikti_yolu: Optional[str] = None,
+    mevcut_envanter_yolu: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """
     Kaynak dizinini tarar, her dosya için envanter kaydı oluşturur.
-    Envanter CSV'si kaynak dizini DIŞINA yazılmalıdır (RAG kirlenmesin).
+
+    mevcut_envanter_yolu verilirse SHA-256 ve dosya adı üzerinden
+    merge yapılır: eski kayıtlardaki baslik, guven_sinifi, kurum,
+    domain, kaynak_url, modul, alt_konu gibi zengin metadata korunur.
     """
+    sha256_harita, ad_harita = _mevcut_envanteri_yukle(mevcut_envanter_yolu)
+    if sha256_harita:
+        print(f"   [MERGE] Mevcut envanter yüklendi: {len(sha256_harita)} kayıt")
+
     dosyalar = kaynak_dizinini_tara(kaynak_dizini)
     if not dosyalar:
         print("⚠️ Hiç kaynak belge bulunamadı.")
@@ -179,11 +227,12 @@ def envanter_olustur(
 
     kayitlar = []
     gorulen_hashler = {}
+    korunan_meta = 0
+    yeni_kayit = 0
 
     for i, df in enumerate(dosyalar, start=1):
         dosya_adi = os.path.basename(df)
 
-        # Envanter CSV'sini ve .gitkeep'i atla
         if dosya_adi in URETILEN_DOSYALAR:
             continue
 
@@ -193,7 +242,7 @@ def envanter_olustur(
             print(f"   ⚠️ Hash alınamadı: {dosya_adi} ({e})")
             continue
 
-        dosya_boyut = os.path.getsize(df) / 1024
+        dosya_boyut = os.path.getsize(df)
         rel_yol = os.path.relpath(df, kaynak_dizini)
         dizin_adi = os.path.dirname(rel_yol).replace(os.sep, "/")
         if dizin_adi in (".", ""):
@@ -217,6 +266,7 @@ def envanter_olustur(
 
         tarih = _metinden_tarih_cikar(metin_ornek)
         surum = _metinden_surum_cikar(metin_ornek)
+        baslik = _dosya_adindan_baslik(dosya_adi)
 
         durum = "aktif"
         if tarih:
@@ -233,20 +283,27 @@ def envanter_olustur(
             durum = "belirsiz"
 
         kaynak_id = _kaynak_id_ata(i)
+        kopya_mi = False
         if dosya_hash in gorulen_hashler:
             kaynak_id = gorulen_hashler[dosya_hash]
             durum = "kopya"
-            not_metni = f"Kopya — orijinal: {gorulen_hashler[dosya_hash]}"
-        else:
-            gorulen_hashler[dosya_hash] = kaynak_id
-            not_metni = ""
+            kopya_mi = True
 
-        kayitlar.append({
+        if not kopya_mi:
+            gorulen_hashler[dosya_hash] = kaynak_id
+
+        not_metni = f"Kopya — orijinal: {gorulen_hashler[dosya_hash]}" if kopya_mi else ""
+
+        kayit = {
             "kaynak_id": kaynak_id,
             "dosya_yolu": rel_yol,
             "dosya_adi": dosya_adi,
+            "baslik": baslik,
             "kaynak_tipi": kaynak_tipi,
+            "guven_sinifi": "",
             "kurum": "",
+            "domain": "",
+            "kaynak_url": "",
             "modul": "",
             "alt_konu": "",
             "yayin_tarihi": tarih or "",
@@ -254,12 +311,28 @@ def envanter_olustur(
             "gecerlilik_bitis": "",
             "surum": surum,
             "resmiyet_seviyesi": resmiyet,
-            "kaynak_url": "",
             "sha256": dosya_hash,
-            "dosya_boyutu_kb": f"{dosya_boyut:.1f}",
+            "dosya_boyutu": str(dosya_boyut),
             "durum": durum,
             "not": not_metni,
-        })
+        }
+
+        mevcut = sha256_harita.get(dosya_hash) or ad_harita.get(dosya_adi)
+        if mevcut and not kopya_mi:
+            for alan in _METADATA_ALANLARI:
+                deger = mevcut.get(alan, "")
+                if deger:
+                    kayit[alan] = deger
+            korunan_meta += 1
+        elif not kopya_mi:
+            yeni_kayit += 1
+
+        kayitlar.append(kayit)
+
+    if mevcut_envanter_yolu and sha256_harita:
+        print(f"   [KORUNDU] Metadata: {korunan_meta} kayıt")
+        if yeni_kayit:
+            print(f"   [YENI] Yeni kayıt: {yeni_kayit} (metadata manuel doldurulmalı)")
 
     if cikti_yolu and kayitlar:
         os.makedirs(os.path.dirname(cikti_yolu), exist_ok=True)
@@ -267,7 +340,7 @@ def envanter_olustur(
             writer = csv.DictWriter(f, fieldnames=ENVANTER_ALANLARI)
             writer.writeheader()
             writer.writerows(kayitlar)
-        print(f"📋 Kaynak envanteri: {cikti_yolu} ({len(kayitlar)} kayıt)")
+        print(f"[ENVANTER] Kaynak envanteri: {cikti_yolu} ({len(kayitlar)} kayıt)")
 
     return kayitlar
 

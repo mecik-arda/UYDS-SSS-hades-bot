@@ -131,3 +131,96 @@ class TestSmokeTestEsikleri:
         kararlar = (["kanit_yetersiz"] * 85) + (["dogru"] * 10) + (["kismen_dogru"] * 5)
         ky_oran = kararlar.count("kanit_yetersiz") / len(kararlar)
         assert ky_oran > 0.80  # Uyarı verilmeli
+
+
+class TestEnvanterMetadataKoruma:
+    """Envanter yeniden oluşturulduğunda metadata alanları korunmalı."""
+
+    def test_metadata_korunur(self, temp_dir):
+        import csv
+        from src.source_inventory import envanter_olustur, ENVANTER_ALANLARI, _METADATA_ALANLARI
+
+        kaynak_dizini = os.path.join(temp_dir, "kaynaklar")
+        os.makedirs(kaynak_dizini)
+
+        dosya1 = os.path.join(kaynak_dizini, "belge_a.txt")
+        dosya2 = os.path.join(kaynak_dizini, "belge_b.txt")
+        with open(dosya1, "w", encoding="utf-8") as f:
+            f.write("Belge A içeriği.")
+        with open(dosya2, "w", encoding="utf-8") as f:
+            f.write("Belge B içeriği.")
+
+        mevcut_csv = os.path.join(temp_dir, "eski_envanter.csv")
+        mevcut_kayitlar = [
+            {
+                "kaynak_id": "SRC-00001",
+                "dosya_yolu": "belge_a.txt",
+                "dosya_adi": "belge_a.txt",
+                "baslik": "Belge A Başlığı",
+                "kaynak_tipi": "mevzuat",
+                "guven_sinifi": "A",
+                "kurum": "Test Kurumu",
+                "domain": "test.gov.tr",
+                "kaynak_url": "https://test.gov.tr/belge_a",
+                "modul": "ihale",
+                "alt_konu": "İhale Mevzuatı",
+                "yayin_tarihi": "2024-01-15",
+                "gecerlilik_baslangici": "2024-01-15",
+                "gecerlilik_bitis": "",
+                "surum": "1.0",
+                "resmiyet_seviyesi": "resmi",
+                "sha256": "",
+                "dosya_boyutu": "123",
+                "durum": "guncel",
+                "not": "Test notu",
+            }
+        ]
+        import hashlib
+        with open(dosya1, "rb") as f:
+            mevcut_kayitlar[0]["sha256"] = hashlib.sha256(f.read()).hexdigest()
+        with open(mevcut_csv, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=list(mevcut_kayitlar[0].keys()))
+            writer.writeheader()
+            writer.writerows(mevcut_kayitlar)
+
+        cikti_csv = os.path.join(temp_dir, "yeni_envanter.csv")
+        envanter = envanter_olustur(
+            kaynak_dizini,
+            cikti_yolu=cikti_csv,
+            mevcut_envanter_yolu=mevcut_csv,
+        )
+
+        assert len(envanter) == 2, f"2 dosya bekleniyordu, {len(envanter)} bulundu"
+
+        belge_a = next(k for k in envanter if k["dosya_adi"] == "belge_a.txt")
+        belge_b = next(k for k in envanter if k["dosya_adi"] == "belge_b.txt")
+
+        assert belge_a["baslik"] == "Belge A Başlığı", "baslik korunmadı"
+        assert belge_a["guven_sinifi"] == "A", "guven_sinifi korunmadı"
+        assert belge_a["kurum"] == "Test Kurumu", "kurum korunmadı"
+        assert belge_a["domain"] == "test.gov.tr", "domain korunmadı"
+        assert belge_a["kaynak_url"] == "https://test.gov.tr/belge_a", "kaynak_url korunmadı"
+        assert belge_a["modul"] == "ihale", "modul korunmadı"
+        assert belge_a["alt_konu"] == "İhale Mevzuatı", "alt_konu korunmadı"
+        assert belge_a["durum"] == "guncel", "durum korunmadı"
+        assert belge_a["not"] == "Test notu", "not korunmadı"
+
+        assert belge_b["baslik"] != "", "yeni dosya için başlık boş olmamalı"
+        assert belge_b["guven_sinifi"] == "", "yeni dosyada guven_sinifi boş olmalı"
+        assert belge_b["kurum"] == "", "yeni dosyada kurum boş olmalı"
+
+    def test_alan_semasinda_metadata_var(self):
+        from src.source_inventory import ENVANTER_ALANLARI
+        assert "baslik" in ENVANTER_ALANLARI
+        assert "guven_sinifi" in ENVANTER_ALANLARI
+        assert "domain" in ENVANTER_ALANLARI
+        assert "kurum" in ENVANTER_ALANLARI
+        assert "modul" in ENVANTER_ALANLARI
+        assert "alt_konu" in ENVANTER_ALANLARI
+        assert "kaynak_url" in ENVANTER_ALANLARI
+
+    def test_dosya_adindan_baslik_uretimi(self):
+        from src.source_inventory import _dosya_adindan_baslik
+        assert _dosya_adindan_baslik("afet_lojistik.pdf") != ""
+        assert "." not in _dosya_adindan_baslik("test_dosya.txt")
+        assert _dosya_adindan_baslik("test.pdf") == "Test"
