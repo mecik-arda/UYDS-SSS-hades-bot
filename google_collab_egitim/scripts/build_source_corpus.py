@@ -78,6 +78,18 @@ def main():
             print(f"      - {os.path.basename(dd)}")
     z.kontrol("envanter")
 
+    # Envanteri sınıflandır
+    import subprocess as _sp
+    siniflandirma_script = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "src", "classify_relevance.py"
+    )
+    if os.path.exists(siniflandirma_script):
+        print(f"\n🏷️ Sınıflandırma çalıştırılıyor: {siniflandirma_script}")
+        _sp.run([sys.executable, siniflandirma_script], check=True)
+        print("   ✅ Sınıflandırma tamam")
+    else:
+        print(f"   ⚠️ Sınıflandırıcı bulunamadı: {siniflandirma_script}")
+
     # 2. Belgeleri oku (envanter metadata + ilgililik filtresi ile)
     ILGILILIK_FILTRESI = ["dogrudan_ilgili", "dolayli_ilgili"]
     print(f"\n📄 Belgeler okunuyor (UYDS ilgililik filtresi: {' + '.join(ILGILILIK_FILTRESI)})...")
