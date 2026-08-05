@@ -165,3 +165,59 @@ class TestXlsxKaynakOkuma:
         assert "Sayfa2" in metin
         assert "Madde 1" in metin
         assert "Veri 1" in metin
+
+
+class TestExcelFormatZorunluAlanlar:
+    """UYDS ve standart Excel format zorunlu alan testleri."""
+
+    def _ad_esle(self, sutun_adlari, hedef_adlar):
+        mk = {adi_normalize_et(k): k for k in sutun_adlari}
+        eslesme = {}
+        for anahtar, adaylar in hedef_adlar.items():
+            for aday in adaylar:
+                if adi_normalize_et(aday) in mk:
+                    eslesme[anahtar] = mk[adi_normalize_et(aday)]
+                    break
+        return eslesme
+
+    def test_uyds_5_alan_zorunlu(self):
+        hedef = {
+            "modul": ["modul"], "konu": ["konu"], "aciklama": ["aciklama"],
+            "yapilacak": ["yapilacak"], "yapilan_islem": ["yapilan islem", "yapilan_islem"],
+        }
+        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak"]
+        eslesme = self._ad_esle(sutunlar, hedef)
+        gerekli = {"modul", "konu", "aciklama", "yapilacak", "yapilan_islem"}
+        assert not gerekli.issubset(eslesme)
+
+        sutunlar_tam = ["Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem"]
+        eslesme_tam = self._ad_esle(sutunlar_tam, hedef)
+        assert gerekli.issubset(eslesme_tam)
+
+    def test_standart_soru_cevap_kategori_yok(self):
+        hedef = {"soru": ["soru"], "cevap": ["cevap"], "kategori": ["kategori"]}
+        sutunlar = ["Soru", "Cevap"]
+        eslesme = self._ad_esle(sutunlar, hedef)
+        assert "soru" in eslesme
+        assert "cevap" in eslesme
+        assert "kategori" not in eslesme
+
+    def test_standart_soru_cevap_kategori_var(self):
+        hedef = {"soru": ["soru"], "cevap": ["cevap"], "kategori": ["kategori"]}
+        sutunlar = ["Soru", "Cevap", "Kategori"]
+        eslesme = self._ad_esle(sutunlar, hedef)
+        assert "soru" in eslesme
+        assert "cevap" in eslesme
+        assert "kategori" in eslesme
+
+    def test_sadece_soru_desteklenmez(self):
+        hedef = {"soru": ["soru"], "cevap": ["cevap"]}
+        sutunlar = ["Soru"]
+        eslesme = self._ad_esle(sutunlar, hedef)
+        assert not {"soru", "cevap"}.issubset(eslesme)
+
+    def test_bos_sutun_desteklenmez(self):
+        hedef = {"soru": ["soru"], "cevap": ["cevap"]}
+        sutunlar = []
+        eslesme = self._ad_esle(sutunlar, hedef)
+        assert not {"soru", "cevap"}.issubset(eslesme)
