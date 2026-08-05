@@ -29,6 +29,7 @@ from src.config import (
     CHUNK_ALGORITMA_SURUMU, dizin_hashi, dizinleri_hazirla, config_ozeti,
 )
 from src.document_loader import tum_kaynaklari_yukle
+from src.source_validation import dogrudan_kaynaklari_dogrula, EnvanterHatasi
 from src.chunking import belgeyi_chunkla, chunk_istatistikleri
 from src.source_inventory import envanter_olustur, envanter_ozeti
 from src.embeddings import (
@@ -171,16 +172,22 @@ def main():
     if okunamayan_belgeler:
         _csv_kaydet(okunamayan_belgeler, os.path.join(CIKTI_DIZINI, "okunamayan_belgeler.csv"))
         print(f"\n   ⚠️ {len(okunamayan_belgeler)} belge okunamadı (rapor: okunamayan_belgeler.csv)")
-        
-        dogrudan_okunamayan = [b for b in okunamayan_belgeler if b["uyds_ilgililik"] == "dogrudan_ilgili"]
-        if dogrudan_okunamayan:
-            raise RuntimeError(
-                f"{len(dogrudan_okunamayan)} doğrudan ilgili belge okunamadı! "
-                f"İşlem durduruldu. Dosyalar: {[b['dosya_adi'] for b in dogrudan_okunamayan]}"
-            )
 
     if okunan_belgeler:
         _csv_kaydet(okunan_belgeler, os.path.join(CIKTI_DIZINI, "okunan_belgeler.csv"))
+
+    # Yetkili güvenlik kapısı: ortak kaynak doğrulama fonksiyonu
+    # (notebook ile aynı mantık — src/source_validation.py)
+    try:
+        _guvenlik_raporu = dogrudan_kaynaklari_dogrula(envanter_csv, belgeler)
+    except EnvanterHatasi as hata:
+        raise RuntimeError(str(hata))
+    if _guvenlik_raporu["dolayli_okunamayan"]:
+        print(
+            f"   ℹ️ {len(_guvenlik_raporu['dolayli_okunamayan'])} dolaylı ilgili belge "
+            f"okunamadı (uyarı, işlem devam ediyor)."
+        )
+
 
     z.kontrol("belge_okuma")
 

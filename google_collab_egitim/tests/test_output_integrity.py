@@ -300,103 +300,149 @@ class TestCheckpointDogrulama:
 
 
 class TestBelgeGuvenlikKapisi:
-    """Doğrudan ilgili belge okuma güvenlik kontrolü testleri."""
+    """Doğrudan ilgili belge okuma güvenlik kapısı — ÜRETİM fonksiyonu testi.
+
+    src.source_validation.dogrudan_kaynaklari_dogrula fonksiyonunu
+    doğrudan çağırır; notebook içine gömülü mantığı değil.
+    """
+
+    def _envanter_yaz(self, dizin, kayitlar):
+        import csv
+        yol = os.path.join(dizin, "envanter.csv")
+        alanlar = ["dosya_adi", "uyds_ilgililik", "kaynak_id"]
+        with open(yol, "w", newline="", encoding="utf-8-sig") as f:
+            w = csv.DictWriter(f, fieldnames=alanlar)
+            w.writeheader()
+            w.writerows(kayitlar)
+        return yol
 
     def test_dogrudan_belge_okunamazsa_hata(self, temp_dir):
-        import csv
+        from src.source_validation import (
+            dogrudan_kaynaklari_dogrula, DogrudanKaynakHatasi,
+        )
+        envanter = self._envanter_yaz(temp_dir, [
+            {"dosya_adi": "a.txt", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S1"},
+            {"dosya_adi": "b.txt", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S2"},
+        ])
+        belgeler = [{"dosya": "a.txt"}]
+        with pytest.raises(DogrudanKaynakHatasi) as exc:
+            dogrudan_kaynaklari_dogrula(envanter, belgeler)
+        assert "b.txt" in str(exc.value)
 
-        kaynak = os.path.join(temp_dir, "kaynaklar")
-        os.makedirs(kaynak, exist_ok=True)
-        dosya1 = os.path.join(kaynak, "dogrudan_belge.txt")
-        with open(dosya1, "w", encoding="utf-8") as f:
-            f.write("Doğrudan belge içeriği.")
-
-        envanter_csv = os.path.join(temp_dir, "siniflandirilmis.csv")
-        envanter_kayitlari = [
-            {
-                "dosya_adi": "dogrudan_belge.txt",
-                "uyds_ilgililik": "dogrudan_ilgili",
-                "kaynak_id": "SRC-001",
-            },
-            {
-                "dosya_adi": "olmayan_belge.txt",
-                "uyds_ilgililik": "dogrudan_ilgili",
-                "kaynak_id": "SRC-002",
-            },
-        ]
-        with open(envanter_csv, "w", newline="", encoding="utf-8-sig") as f:
-            w = csv.DictWriter(f, fieldnames=["dosya_adi", "uyds_ilgililik", "kaynak_id"])
-            w.writeheader()
-            w.writerows(envanter_kayitlari)
-
-        dogrudan = {k["dosya_adi"] for k in envanter_kayitlari if k["uyds_ilgililik"] == "dogrudan_ilgili"}
-        okunan = {"dogrudan_belge.txt"}
-        okunamayan = sorted(dogrudan - okunan)
-        assert len(okunamayan) == 1
-        assert "olmayan_belge.txt" in okunamayan
+    def test_dogrudan_hata_runtimeerror_alt_sinifidir(self, temp_dir):
+        from src.source_validation import dogrudan_kaynaklari_dogrula
+        envanter = self._envanter_yaz(temp_dir, [
+            {"dosya_adi": "x.txt", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S1"},
+        ])
+        with pytest.raises(RuntimeError):
+            dogrudan_kaynaklari_dogrula(envanter, [])
 
     def test_tum_dogrudan_okunmus_sorun_yok(self, temp_dir):
-        import csv
-
-        kaynak = os.path.join(temp_dir, "kaynaklar")
-        os.makedirs(kaynak, exist_ok=True)
-        for ad in ["a.txt", "b.txt"]:
-            with open(os.path.join(kaynak, ad), "w", encoding="utf-8") as f:
-                f.write("içerik")
-
-        envanter_csv = os.path.join(temp_dir, "envanter.csv")
-        kayitlar = [
-            {"dosya_adi": "a.txt", "uyds_ilgililik": "dogrudan_ilgili"},
-            {"dosya_adi": "b.txt", "uyds_ilgililik": "dogrudan_ilgili"},
-        ]
-        with open(envanter_csv, "w", newline="", encoding="utf-8-sig") as f:
-            w = csv.DictWriter(f, fieldnames=["dosya_adi", "uyds_ilgililik"])
-            w.writeheader()
-            w.writerows(kayitlar)
-
-        dogrudan = {k["dosya_adi"] for k in kayitlar if k["uyds_ilgililik"] == "dogrudan_ilgili"}
-        okunan = {"a.txt", "b.txt"}
-        okunamayan = sorted(dogrudan - okunan)
-        assert len(okunamayan) == 0
+        from src.source_validation import dogrudan_kaynaklari_dogrula
+        envanter = self._envanter_yaz(temp_dir, [
+            {"dosya_adi": "a.txt", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S1"},
+            {"dosya_adi": "b.txt", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S2"},
+        ])
+        rapor = dogrudan_kaynaklari_dogrula(
+            envanter, [{"dosya": "a.txt"}, {"dosya": "b.txt"}]
+        )
+        assert rapor["dogrudan_okunamayan"] == []
+        assert rapor["toplam_dogrudan"] == 2
 
     def test_sadece_dolayli_okunamazsa_durmaz(self, temp_dir):
-        import csv
+        from src.source_validation import dogrudan_kaynaklari_dogrula
+        envanter = self._envanter_yaz(temp_dir, [
+            {"dosya_adi": "d1.txt", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S1"},
+            {"dosya_adi": "d2.txt", "uyds_ilgililik": "dolayli_ilgili", "kaynak_id": "S2"},
+            {"dosya_adi": "d3.txt", "uyds_ilgililik": "dolayli_ilgili", "kaynak_id": "S3"},
+        ])
+        rapor = dogrudan_kaynaklari_dogrula(envanter, [{"dosya": "d1.txt"}])
+        assert rapor["dogrudan_okunamayan"] == []
+        assert set(rapor["dolayli_okunamayan"]) == {"d2.txt", "d3.txt"}
 
-        envanter_csv = os.path.join(temp_dir, "envanter.csv")
-        kayitlar = [
-            {"dosya_adi": "d1.txt", "uyds_ilgililik": "dogrudan_ilgili"},
-            {"dosya_adi": "d2.txt", "uyds_ilgililik": "dolayli_ilgili"},
-            {"dosya_adi": "d3.txt", "uyds_ilgililik": "dolayli_ilgili"},
+    def test_envanter_yoksa_hata(self, temp_dir):
+        from src.source_validation import (
+            dogrudan_kaynaklari_dogrula, EnvanterHatasi,
+        )
+        with pytest.raises(EnvanterHatasi):
+            dogrudan_kaynaklari_dogrula(
+                os.path.join(temp_dir, "yok.csv"), []
+            )
+
+    def test_envanter_bossa_hata(self, temp_dir):
+        from src.source_validation import dogrudan_kaynaklari_dogrula, EnvanterHatasi
+        bos = os.path.join(temp_dir, "bos.csv")
+        with open(bos, "w", encoding="utf-8-sig") as f:
+            f.write("dosya_adi,uyds_ilgililik\n")
+        with pytest.raises(EnvanterHatasi):
+            dogrudan_kaynaklari_dogrula(bos, [])
+
+    def test_cok_sayfali_belge_tek_dosya_sayilir(self, temp_dir):
+        from src.source_validation import dogrudan_kaynaklari_dogrula
+        envanter = self._envanter_yaz(temp_dir, [
+            {"dosya_adi": "cok.pdf", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S1"},
+        ])
+        belgeler = [
+            {"dosya": "cok.pdf", "sayfa": 1},
+            {"dosya": "cok.pdf", "sayfa": 2},
+            {"dosya": "cok.pdf", "sayfa": 3},
         ]
-        with open(envanter_csv, "w", newline="", encoding="utf-8-sig") as f:
-            w = csv.DictWriter(f, fieldnames=["dosya_adi", "uyds_ilgililik"])
-            w.writeheader()
-            w.writerows(kayitlar)
+        rapor = dogrudan_kaynaklari_dogrula(envanter, belgeler)
+        assert rapor["dogrudan_okunamayan"] == []
 
-        dogrudan = {k["dosya_adi"] for k in kayitlar if k["uyds_ilgililik"] == "dogrudan_ilgili"}
-        okunan = {"d1.txt"}
-        okunamayan_dogrudan = sorted(dogrudan - okunan)
-        assert len(okunamayan_dogrudan) == 0
-
-        dolayli = {k["dosya_adi"] for k in kayitlar if k["uyds_ilgililik"] == "dolayli_ilgili"}
-        okunamayan_dolayli = sorted(dolayli - okunan)
-        assert len(okunamayan_dolayli) == 2
+    def test_dosya_yolu_basename_ile_eslesir(self, temp_dir):
+        from src.source_validation import dogrudan_kaynaklari_dogrula
+        envanter = self._envanter_yaz(temp_dir, [
+            {"dosya_adi": "a.pdf", "uyds_ilgililik": "dogrudan_ilgili", "kaynak_id": "S1"},
+        ])
+        belgeler = [{"dosya": "/kaynak/01_mevzuat/a.pdf"}]
+        rapor = dogrudan_kaynaklari_dogrula(envanter, belgeler)
+        assert rapor["dogrudan_okunamayan"] == []
 
 
 class TestOCRTemizlik:
-    """OCR geçici dosya temizliği testi."""
+    """OCR geçici dosya temizliği — ÜRETİM fonksiyonu testi.
 
-    def test_gecici_dosya_temizlenir(self, temp_dir):
-        gecici = os.path.join(temp_dir, "test.ocr_gecici.pdf")
-        with open(gecici, "w") as f:
-            f.write("eski kalıntı")
+    src.ocr_helpers fonksiyonlarını doğrudan çağırır; pathlib stdlib'ini
+    değil. or=True gibi her zaman geçen assertion yoktur.
+    """
 
-        assert os.path.exists(gecici)
-        getattr(os, "unlink")(gecici)
-        assert not os.path.exists(gecici) or True  # missing_ok=True eşdeğeri
+    def test_gecici_kalinti_temizlenir(self, temp_dir):
+        from src.ocr_helpers import gecici_temizle
+        kalinti = os.path.join(temp_dir, "x.ocr_gecici.pdf")
+        with open(kalinti, "w") as f:
+            f.write("eski kalinti")
+        assert gecici_temizle(kalinti) is True
+        assert not os.path.exists(kalinti)
 
-    def test_missing_ok_hatasiz(self):
-        import pathlib
-        p = pathlib.Path("/var/tmp/kesinlikle_olmayan_dosya.ocr_gecici.pdf")
-        p.unlink(missing_ok=True)
-        assert True
+    def test_olmayan_dosya_hatasiz_false(self, temp_dir):
+        from src.ocr_helpers import gecici_temizle
+        sonuc = gecici_temizle(os.path.join(temp_dir, "yok.ocr_gecici.pdf"))
+        assert sonuc is False
+
+    def test_hedef_bulunamazsa_hata(self, temp_dir):
+        from src.ocr_helpers import hedef_yolu_bul, OCRHedefHatasi
+        with pytest.raises(OCRHedefHatasi):
+            hedef_yolu_bul(temp_dir, "kesinlikle_yok.pdf")
+
+    def test_hedef_bulunamazsa_runtimeerror_olarak_yayilir(self, temp_dir):
+        from src.ocr_helpers import hedef_yolu_bul, OCRHedefHatasi
+        with pytest.raises(RuntimeError):
+            hedef_yolu_bul(temp_dir, "kesinlikle_yok.pdf")
+
+    def test_hedef_birden_fazlaysa_hata(self, temp_dir):
+        from src.ocr_helpers import hedef_yolu_bul
+        alt = os.path.join(temp_dir, "alt")
+        os.makedirs(alt)
+        for d in [temp_dir, alt]:
+            with open(os.path.join(d, "cift.pdf"), "w") as f:
+                f.write("x")
+        with pytest.raises(RuntimeError):
+            hedef_yolu_bul(temp_dir, "cift.pdf")
+
+    def test_hedef_tek_dosya_bulunur(self, temp_dir):
+        from src.ocr_helpers import hedef_yolu_bul
+        with open(os.path.join(temp_dir, "tek.pdf"), "w") as f:
+            f.write("x")
+        yol = hedef_yolu_bul(temp_dir, "tek.pdf")
+        assert yol.exists()

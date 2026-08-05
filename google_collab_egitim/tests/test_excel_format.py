@@ -1,136 +1,154 @@
 # ============================================================
-# Test: Excel format okuma — başlık algılama, UYDS formatı
+# Test: Excel format okuma — ÜRETİM modülü testi
 # ============================================================
-"""Excel başlık satırı algılama ve UYDS soru/cevap alan eşleme testleri."""
+"""
+src.excel_format modülü: başlık algılama, alan eşleştirme,
+UYDS/standart format tespiti. Notebook ile aynı modülü test eder;
+test içine gömülü eşleştirme mantığı yoktur.
+"""
 
 import os
 import sys
 import tempfile
-import unicodedata
 
+import pandas as pd
 import pytest
 
-# src modülünü path'e ekle
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.utils import adi_normalize_et
+from src.excel_format import (
+    alan_eslestir,
+    baslik_satiri_bul,
+    excel_formatini_tespit_et,
+    UYDS_HEDEF,
+    STANDART_HEDEF,
+    GEREKLI_UYDS,
+    BILINEN_BASLIKLAR,
+)
 
 
 class TestBaslikNormallestirme:
-    """Başlık normalleştirme fonksiyonunun testleri."""
+    """adi_normalize_et yardımcı fonksiyonu testleri."""
 
     def test_turkce_buyuk_kucuk(self):
-        """Türkçe karakterler doğru normalize edilmeli."""
         assert adi_normalize_et("Modül") == adi_normalize_et("modul")
         assert adi_normalize_et("MODÜL") == adi_normalize_et("modul")
 
     def test_bosluk_farki(self):
-        """Başındaki/sonundaki boşluklar göz ardı edilmeli."""
         assert adi_normalize_et("  Konu  ") == adi_normalize_et("konu")
 
-    def test_bilinen_basliklar(self):
-        """Bilinen UYDS başlıkları tanınmalı."""
-        bilinen = {"modul", "konu", "aciklama", "yapilacak", "yapilan islem"}
-        for baslik in bilinen:
-            norm = adi_normalize_et(baslik)
-            assert norm in {
-                adi_normalize_et(b)
-                for b in [
-                    "Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem",
-                    "modul", "konu", "aciklama", "yapilacak", "yapilan islem",
-                ]
-            }
+
+class TestAlanEslestir:
+    """alan_eslestir — normalize tabanlı sütun eşleştirme (ÜRETİM)."""
+
+    def test_uyds_bilinen_basliklar_eslesir(self):
+        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem"]
+        eslesme = alan_eslestir(sutunlar, UYDS_HEDEF)
+        assert GEREKLI_UYDS.issubset(eslesme)
+        assert eslesme["modul"] == "Modül"
+        assert eslesme["yapilan_islem"] == "Yapılan İşlem"
+
+    def test_yapilan_islem_alt_cizgi_kabul(self):
+        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak", "yapilan_islem"]
+        eslesme = alan_eslestir(sutunlar, UYDS_HEDEF)
+        assert eslesme["yapilan_islem"] == "yapilan_islem"
+
+    def test_baslik_kismi_eslesme(self):
+        eslesme = alan_eslestir(["Modül", "Konu"], UYDS_HEDEF)
+        assert set(eslesme) == {"modul", "konu"}
+
+    def test_bos_sutunlar(self):
+        assert alan_eslestir([], UYDS_HEDEF) == {}
 
 
-class TestUYDSFormatEsleme:
-    """UYDS formatında soru/cevap alan eşleme testleri."""
+class TestExcelFormatTespiti:
+    """excel_formatini_tespit_et — format kararı (ÜRETİM)."""
 
-    def _ad_esle(self, sutun_adlari, hedef_adlar):
-        """Sütun adlarını normalize edip eşleştirir."""
-        mk = {adi_normalize_et(k): k for k in sutun_adlari}
-        eslesme = {}
-        for anahtar, adaylar in hedef_adlar.items():
-            for aday in adaylar:
-                if adi_normalize_et(aday) in mk:
-                    eslesme[anahtar] = mk[adi_normalize_et(aday)]
-                    break
-        return eslesme
+    def test_uyds_tam_5_alan(self):
+        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem"]
+        ft, eslesme = excel_formatini_tespit_et(sutunlar)
+        assert ft == "uyds"
+        assert GEREKLI_UYDS.issubset(eslesme)
 
-    def test_uyds_format_tespiti(self):
-        """5 alanın en az 4'ü bulunursa UYDS formatı."""
-        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem", "Müşteri"]
-        hedef = {
-            "modul": ["modul"], "konu": ["konu"], "aciklama": ["aciklama"],
-            "yapilacak": ["yapilacak"], "yapilan_islem": ["yapilan islem", "yapilan_islem"],
-        }
-        eslesme = self._ad_esle(sutunlar, hedef)
-        assert len(eslesme) >= 4
-        assert "modul" in eslesme
-        assert "konu" in eslesme
+    def test_standart_soru_cevap_kategori_yok(self):
+        ft, eslesme = excel_formatini_tespit_et(["Soru", "Cevap"])
+        assert ft == "standart"
+        assert "soru" in eslesme
+        assert "cevap" in eslesme
+        assert "kategori" not in eslesme
 
-    def test_soru_olusturma(self):
-        """soru = Modül + Konu + Açıklama + Yapılacak"""
-        modul = "Hakediş"
-        konu = "Hakediş onay problemi"
-        aciklama = "Hakediş onaylanamıyor"
-        yapilacak = "Hakediş durumunu kontrol et"
+    def test_standart_soru_cevap_kategori_var(self):
+        ft, eslesme = excel_formatini_tespit_et(["Soru", "Cevap", "Kategori"])
+        assert ft == "standart"
+        assert eslesme["kategori"] == "Kategori"
 
-        soru = f"{modul}\n{konu}\n{aciklama}\n{yapilacak}"
-        assert "Hakediş" in soru
-        assert "onay problemi" in soru
-        assert len(soru) > 0
+    def test_sadece_soru_desteklenmez(self):
+        with pytest.raises(ValueError):
+            excel_formatini_tespit_et(["Soru"])
 
-    def test_bos_cevap_tespiti(self):
-        """Boş cevap doğru tespit edilmeli."""
-        bos_cevap = "   "
-        assert bos_cevap.strip() == ""
+    def test_soru_var_cevap_yok_desteklenmez(self):
+        with pytest.raises(ValueError):
+            excel_formatini_tespit_et(["Soru", "Açıklama"])
+
+    def test_bos_sutun_desteklenmez(self):
+        with pytest.raises(ValueError):
+            excel_formatini_tespit_et([])
+
+    def test_uyds_yapilan_islem_yoksa_uyds_degil(self):
+        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak"]
+        with pytest.raises(ValueError):
+            excel_formatini_tespit_et(sutunlar)
+
+    def test_uyds_ekstra_sutunlar_sorun_degil(self):
+        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak",
+                    "Yapılan İşlem", "Müşteri", "Tarih"]
+        ft, eslesme = excel_formatini_tespit_et(sutunlar)
+        assert ft == "uyds"
+
+    def test_kategori_isim_farklari_eslesir(self):
+        for ad in ["Kategori", "kategori", "KATEGORİ"]:
+            ft, eslesme = excel_formatini_tespit_et(["Soru", "Cevap", ad])
+            assert ft == "standart"
+            assert eslesme["kategori"] == ad
 
 
-class TestExcelBaslikSatiri:
-    """Excel başlık satırı otomatik tespit testleri."""
+class TestBaslikSatiriBul:
+    """baslik_satiri_bul — başlık satırı otomatik tespiti (ÜRETİM)."""
 
-    @pytest.fixture
-    def temp_excel(self):
-        """Test için geçici Excel dosyası oluşturur."""
-        try:
-            import pandas as pd
-        except ImportError:
-            pytest.skip("pandas kurulu değil")
+    def test_baslik_4_satirda(self):
+        df = pd.DataFrame([
+            ["Başlık", "", "", ""],
+            ["", "", "", ""],
+            ["", "", "", ""],
+            ["Modül", "Konu", "Açıklama", "Yapılacak"],
+            ["Hakediş", "Onay", "Sorun", "Kontrol"],
+        ])
+        assert baslik_satiri_bul(df) == 3
 
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
-            # 4. satırda başlık olan bir UYDS Excel'i simüle et
-            df = pd.DataFrame({
-                "Unnamed: 0": ["Başlık", "", "", "Modül", "Hakediş", "İhale"],
-                "Unnamed: 1": ["", "", "", "Konu", "Onay", "Teklif"],
-                "Unnamed: 2": ["", "", "", "Açıklama", "Sorun", "Hata"],
-                "Unnamed: 3": ["", "", "", "Yapılacak", "Kontrol", "İncele"],
-                "Unnamed: 4": ["", "", "", "Yapılan İşlem", "Yapıldı", ""],
-            })
-            df.to_excel(f.name, index=False, header=False)
-            yield f.name
-        os.unlink(f.name)
+    def test_baslik_yoksa_none(self):
+        df = pd.DataFrame([
+            ["rastgele", "veri", "satiri"],
+            ["baska", "veri", "satiri"],
+        ])
+        assert baslik_satiri_bul(df) is None
 
-    def test_baslik_4_satirda(self, temp_excel):
-        """Başlık 4. satırda (index 3) algılanmalı."""
-        import pandas as pd
+    def test_baslik_ilk_satirda(self):
+        df = pd.DataFrame([
+            ["Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem"],
+            ["Hakediş", "Onay", "Sorun", "Kontrol", "Yapıldı"],
+        ])
+        assert baslik_satiri_bul(df) == 0
 
-        ham = pd.read_excel(temp_excel, sheet_name=0, header=None, dtype=object,
-                            engine="openpyxl", nrows=10)
-        bilinen = {"modul", "konu", "aciklama", "yapilacak", "yapilan islem"}
-
-        baslik_satiri = None
-        for i, satir in ham.iterrows():
-            norm_set = {adi_normalize_et(str(v)) for v in satir.tolist()}
-            if len(norm_set & bilinen) >= 3:
-                baslik_satiri = i
-                break
-
-        assert baslik_satiri is not None, "Başlık satırı bulunamadı"
-        assert baslik_satiri == 3, f"Başlık 4. satırda (index 3) olmalı, bulunan: {baslik_satiri}"
+    def test_baslik_pencere_disinda_bulunmaz(self):
+        satirlar = [["x", "y", "z"]] * 25
+        satirlar.append(["Modül", "Konu", "Açıklama", "Yapılacak"])
+        df = pd.DataFrame(satirlar)
+        assert baslik_satiri_bul(df, pencere=20) is None
 
 
 class TestXlsxKaynakOkuma:
-    """document_loader.py XLSX okuma testi."""
+    """document_loader._xlsx_oku — çok sayfalı XLSX okuma (ÜRETİM)."""
 
     @pytest.fixture
     def temp_xlsx(self):
@@ -167,57 +185,25 @@ class TestXlsxKaynakOkuma:
         assert "Veri 1" in metin
 
 
-class TestExcelFormatZorunluAlanlar:
-    """UYDS ve standart Excel format zorunlu alan testleri."""
+class TestNotebookExcelDavranisi:
+    """
+    Notebook CELL 10 ile birebir aynı üretim fonksiyonlarını kullanarak
+    standart Excel'in _modul davranışını doğrular (kategori yoksa boş).
+    """
 
-    def _ad_esle(self, sutun_adlari, hedef_adlar):
-        mk = {adi_normalize_et(k): k for k in sutun_adlari}
-        eslesme = {}
-        for anahtar, adaylar in hedef_adlar.items():
-            for aday in adaylar:
-                if adi_normalize_et(aday) in mk:
-                    eslesme[anahtar] = mk[adi_normalize_et(aday)]
-                    break
-        return eslesme
+    def _mtd(self, d):
+        if d is None or (isinstance(d, float) and pd.isna(d)):
+            return ""
+        return str(int(d)) if isinstance(d, float) and d == int(d) else str(d).strip()
 
-    def test_uyds_5_alan_zorunlu(self):
-        hedef = {
-            "modul": ["modul"], "konu": ["konu"], "aciklama": ["aciklama"],
-            "yapilacak": ["yapilacak"], "yapilan_islem": ["yapilan islem", "yapilan_islem"],
-        }
-        sutunlar = ["Modül", "Konu", "Açıklama", "Yapılacak"]
-        eslesme = self._ad_esle(sutunlar, hedef)
-        gerekli = {"modul", "konu", "aciklama", "yapilacak", "yapilan_islem"}
-        assert not gerekli.issubset(eslesme)
+    def test_standart_kategori_yok_modul_bos(self):
+        ft, eslesme = excel_formatini_tespit_et(["Soru", "Cevap"])
+        modul = eslesme["kategori"] if "kategori" in eslesme else ""
+        assert ft == "standart"
+        assert modul == ""
 
-        sutunlar_tam = ["Modül", "Konu", "Açıklama", "Yapılacak", "Yapılan İşlem"]
-        eslesme_tam = self._ad_esle(sutunlar_tam, hedef)
-        assert gerekli.issubset(eslesme_tam)
-
-    def test_standart_soru_cevap_kategori_yok(self):
-        hedef = {"soru": ["soru"], "cevap": ["cevap"], "kategori": ["kategori"]}
-        sutunlar = ["Soru", "Cevap"]
-        eslesme = self._ad_esle(sutunlar, hedef)
-        assert "soru" in eslesme
-        assert "cevap" in eslesme
-        assert "kategori" not in eslesme
-
-    def test_standart_soru_cevap_kategori_var(self):
-        hedef = {"soru": ["soru"], "cevap": ["cevap"], "kategori": ["kategori"]}
-        sutunlar = ["Soru", "Cevap", "Kategori"]
-        eslesme = self._ad_esle(sutunlar, hedef)
-        assert "soru" in eslesme
-        assert "cevap" in eslesme
-        assert "kategori" in eslesme
-
-    def test_sadece_soru_desteklenmez(self):
-        hedef = {"soru": ["soru"], "cevap": ["cevap"]}
-        sutunlar = ["Soru"]
-        eslesme = self._ad_esle(sutunlar, hedef)
-        assert not {"soru", "cevap"}.issubset(eslesme)
-
-    def test_bos_sutun_desteklenmez(self):
-        hedef = {"soru": ["soru"], "cevap": ["cevap"]}
-        sutunlar = []
-        eslesme = self._ad_esle(sutunlar, hedef)
-        assert not {"soru", "cevap"}.issubset(eslesme)
+    def test_standart_kategori_var_modul_dolu(self):
+        ft, eslesme = excel_formatini_tespit_et(["Soru", "Cevap", "Kategori"])
+        modul = eslesme["kategori"] if "kategori" in eslesme else ""
+        assert ft == "standart"
+        assert modul == "Kategori"
