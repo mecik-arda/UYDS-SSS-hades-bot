@@ -29,6 +29,9 @@ def dense_kaynak_ara(
     top_k: int = 10,
     son_k: int = 3,
     min_skor: float = 0.3,
+    ilk_havuz_filtresi: Optional[str] = None,
+    ikinci_havuz_min_skor: Optional[float] = None,
+    dogrudan_boost: float = 0.0,
 ) -> Tuple[List[Dict[str, Any]], float]:
     """
     Cosine similarity (nokta çarpım) ile en uygun kaynakları bulur.
@@ -40,6 +43,11 @@ def dense_kaynak_ara(
         top_k: kaç aday alınacağı
         son_k: en fazla kaç sonuç döneceği
         min_skor: minimum cosine benzerlik eşiği
+        ilk_havuz_filtresi: "dogrudan_ilgili" → önce sadece bu havuzda ara
+                            "dolayli_ilgili" → yalnızca dolaylı havuz
+        ikinci_havuz_min_skor: İlk havuzda yeterli sonuç yoksa (maks skor < bu değer)
+                               ikinci havuza fallback yap
+        dogrudan_boost: Doğrudan ilgili chunk'lara uygulanacak skor bonusu (örn: 0.1)
 
     Returns:
         (secilen_parcalar, maks_skor): Seçilen chunk'lar ve en yüksek skor
@@ -47,44 +55,115 @@ def dense_kaynak_ara(
     if len(kaynak_vektorler) == 0:
         return [], 0.0
 
-    # Cosine benzerlik (vektörler normalize olduğu için dot product)
-    skorlar = np.dot(kaynak_vektorler, soru_vektor)
+    # Havuz filtrelemesi: uyds_ilgililik alanına göre indeksleri ayır
+    if ilk_havuz_filtresi:
+        tum_indeksler = list(range(len(tum_parcalar)))
+        ilk_havuz_indeksleri = [
+            i for i in tum_indeksler
+            if tum_parcalar[i].get("uyds_ilgililik") == ilk_havuz_filtresi
+        ]
+        ikinci_havuz_indeksleri = [
+            i for i in tum_indeksler
+            if tum_parcalar[i].get("uyds_ilgililik") != ilk_havuz_filtresi
+        ]
+
+        # Önce ilk havuzda ara
+        ilk_sonuclar, ilk_maks = _havuzda_ara(
+            soru_vektor, kaynak_vektorler, tum_parcalar,
+            ilk_havuz_indeksleri, top_k, son_k, min_skor, dogrudan_boost,
+        )
+
+        # İlk havuzda yeterli skor bulundu mu?
+        if ilk_sonuclar and (not ikinci_havuz_min_skor or ilk_maks >= ikinci_havuz_min_skor):
+            return ilk_sonuclar, ilk_maks
+
+        # Fallback: ikinci havuzda da ara
+        ikinci_sonuclar, ikinci_maks = _havuzda_ara(
+            soru_vektor, kaynak_vektorler, tum_parcalar,
+            ikinci_havuz_indeksleri, top_k, son_k,
+            min_skor * 0.8,  # İkinci havuzda eşik biraz daha düşük
+            0.0,
+        )
+
+        # İki havuzu birleştir (ilk havuz öncelikli)
+        if ilk_sonuclar or ikinci_sonuclar:
+            birlestirilmis = ilk_sonuclar + ikinci_sonuclar
+            # Skora göre sırala, en yüksek son_k'yi al
+            birlestirilmis.sort(key=lambda x: x.get("birlesik_skor", 0), reverse=True)
+            birlestirilmis = birlestirilmis[:son_k]
+            maks_skor = max(ilk_maks, ikinci_maks)
+            return birlestirilmis, maks_skor
+
+        return [], 0.0
+
+    # Havuz filtresi yoksa tüm havuzda ara (orijinal davranış)
+    return _havuzda_ara(
+        soru_vektor, kaynak_vektorler, tum_parcalar,
+        list(range(len(tum_parcalar))), top_k, son_k, min_skor, dogrudan_boost,
+    )
+
+
+def _havuzda_ara(
+    soru_vektor: np.ndarray,
+    kaynak_vektorler: np.ndarray,
+    tum_parcalar: List[Dict[str, Any]],
+    havuz_indeksleri: List[int],
+    top_k: int,
+    son_k: int,
+    min_skor: float,
+    dogrudan_boost: float,
+) -> Tuple[List[Dict[str, Any]], float]:
+    """Belirli bir indeks havuzunda dense retrieval yapar."""
+    if not havuz_indeksleri:
+        return [], 0.0
+
+    havuz_indeksleri = np.array(havuz_indeksleri, dtype=int)
+    havuz_vektorler = kaynak_vektorler[havuz_indeksleri]
+
+    # Cosine benzerlik
+    skorlar = np.dot(havuz_vektorler, soru_vektor)
+
+    # Doğrudan boost
+    if dogrudan_boost > 0:
+        for j, i in enumerate(havuz_indeksleri):
+            if tum_parcalar[i].get("uyds_ilgililik") == "dogrudan_ilgili":
+                skorlar[j] += dogrudan_boost
 
     # Top-k seçimi
     if len(skorlar) <= top_k:
-        top_indeksler = np.argsort(skorlar)[::-1]
+        sirali = np.argsort(skorlar)[::-1]
     else:
-        top_indeksler = np.argpartition(skorlar, -top_k)[-top_k:]
-        top_indeksler = top_indeksler[np.argsort(skorlar[top_indeksler])[::-1]]
+        top_n = np.argpartition(skorlar, -top_k)[-top_k:]
+        sirali = top_n[np.argsort(skorlar[top_n])[::-1]]
 
     # Son_k filtreleme
     secilenler = []
     maks_skor = 0.0
-    gorulen_dokumanlar = set()  # Aynı dokümandan çok chunk gelmesini önle
-    ayni_dokuman_limiti = 2     # Aynı dokümandan en fazla 2 chunk
+    gorulen_dokumanlar = set()
+    ayni_dokuman_limiti = 2
 
-    for i in top_indeksler:
+    for j in sirali:
         if len(secilenler) >= son_k:
             break
 
-        skor = float(skorlar[i])
+        skor = float(skorlar[j])
         if skor < min_skor:
             continue
 
         if skor > maks_skor:
             maks_skor = skor
 
-        parca = tum_parcalar[i].copy()
+        gercek_indeks = int(havuz_indeksleri[j])
+        parca = tum_parcalar[gercek_indeks].copy()
         dokuman = parca.get("dokuman", "")
 
-        # Aynı dokümandan çok chunk gelmesin
         if dokuman:
             doc_count = sum(1 for p in secilenler if p.get("dokuman") == dokuman)
             if doc_count >= ayni_dokuman_limiti:
                 continue
 
         parca["dense_skor"] = round(skor, 4)
-        parca["birlesik_skor"] = round(skor, 4)  # BM25 yoksa dense = birleşik
+        parca["birlesik_skor"] = round(skor, 4)
         secilenler.append(parca)
 
     return secilenler, maks_skor

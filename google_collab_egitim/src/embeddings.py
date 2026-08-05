@@ -102,6 +102,9 @@ def embedding_checkpoint_kaydet(
     chunk_boyut: int,
     chunk_overlap: int,
     chunk_algoritma_surumu: str,
+    siniflandirilmis_envanter_hash: str = "",
+    ilgililik_filtresi: Optional[List[str]] = None,
+    siniflandirma_surumu: str = "",
 ) -> None:
     """Embedding'leri ve metadatasını checkpoint'e kaydeder."""
     alt_dizin = os.path.join(ckpt_dizini, "kaynak_embedding")
@@ -122,6 +125,13 @@ def embedding_checkpoint_kaydet(
         "chunk_overlap": chunk_overlap,
         "chunk_algoritma_surumu": chunk_algoritma_surumu,
     }
+    if siniflandirilmis_envanter_hash:
+        meta["siniflandirilmis_envanter_hash"] = siniflandirilmis_envanter_hash
+    if ilgililik_filtresi is not None:
+        meta["ilgililik_filtresi"] = ilgililik_filtresi
+    if siniflandirma_surumu:
+        meta["siniflandirma_surumu"] = siniflandirma_surumu
+
     with open(meta_yolu, "w") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
@@ -135,6 +145,9 @@ def embedding_checkpoint_yukle(
     chunk_boyut: int,
     chunk_overlap: int,
     chunk_algoritma_surumu: str,
+    siniflandirilmis_envanter_hash: Optional[str] = None,
+    ilgililik_filtresi: Optional[List[str]] = None,
+    siniflandirma_surumu: Optional[str] = None,
 ) -> Optional[Tuple[np.ndarray, List[Dict[str, Any]]]]:
     """
     Embedding checkpoint'ini yükler. Meta uyuşmazsa None döner.
@@ -163,6 +176,20 @@ def embedding_checkpoint_yukle(
         ]
         if not all(checks):
             return None
+
+        # Opsiyonel envanter/ilgililik hash kontrolü
+        if siniflandirilmis_envanter_hash is not None:
+            if meta.get("siniflandirilmis_envanter_hash") != siniflandirilmis_envanter_hash:
+                print("   ⚠️ Sınıflandırılmış envanter değişmiş, checkpoint geçersiz.")
+                return None
+        if ilgililik_filtresi is not None:
+            if meta.get("ilgililik_filtresi") != ilgililik_filtresi:
+                print("   ⚠️ İlgililik filtresi değişmiş, checkpoint geçersiz.")
+                return None
+        if siniflandirma_surumu is not None:
+            if meta.get("siniflandirma_surumu") != siniflandirma_surumu:
+                print("   ⚠️ Sınıflandırma sürümü değişmiş, checkpoint geçersiz.")
+                return None
 
         kaynak_vektorler = np.load(vektor_yolu)
         with open(parcalar_yolu, "rb") as f:

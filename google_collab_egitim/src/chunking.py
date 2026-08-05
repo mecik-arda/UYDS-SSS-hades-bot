@@ -317,7 +317,15 @@ def belgeyi_chunkla(
                 "yerel_chunk": yerel_i + 1,
                 "yayin_tarihi": meta.get("yayin_tarihi", ""),
                 "surum": meta.get("surum", ""),
-                "resmiyet_seviyesi": meta.get("resmiyet_seviyesi", "belirsiz"),
+                "guven_sinifi": meta.get("guven_sinifi", ""),
+                "kaynak_url": meta.get("kaynak_url", ""),
+                "uyds_ilgililik": meta.get("uyds_ilgililik", ""),
+                "durum": meta.get("durum", ""),
+                "domain": meta.get("domain", ""),
+                "resmiyet_seviyesi": meta.get(
+                    "resmiyet_seviyesi",
+                    meta.get("guven_sinifi", "belirsiz"),
+                ),
                 "metin": chunk_metni.strip(),
             })
             global_chunk_id += 1
