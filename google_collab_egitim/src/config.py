@@ -227,7 +227,7 @@ def config_ozeti() -> str:
         f"Yedek Model: {YEDEK_MODEL}",
         f"Embedding: {EMBEDDING_MODEL}",
         f"Chunk: {CHUNK_BOYUT_TOKEN}/{CHUNK_OVERLAP_TOKEN} token | Algo v{CHUNK_ALGORITMA_SURUMU}",
-        f"RAG: top-{RAG_TOP_K} → son-{RAG_SON_K} | min_skor={RAG_MIN_SKOR}",
+        f"RAG: top-{RAG_TOP_K} -> son-{RAG_SON_K} | min_skor={RAG_MIN_SKOR}",
         f"vLLM: max_model_len={MAX_MODEL_LEN} | gpu_mem={GPU_MEM_UTIL} | batch={BATCH_BUYUKLUK}",
         f"Prompt limit: {PROMPT_TOKEN_LIMIT} token | max_new={MAX_NEW_TOKENS}",
         f"Güven eşiği: {GUVEN_ESIK} | Sıcaklık: {TEMPERATURE}",

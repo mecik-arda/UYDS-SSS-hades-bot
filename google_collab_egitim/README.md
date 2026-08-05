@@ -1,108 +1,190 @@
-# UYDS SSS Cevap Doğrulama Pipeline v4.0.2
+# UYDS SSS Cevap Doğrulama Pipeline v4.1.0
 
-**Qwen3-32B-AWQ · vLLM Structured Output · Batch Inference · Checkpoint**
+**Qwen3-32B-AWQ · vLLM Structured Output · Tokenizer Chunking · Modüler Mimari**
 
 ---
 
-## 📦 Klasör İçeriği
+## Sistem Ne Yapıyor?
+
+UYDS (Ulusal Yapı Denetim Sistemi) SSS Excel'indeki soru-cevap çiftlerini, **bağımsız ve güvenilir kaynak belgelere** (mevzuat, resmî kılavuz, modül dokümanları) dayanarak Qwen3-32B-AWQ ile doğrular.
+
+Model eğitilmez; hazır Qwen3-32B-AWQ modeli yalnızca inference (çıkarım) için kullanılır.
+
+**GPU gereksinimi:** NVIDIA A100 40 GB veya 80 GB (vLLM + 32B model).
+
+---
+
+## Klasör Yapısı
 
 ```
 google_collab_egitim/
-├── veri_ayiklama_v4.0.ipynb       ← **ANA DOSYA (v4.0.2)**
-├── veri_ayiklama_v3.1.ipynb       ← v3.1 ayıklama (yedek)
-├── veri_ayiklama_v3.0.ipynb       ← v3.0 (yedek)
-├── veri_ayiklama_v2.1.ipynb       ← v2.1 (yedek)
-├── veri_ayiklama.ipynb            ← v1 (referans)
-├── README.md                      ← Bu dosya
-├── requirements.txt               ← v4.0 bağımlılıkları
-├── .gitignore                     ← Çıktı/checkpoint dışlama
+├── veri_ayiklama_v4.1.ipynb       ← Ana notebook (Colab A100)
+├── README.md
+├── requirements.txt
+├── .gitignore
 ├── config/
-│   ├── config_v4.yaml             ← v4.0 doğrulama eşikleri
-│   └── config.yaml                ← v3.x ayıklama eşikleri (yedek)
-├── data/
-│   ├── kaynaklar/                 ← Referans dokümanları buraya koyun (.txt/.pdf/.docx/.md)
-│   └── input/                     ← SSS Excel'i buraya koyun
-└── checkpoints_v4/                ← Çalışma sırasında otomatik oluşur
+│   └── config_v4.yaml             ← Tüm eşikler burada
+├── src/                           ← Modüler Python kütüphanesi (12 modül)
+│   ├── config.py                  ← YAML config, dizin keşfi, hash
+│   ├── document_loader.py         ← PDF/DOCX/TXT/MD/XLSX/CSV/JSON/JSONL
+│   ├── chunking.py                ← Tokenizer tabanlı chunking (110/25)
+│   ├── source_inventory.py        ← SHA-256 envanter, kopya tespiti
+│   ├── utils.py                   ← Metin temizleme, GPU bellek, zamanlayıcı
+│   ├── embeddings.py              ← SentenceTransformer + checkpoint
+│   ├── retrieval.py               ← Dense cosine RAG
+│   ├── prompt_builder.py          ← Chat template token kontrolü
+│   ├── validator.py               ← JSON çıktı doğrulama (6 kural)
+│   ├── checkpoint.py              ← JSONL checkpoint yönetimi
+│   └── reporting.py               ← Excel/JSON/grafik çıktıları
+├── tests/                         ← 71 birim test (pytest)
+│   ├── test_excel_format.py       ← Başlık algılama, UYDS eşleme
+│   ├── test_chunking.py           ← Cümle ayırma, tokenizer chunking
+│   ├── test_retrieval.py          ← Dense RAG, min_skor, aynı doküman limiti
+│   ├── test_json_validation.py    ← JSON parse, 6 doğrulama kuralı
+│   ├── test_checkpoint.py         ← Kaydet/yükle, eksik kayıt
+│   ├── test_prompt_token_limit.py ← Token sayımı, kısaltma stratejisi
+│   └── test_output_integrity.py   ← Doğrulanan maskesi, smoke test eşikleri
+├── scripts/
+│   ├── build_source_corpus.py     ← Kaynak havuzu inşa betiği
+│   ├── run_smoke_test.py          ← Mock model ile 20 kayıt uçtan uca test
+│   └── validate_outputs.py        ← Çıktı bütünlüğü kontrol aracı
+└── data/
+    ├── input/                     ← UYDS Excel'i buraya (.gitignore korumalı)
+    └── kaynaklar/                 ← Referans belgeler (.gitignore korumalı)
+        ├── 01_mevzuat/
+        ├── 02_resmi_uyds_kilavuzlari/
+        ├── 03_modul_dokumanlari/
+        ├── 04_teknik_cozumler/
+        ├── 05_onayli_destek_kayitlari/
+        └── 06_surum_notlari/
 ```
 
 ---
 
-## 🚀 Hızlı Başlangıç
+## Hızlı Başlangıç
 
-### 1. Drive'a Yükle
-`google_collab_egitim/` klasörünü Google Drive → MyDrive'a yükle.
+### 1. Kaynak Belgeleri Ekle
 
-### 2. Kaynakları ve Excel'i Yerleştir
-- Referans dokümanları (mevzuat, yönetmelik, kılavuz) `data/kaynaklar/` içine koy.
-- `UYDS_SSS_Listesi.xlsx`'i `data/input/` içine koy.
+`data/kaynaklar/` alt klasörlerine referans belgeleri (PDF, DOCX, TXT, MD) koyun.
 
-### 3. Colab'da Aç
-`veri_ayiklama_v4.0.ipynb` → Google Colab → **A100 GPU** seç → `Run All`.
+**Önemli:** Sistem yalnızca verdiğiniz belgelere dayanır. Kaynak yoksa tüm cevaplar `kanit_yetersiz` çıkar.
 
-### 4. Çıktıları Al
+**UYARI:** Doğrulanmamış SSS cevaplarını kaynak olarak kullanmayın — döngüsel doğrulamaya neden olur.
+
+### 2. Excel'i Yerleştir
+
+`data/input/` içine `UYDS_SSS_Listesi.xlsx` dosyasını koyun.
+
+### 3. Drive'a Yükle
+
+`google_collab_egitim/` klasörünün tamamını Google Drive → MyDrive'a yükleyin.
+
+### 4. Colab'da Çalıştır
+
+1. `veri_ayiklama_v4.1.ipynb` → Google Colab'da aç
+2. Runtime → Change runtime type → **A100 GPU**
+3. `Disconnect and delete runtime` ile temiz başlangıç
+4. `Run All`
+
+### 5. Çıktıları Al
+
 `data/output_v4/YYYY-MM-DD_HHMM/` içinde:
-- `tum_sonuclar.xlsx` — Tüm kayıtlar + doğrulama sonuçları
-- `dogrulanan.xlsx` — `karar == "dogru" and guven >= 0.85`
-- `supheli.xlsx` — Şüpheli kayıtlar (elle incelenmeli)
-- `ozet.json` — Sayısal özet (karar dağılımı, güven istatistikleri)
-- `dogrulama_grafik.png` — Pasta grafik + bar chart
-- `guven_dagilimi.png` — Güven skoru histogramı
+
+| Dosya | Açıklama |
+|---|---|
+| `tum_sonuclar.xlsx` | Tüm kayıtlar + doğrulama sonuçları |
+| `dogrulanan.xlsx` | `karar=dogru AND guven>=0.85` |
+| `supheli.xlsx` | Diğer tüm kayıtlar (elle incelenmeli) |
+| `islem_hatalari.xlsx` | Yeniden denemeye rağmen hatalı kalanlar |
+| `kaynak_kapsama_raporu.xlsx` | Modül ve kaynak bazlı kapsama |
+| `ozet.json` | Sayısal özet |
+| `benchmark.json` | Benchmark performans metrikleri |
+| `grafikler/karar_dagilimi.png` | Pasta grafik + güven histogramı |
 
 ---
 
-## 🆚 Sürüm Karşılaştırması
+## Smoke Test (GPU Gerektirmez)
 
-| Özellik | v3.1 | v4.0.2 |
-|---|---|---|
-| Görev | Yinelenen ayıklama | **Cevap doğrulama** |
-| LLM | Yok | Qwen3-32B-AWQ (vLLM) |
-| Yöntem | Embedding + DBSCAN + IsoForest | RAG + LLM + structured JSON |
-| Kaynak | SSS Excel'in kendisi | **Bağımsız mevzuat/kılavuz** |
-| GPU | CPU/T4 yeterli | **A100 40 GB+ zorunlu** |
-| Checkpoint | .pkl + .npy | JSONL + meta hash doğrulama |
-| Batch | Yok | 8-16 kayıt batch inference |
+Lokal bilgisayarda mock model ile 20 kayıtlık uçtan uca test:
+
+```bash
+cd google_collab_egitim
+pip install -r requirements.txt
+python scripts/run_smoke_test.py
+```
+
+Aşamalar: kaynak yükleme → chunking → embedding → retrieval → mock Qwen → 20 kayıt doğrulama → bütünlük kontrolleri.
 
 ---
 
-## ⚙️ config_v4.yaml ile Özelleştirme
+## Birim Testler
 
-Tüm eşikleri `config/config_v4.yaml`'dan değiştirebilirsiniz:
+```bash
+cd google_collab_egitim
+python -m pytest tests/ -v
+```
+
+71 test (excel_format, chunking, retrieval, json_validation, checkpoint, prompt_token_limit, output_integrity).
+
+---
+
+## Checkpoint'ten Devam
+
+Yarım kalan çalışma aynı config/model/veri ile devam eder. Checkpoint uyuşmazsa otomatik sıfırlanır.
+
+Yeniden başlatmak için: `checkpoints_v4/latest/` klasörünü silin.
+
+---
+
+## config_v4.yaml ile Özelleştirme
 
 | Parametre | Varsayılan | Açıklama |
 |---|---|---|
 | `v4.model.birincil` | Qwen/Qwen3-32B-AWQ | Birincil LLM |
 | `v4.model.yedek` | Qwen/Qwen2.5-32B-Instruct-AWQ | Yedek LLM |
-| `v4.vllm.batch_size` | 8 | Batch büyüklüğü |
-| `v4.vllm.max_model_len` | 8192 | Maksimum bağlam uzunluğu |
-| `v4.vllm.gpu_memory_utilization` | 0.88 | GPU bellek kullanımı |
+| `v4.chunk.token_boyut` | 110 | Hedef chunk token sayısı |
+| `v4.chunk.token_overlap` | 25 | Chunk örtüşme |
 | `v4.rag.top_k` | 10 | Dense retrieval aday sayısı |
-| `v4.rag.son_k` | 5 | Modele gönderilen kaynak sayısı |
+| `v4.rag.son_k` | 3 | Modele gönderilen kaynak sayısı |
 | `v4.rag.min_skor` | 0.3 | Minimum cosine eşiği |
-| `v4.chunk.boyut` | 400 | Chunk token sayısı |
-| `v4.chunk.overlap` | 80 | Chunk örtüşme |
+| `v4.vllm.max_model_len` | 4096 | Maksimum bağlam uzunluğu |
+| `v4.vllm.gpu_memory_utilization` | 0.75 | GPU bellek kullanımı |
+| `v4.vllm.batch_size` | 4 | Batch büyüklüğü |
 | `v4.guven.esik` | 0.85 | **KALİBRE EDİLMEMİŞ** |
 | `v4.checkpoint.aralik` | 100 | Her N kayıtta checkpoint |
 
 ---
 
-## 🧠 Modeller
-
-- **LLM:** `Qwen/Qwen3-32B-AWQ` (birincil) / `Qwen/Qwen2.5-32B-Instruct-AWQ` (yedek)
-- **Embedding:** `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` (768d)
-- **Inference:** vLLM (offline batch, structured JSON output, enable_thinking=False)
-
----
-
-## ❓ Sorun Giderme
+## Sık Karşılaşılan Hatalar
 
 | Sorun | Çözüm |
 |---|---|
-| GPU yetersiz | Runtime → A100 40 GB veya 80 GB seçin |
-| Kaynak bulunamadı | `data/kaynaklar/` içine en az bir .txt/.pdf/.docx koyun |
-| Excel bulunamadı | `data/input/UYDS_SSS_Listesi.xlsx` yolunu kontrol et |
-| vLLM yüklenemedi | İnternet bağlantısını kontrol et; yedek model otomatik denenir |
-| CUDA OOM | `config_v4.yaml` → `v4.vllm.gpu_memory_utilization: 0.80` |
-| Checkpoint geçersiz | Excel/config/model değişmişse otomatik sıfırlanır |
+| **GPU yetersiz** | Runtime → A100 40 GB veya 80 GB seçin |
+| **OOM (Out of Memory)** | `config_v4.yaml` → `gpu_memory_utilization: 0.70`; `max_model_len: 3072` |
+| **Kaynak bulunamadı** | `data/kaynaklar/` içine en az bir belge koyun |
+| **Excel bulunamadı** | `data/input/` yolunu kontrol et |
+| **%87 kanit_yetersiz** | Kaynak havuzu yetersiz — daha fazla belge ekleyin |
+| **vLLM yüklenemedi** | İnternet bağlantısını kontrol et; yedek model otomatik denenir |
+| **Prompt token aşımı** | Sistem otomatik kısaltır; `max_model_len` artırılabilir |
+| **vLLM sürüm uyumsuzluğu** | `pip install vllm==0.12.0 --extra-index-url https://download.pytorch.org/whl/cu128` |
+| **Tokenizer yüklenemedi** | Kelime bazlı fallback kullanılır, doğruluk biraz düşer |
+
+---
+
+## Modeller
+
+- **LLM:** `Qwen/Qwen3-32B-AWQ` (birincil) / `Qwen/Qwen2.5-32B-Instruct-AWQ` (yedek)
+- **Embedding:** `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` (768d, 128 token limit)
+- **Inference:** vLLM 0.12.0 (offline batch, structured JSON output, `enable_thinking=False`)
+
+---
+
+## Gizlilik ve Kurumsal Veri Uyarısı
+
+- **Gerçek Excel ve kurum içi kaynak belgeleri Git'e eklenmez** (`.gitignore` korumalı).
+- `data/input/*`, `data/kaynaklar/*` GitHub'a push'lanmaz.
+- Dağıtım paketi (ZIP) oluştururken `data/input/` ve `data/kaynaklar/` içindeki gerçek dosyaları çıkarın.
+- Colab'da çalışırken veriler Google Drive'ınızda kalır.
 
 ---
 
@@ -112,4 +194,4 @@ Tüm eşikleri `config/config_v4.yaml`'dan değiştirebilirsiniz:
 
 ---
 
-**HadesBot · v4.0.2 · 2026**
+**HadesBot · v4.1.0 · 2026**

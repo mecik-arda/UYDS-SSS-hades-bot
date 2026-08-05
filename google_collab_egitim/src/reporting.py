@@ -40,6 +40,7 @@ def tum_sonuclari_excel_kaydet(
     Returns:
         (cikti_df, dogrulanan_df, supheli_df, hata_sayisi)
     """
+    import json
     import pandas as pd
 
     cikti_df = df.copy()
@@ -58,12 +59,18 @@ def tum_sonuclari_excel_kaydet(
         cikti_df.at[idx, "_model"] = s.get("_model", "")
         cikti_df.at[idx, "_prompt_surumu"] = s.get("_prompt_surumu", "")
         cikti_df.at[idx, "_kural_seti_surumu"] = s.get("_kural_seti_surumu", "")
+        # Kaynak ID'lerini JSON string olarak yaz
+        cikti_df.at[idx, "_kaynak_idleri"] = json.dumps(
+            s.get("kaynak_idleri", []), ensure_ascii=False
+        )
 
     # Doğrulanan / Şüpheli ayrımı
+    # Kaynaksız "dogru" kararlarını engelle (kaynak_idleri boş değilse)
     dogrulanan_mask = (
         (cikti_df["_karar"] == "dogru")
         & (cikti_df["_guven"] >= guven_esik)
         & (~cikti_df["_islem_hatasi"].fillna(False))
+        & (cikti_df["_kaynak_idleri"] != "[]")
     )
     dogrulanan = cikti_df[dogrulanan_mask].copy()
     supheli = cikti_df[~dogrulanan_mask].copy()

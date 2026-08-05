@@ -74,3 +74,21 @@ def ornek_mesaj():
         {"role": "system", "content": "Sen bir doğrulama uzmanısın."},
         {"role": "user", "content": "Bu soruyu değerlendir."},
     ]
+
+
+@pytest.fixture
+def ornek_vektor_parcalar():
+    """Test retrieval için 3 parçalı örnek veri seti."""
+    import numpy as np
+    vektorler = np.array([
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ], dtype=np.float32)
+    vektorler = vektorler / np.linalg.norm(vektorler, axis=1, keepdims=True)
+    parcalar = [
+        {"chunk_id": 0, "dokuman": "a.pdf", "sayfa": 1, "metin": "Hakediş onayı."},
+        {"chunk_id": 1, "dokuman": "a.pdf", "sayfa": 2, "metin": "Belge kontrolü."},
+        {"chunk_id": 2, "dokuman": "b.pdf", "sayfa": 5, "metin": "İhale süreci."},
+    ]
+    return vektorler, parcalar
