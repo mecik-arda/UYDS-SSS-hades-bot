@@ -189,6 +189,11 @@ _OKUYUCULAR = {
 
 DESTEKLENEN_FORMATLAR = set(_OKUYUCULAR.keys())
 
+# Sistem tarafından üretilen, RAG kaynağı olarak taranmaması gereken dosyalar
+_RAG_DISI_DOSYALAR = {
+    "kaynak_envanteri.csv",
+}
+
 
 # ============================================================
 # Ana API
@@ -256,7 +261,7 @@ def belge_oku(
 def kaynak_dizinini_tara(kaynak_dizini: str) -> List[str]:
     """
     Kaynak dizinindeki tüm desteklenen belgeleri tarar, dosya yolları listesi döner.
-    Alt dizinleri de tarar.
+    Alt dizinleri de tarar. Sistem tarafından üretilen dosyaları (örn. envanter CSV) atlar.
     """
     dosyalar = []
     if not os.path.isdir(kaynak_dizini):
@@ -264,7 +269,7 @@ def kaynak_dizinini_tara(kaynak_dizini: str) -> List[str]:
 
     for kok, _, ds in os.walk(kaynak_dizini):
         for d in ds:
-            if d.startswith("."):
+            if d.startswith(".") or d in _RAG_DISI_DOSYALAR:
                 continue
             ext = os.path.splitext(d)[1].lower()
             if ext in DESTEKLENEN_FORMATLAR:

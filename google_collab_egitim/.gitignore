@@ -26,9 +26,6 @@ data/kaynaklar/*
 data/output_v4/
 checkpoints_v4/
 
-# --- Kaynak envanteri hariç (üretilecek) ---
-!data/kaynaklar/kaynak_envanteri.csv
-
 # --- Genel temizlik ---
 __pycache__/
 .ipynb_checkpoints/

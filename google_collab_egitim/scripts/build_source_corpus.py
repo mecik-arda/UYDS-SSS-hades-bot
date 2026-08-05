@@ -21,7 +21,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.config import (
-    KAYNAK_DIZINI, CKPT_DIZINI, EMBEDDING_MODEL,
+    KAYNAK_DIZINI, CKPT_DIZINI, CIKTI_DIZINI, EMBEDDING_MODEL,
     EMBEDDING_BATCH, CHUNK_BOYUT_TOKEN, CHUNK_OVERLAP_TOKEN,
     CHUNK_ALGORITMA_SURUMU, dizin_hashi, dizinleri_hazirla, config_ozeti,
 )
@@ -52,7 +52,7 @@ def main():
     # 1. Kaynak envanteri
     print(f"\n📋 Kaynak envanteri taranıyor: {kaynak}")
     envanter = envanter_olustur(
-        kaynak, cikti_yolu=os.path.join(kaynak, "kaynak_envanteri.csv")
+        kaynak, cikti_yolu=os.path.join(CIKTI_DIZINI, "kaynak_envanteri.csv")
     )
     if not envanter:
         raise RuntimeError(f"Hiç kaynak belge bulunamadı: {kaynak}")
