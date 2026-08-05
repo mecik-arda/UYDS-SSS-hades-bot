@@ -9,10 +9,35 @@ Checkpoint ile yeniden kullanımı destekler.
 import json
 import os
 import pickle
+import subprocess
+import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+
+def _torchcodec_kaldir() -> None:
+    """
+    torchcodec sentence-transformers metin embedding'i için gereksizdir;
+    Colab'da sistem FFmpeg'i (libavutil) ile çakışıp SentenceTransformer
+    yüklenirken patlar. Paket kuruluysa sessizce kaldırır.
+    """
+    try:
+        import importlib.metadata as _md
+        _md.version("torchcodec")
+    except Exception:
+        return
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "uninstall", "-y", "torchcodec"],
+            capture_output=True,
+            check=False,
+        )
+        sys.modules.pop("torchcodec", None)
+        print("   🧹 torchcodec kaldırıldı (FFmpeg çakışmasını önlemek için).")
+    except Exception:
+        pass
 
 
 def embedding_modeli_yukle(
@@ -20,6 +45,7 @@ def embedding_modeli_yukle(
 ):
     """SentenceTransformer modelini yükler."""
     import torch
+    _torchcodec_kaldir()
     from sentence_transformers import SentenceTransformer
 
     if cihaz == "cuda" and not torch.cuda.is_available():
@@ -77,6 +103,7 @@ def soru_embedding_olustur(
     Soru metinleri için embedding oluşturur.
     Bellek tasarrufu için CPU'da çalışır.
     """
+    _torchcodec_kaldir()
     from sentence_transformers import SentenceTransformer
 
     model = SentenceTransformer(model_adi, device=cihaz, trust_remote_code=False)
