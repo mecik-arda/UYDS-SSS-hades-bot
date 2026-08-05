@@ -6,6 +6,10 @@
 50-100 gerçek UYDS sorusunu MPNet ile encode eder, dense retrieval yapar,
 top-3 kaynakları CSV'ye yazar, Hit@1/3, Recall@3 metriklerini hesaplar.
 
+Gerçek UYDS Excel formatı desteklenir:
+  - Başlık satırı otomatik tespit (4. satır gibi)
+  - UYDS: soru = Modül + Konu + Açıklama + Yapılacak
+
 Kullanım (Colab):
   !python scripts/evaluate_retrieval.py --soru_sayisi 50
 
@@ -15,7 +19,6 @@ Kullanım (Lokal):
 
 import argparse
 import csv
-import hashlib
 import json
 import os
 import sys
@@ -36,43 +39,105 @@ from src.embeddings import (
     soru_embedding_olustur, embedding_checkpoint_yukle,
 )
 from src.retrieval import dense_kaynak_ara, rag_istatistikleri
+from src.utils import adi_normalize_et
 
 
 # ============================================================
-# Soru Yükleme
+# Soru Yükleme — Gerçek UYDS Excel Formatı
 # ============================================================
 def sorulari_yukle(excel_yolu: Optional[str] = None, max_soru: int = 50) -> List[Dict[str, str]]:
     """
-    Excel'den veya fallback soru listesinden soruları yükler.
-    Her soru: {"soru_id": ..., "soru_metni": ..., "modul": ..., "kategori": ...}
+    UYDS SSS Excel'inden soruları yükler.
+    Gerçek format: Başlık satırı 4. satırda, UYDS tipinde
+      soru = Modül + Konu + Açıklama + Yapılacak
+      cevap = Yapılan İşlem
+    Notebook'taki başlık tespiti ve alan eşleştirme mantığı kullanılır.
     """
     sorular = []
 
     if excel_yolu and os.path.exists(excel_yolu):
         try:
-            import openpyxl
-            wb = openpyxl.load_workbook(excel_yolu, read_only=True, data_only=True)
-            ws = wb.active
-            basliklar = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if len(sorular) >= max_soru:
-                    break
-                kayit = dict(zip(basliklar, row))
-                soru_metni = (
-                    kayit.get("soru") or kayit.get("Soru") or
-                    kayit.get("soru_metni") or kayit.get("SORU_METNI") or ""
-                )
-                if soru_metni and str(soru_metni).strip():
-                    sorular.append({
-                        "soru_id": str(kayit.get("soru_id") or kayit.get("SORU_ID") or kayit.get("no") or len(sorular) + 1),
-                        "soru_metni": str(soru_metni).strip(),
-                        "modul": str(kayit.get("modul") or kayit.get("MODUL") or ""),
-                        "kategori": str(kayit.get("kategori") or kayit.get("KATEGORI") or ""),
-                    })
-            wb.close()
-            print(f"   📊 Excel'den {len(sorular)} soru yüklendi: {excel_yolu}")
+            import pandas as pd
+            # Başlık satırını otomatik tespit et (notebook mantığı)
+            ham = pd.read_excel(excel_yolu, sheet_name=0, header=None, engine="openpyxl", dtype=object)
+            bilinen = {"modul", "musteri", "konu", "aciklama", "yapilacak", "yapilan islem", "kategori"}
+            baslik_satiri = next(
+                (i for i, satir in ham.head(20).iterrows()
+                 if len({adi_normalize_et(str(d)) for d in satir.tolist()} & bilinen) >= 3),
+                None,
+            )
+            if baslik_satiri is None:
+                raise ValueError("Excel başlık satırı bulunamadı.")
+
+            veri = pd.read_excel(excel_yolu, sheet_name=0, header=baslik_satiri, engine="openpyxl", dtype=object)
+            veri = veri.dropna(axis=1, how="all")
+            print(f"   ✅ Başlık: {baslik_satiri + 1}. satır, {len(veri)} kayıt")
+
+            # Kolon eşleştirme
+            mk = {adi_normalize_et(k): k for k in veri.columns}
+            H = {
+                "modul": ["modul"], "konu": ["konu"], "aciklama": ["aciklama"],
+                "yapilacak": ["yapilacak"], "yapilan_islem": ["yapilan islem", "yapilan_islem"],
+            }
+            def kle(h):
+                return {a: mk[adi_normalize_et(ad)] for a, ads in h.items() for ad in ads if adi_normalize_et(ad) in mk}
+            eslesme = kle(H)
+            ft = "uyds" if len(eslesme) >= 4 else (
+                "standart" if len(kle({"soru": ["soru"], "cevap": ["cevap"]})) >= 2 else None
+            )
+            print(f"   ✅ Format: {ft}")
+
+            def mtd(d):
+                if d is None or (isinstance(d, float) and pd.isna(d)):
+                    return ""
+                return str(int(d)) if isinstance(d, float) and d == int(d) else str(d).strip()
+
+            if ft == "uyds":
+                for a in ["modul", "konu", "aciklama", "yapilacak", "yapilan_islem"]:
+                    veri[f"_{a}"] = veri[eslesme[a]].apply(mtd) if a in eslesme else ""
+                veri["_soru_metni"] = (
+                    veri["_modul"] + "\n" + veri["_konu"] + "\n" +
+                    veri["_aciklama"] + "\n" + veri["_yapilacak"]
+                ).str.strip()
+                veri["_modul_etiket"] = veri["_modul"]
+            else:
+                se = kle({"soru": ["soru"], "cevap": ["cevap"], "kategori": ["kategori"]})
+                veri["_soru_metni"] = veri[se["soru"]].apply(mtd) if "soru" in se else ""
+                veri["_modul_etiket"] = veri[se["kategori"]].apply(mtd) if "kategori" in se else ""
+
+            # Kategori dengeli seçim
+            kategoriler = veri["_modul_etiket"].value_counts()
+            print(f"   📊 Kategori dağılımı: {dict(kategoriler.head(10))}")
+
+            # Her kategoriden orantılı seç
+            import math
+            toplam = len(veri)
+            secilen_indeksler = []
+            for kat, sayi in kategoriler.items():
+                hedef = max(1, math.ceil(max_soru * sayi / toplam))
+                kat_veri = veri[veri["_modul_etiket"] == kat]
+                al = min(hedef, len(kat_veri))
+                secilen_indeksler.extend(kat_veri.head(al).index.tolist())
+
+            # limitle
+            secilen_indeksler = secilen_indeksler[:max_soru]
+
+            for i, idx in enumerate(secilen_indeksler):
+                soru_metni = str(veri.at[idx, "_soru_metni"] or "").strip()
+                if not soru_metni:
+                    continue
+                sorular.append({
+                    "soru_id": f"S-{i+1:03d}",
+                    "soru_metni": soru_metni,
+                    "modul": str(veri.at[idx, "_modul_etiket"] or ""),
+                    "kategori": str(veri.at[idx, "_modul_etiket"] or ""),
+                })
+
+            print(f"   📊 Excel'den {len(sorular)} soru yüklendi: {os.path.basename(excel_yolu)}")
         except Exception as e:
             print(f"   ⚠️ Excel okunamadı: {e}")
+            import traceback
+            traceback.print_exc()
 
     if not sorular:
         sorular = _fallback_sorular(max_soru)
@@ -82,7 +147,7 @@ def sorulari_yukle(excel_yolu: Optional[str] = None, max_soru: int = 50) -> List
 
 
 def _fallback_sorular(max_soru: int) -> List[Dict[str, str]]:
-    """Excel yoksa kullanılacak 50+ UYDS sorusu."""
+    """Excel yoksa kullanılacak 50 UYDS sorusu."""
     tum_sorular = [
         ("S-001", "Yapı denetim izin belgesi nasıl alınır?", "mevzuat", "izin_belgesi"),
         ("S-002", "4708 sayılı kanun kapsamında laboratuvar denetimi nasıl yapılır?", "mevzuat", "laboratuvar"),
@@ -147,20 +212,10 @@ def _fallback_sorular(max_soru: int) -> List[Dict[str, str]]:
 def metrikleri_hesapla(
     degerlendirme_kayitlari: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """
-    Retrieval sonuçlarını analiz eder, metrikleri hesaplar.
-
-    Kayıt başına beklenen alanlar:
-      - etiket: "ilgili" / "kismen_ilgili" / "alakasiz" / "" (boş = insan değerlendirmesi eksik)
-      - top_1_kaynak_id, top_1_skor
-      - top_2_kaynak_id, top_2_skor
-      - top_3_kaynak_id, top_3_skor
-      - beklenen_kaynak_id (varsa)
-    """
+    """Retrieval sonuçlarını analiz eder, metrikleri hesaplar."""
     etiketli = [k for k in degerlendirme_kayitlari if k.get("etiket")]
     toplam = len(degerlendirme_kayitlari)
 
-    # Hit@1, Hit@3 (ilgili + kismen_ilgili = başarılı)
     hit1 = sum(
         1 for k in etiketli
         if k["etiket"] in ("ilgili", "kismen_ilgili") and (k.get("top_1_skor") or 0) > 0
@@ -172,21 +227,17 @@ def metrikleri_hesapla(
         )
     )
 
-    # Ortalama top-1 skor
     top1_skorlar = [k["top_1_skor"] for k in degerlendirme_kayitlari if k.get("top_1_skor", 0) > 0]
-    ortalama_top1 = np.mean(top1_skorlar) if top1_skorlar else 0.0
+    ortalama_top1 = float(np.mean(top1_skorlar)) if top1_skorlar else 0.0
 
-    # Kaynaksız soru oranı
     kaynaksiz = sum(1 for k in degerlendirme_kayitlari if not k.get("top_1_skor") or k["top_1_skor"] == 0)
 
-    # Modül bazlı kapsama
     modul_kapsama = Counter()
     for k in etiketli:
         if k["etiket"] in ("ilgili", "kismen_ilgili"):
             modul = k.get("modul", "bilinmeyen")
             modul_kapsama[modul] += 1
 
-    # Etiket dağılımı
     etiket_dagilimi = Counter(k["etiket"] for k in etiketli)
 
     return {
@@ -212,9 +263,9 @@ def degerlendirme_csv_yaz(
     """Değerlendirme sonuçlarını insan etiketlemesine uygun CSV'ye yazar."""
     alanlar = [
         "soru_id", "soru_metni", "modul", "kategori",
-        "top_1_chunk_id", "top_1_kaynak_id", "top_1_dokuman", "top_1_metin", "top_1_skor",
-        "top_2_chunk_id", "top_2_kaynak_id", "top_2_dokuman", "top_2_metin", "top_2_skor",
-        "top_3_chunk_id", "top_3_kaynak_id", "top_3_dokuman", "top_3_metin", "top_3_skor",
+        "top_1_chunk_id", "top_1_kaynak_id", "top_1_dokuman", "top_1_metin", "top_1_skor", "top_1_ilgililik",
+        "top_2_chunk_id", "top_2_kaynak_id", "top_2_dokuman", "top_2_metin", "top_2_skor", "top_2_ilgililik",
+        "top_3_chunk_id", "top_3_kaynak_id", "top_3_dokuman", "top_3_metin", "top_3_skor", "top_3_ilgililik",
         "etiket",  # INSAN_DEGERLENDIRMESI: ilgili / kismen_ilgili / alakasiz
     ]
     with open(cikti_yolu, "w", encoding="utf-8-sig", newline="") as f:
@@ -258,7 +309,6 @@ def main():
 
     # 1. Embedding checkpoint'ini yükle
     print(f"\n📦 Kaynak embedding checkpoint yükleniyor...")
-    # Kaynak dizin hash'i için data/kaynaklar'ı kullan
     notebook = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     KAYNAK_DIZINI = os.path.join(notebook, "data", "kaynaklar")
     kaynak_dizin_hash = dizin_hashi(KAYNAK_DIZINI) if os.path.isdir(KAYNAK_DIZINI) else ""
@@ -368,7 +418,6 @@ def main():
     csv_yolu = os.path.join(cikti_dizini, "retrieval_degerlendirme.csv")
     degerlendirme_csv_yaz(degerlendirme_kayitlari, csv_yolu)
 
-    # İlk metrikler (etiket yoksa sadece teknik metrikler)
     metrikler = metrikleri_hesapla(degerlendirme_kayitlari)
     metrik_yolu = os.path.join(cikti_dizini, "retrieval_metrikleri.json")
     metrik_ozeti_yaz(metrikler, metrik_yolu)
@@ -390,7 +439,6 @@ def main():
     print(f"    {csv_yolu}")
     print(f"    {metrik_yolu}")
     print(f"\n  ⚠️ CSV'deki 'etiket' sütununu insan değerlendirmesiyle doldurun,")
-    print(f"     sonra --yeniden_degerlendir ile metrikleri güncelleyin.")
 
 
 if __name__ == "__main__":
