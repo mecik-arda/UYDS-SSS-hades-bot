@@ -8,6 +8,8 @@ import pandas as pd
 from pathlib import Path
 
 class UYDSScraper:
+    MAX_DOSYA_BOYUTU = 200 * 1024 * 1024
+
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
@@ -68,7 +70,7 @@ class UYDSScraper:
             content_type = head_response.headers.get('Content-Type', '').lower()
             if 'application/pdf' in content_type:
                 return True
-        except:
+        except Exception:
             pass
             
         return False
@@ -118,9 +120,32 @@ class UYDSScraper:
                 filepath = f"{name}_{counter}{ext}"
                 counter += 1
             
+            # Content-Length ön kontrolü
+            content_length = response.headers.get('Content-Length')
+            if content_length:
+                try:
+                    boyut = int(content_length)
+                    if boyut > self.MAX_DOSYA_BOYUTU:
+                        print(f"Dosya boyut sinirini asti ({boyut} > {self.MAX_DOSYA_BOYUTU}): {url}")
+                        return None
+                except (ValueError, TypeError):
+                    pass
+
             # Dosyayı kaydetme
+            toplam = 0
             with open(filepath, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
+                    toplam += len(chunk)
+                    if toplam > self.MAX_DOSYA_BOYUTU:
+                        f.close()
+                        try:
+                            os.remove(filepath)
+                        except Exception:
+                            pass
+                        print(f"Dosya boyut sinirini asti ({toplam} > {self.MAX_DOSYA_BOYUTU}): {url}")
+                        return None
                     f.write(chunk)
             
             # SHA256 checksum

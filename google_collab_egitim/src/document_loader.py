@@ -117,7 +117,7 @@ def _xlsx_oku(dosya_yolu: str) -> List[Tuple[None, str]]:
         if satir_metinleri:
             tum_metinler.append(f"[Sayfa: {sheet_adi}]\n" + "\n".join(satir_metinleri))
     wb.close()
-    metin = "\n\n".join(tum_metinleri)
+    metin = "\n\n".join(tum_metinler)
     return [(None, metin)] if metin.strip() else []
 
 

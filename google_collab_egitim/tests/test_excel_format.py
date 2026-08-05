@@ -127,3 +127,41 @@ class TestExcelBaslikSatiri:
 
         assert baslik_satiri is not None, "Başlık satırı bulunamadı"
         assert baslik_satiri == 3, f"Başlık 4. satırda (index 3) olmalı, bulunan: {baslik_satiri}"
+
+
+class TestXlsxKaynakOkuma:
+    """document_loader.py XLSX okuma testi."""
+
+    @pytest.fixture
+    def temp_xlsx(self):
+        try:
+            import openpyxl
+        except ImportError:
+            pytest.skip("openpyxl kurulu degil")
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sayfa1"
+        ws.append(["Baslik", "Deger"])
+        ws.append(["Madde 1", "Aciklama 1"])
+        ws.append(["Madde 2", "Aciklama 2"])
+
+        ws2 = wb.create_sheet("Sayfa2")
+        ws2.append(["Kolon A", "Kolon B"])
+        ws2.append(["Veri 1", "Veri 2"])
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            wb.save(f.name)
+            yield f.name
+        os.unlink(f.name)
+
+    def test_xlsx_cok_sayfali_okunur(self, temp_xlsx):
+        from src.document_loader import _xlsx_oku
+
+        sayfalar = _xlsx_oku(temp_xlsx)
+        assert len(sayfalar) == 1
+        metin = sayfalar[0][1]
+        assert "Sayfa1" in metin
+        assert "Sayfa2" in metin
+        assert "Madde 1" in metin
+        assert "Veri 1" in metin
