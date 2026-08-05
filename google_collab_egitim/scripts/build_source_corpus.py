@@ -24,8 +24,8 @@ import csv
 import hashlib
 
 from src.config import (
-    KAYNAK_DIZINI, CKPT_DIZINI, CIKTI_DIZINI, EMBEDDING_MODEL,
-    EMBEDDING_BATCH, CHUNK_BOYUT_TOKEN, CHUNK_OVERLAP_TOKEN,
+    KAYNAK_DIZINI, CIKTI_KOK_DIZINI, CIKTI_DIZINI, CKPT_DIZINI,
+    EMBEDDING_MODEL, EMBEDDING_BATCH, CHUNK_BOYUT_TOKEN, CHUNK_OVERLAP_TOKEN,
     CHUNK_ALGORITMA_SURUMU, dizin_hashi, dizinleri_hazirla, config_ozeti,
 )
 from src.document_loader import tum_kaynaklari_yukle
@@ -55,7 +55,7 @@ def main():
     # 1. Kaynak envanteri
     print(f"\n📋 Kaynak envanteri taranıyor: {kaynak}")
     envanter = envanter_olustur(
-        kaynak, cikti_yolu=os.path.join(CIKTI_DIZINI, "kaynak_envanteri.csv")
+        kaynak, cikti_yolu=os.path.join(CIKTI_KOK_DIZINI, "kaynak_envanteri.csv")
     )
     if not envanter:
         raise RuntimeError(f"Hiç kaynak belge bulunamadı: {kaynak}")
@@ -68,17 +68,10 @@ def main():
     # 2. Belgeleri oku (envanter metadata + ilgililik filtresi ile)
     ILGILILIK_FILTRESI = ["dogrudan_ilgili", "dolayli_ilgili"]
     print(f"\n📄 Belgeler okunuyor (UYDS ilgililik filtresi: {' + '.join(ILGILILIK_FILTRESI)})...")
-    # Envanter root output_v4 seviyesinde (timestamp'li alt klasörde değil)
+    # Envanter root output_v4 seviyesinde
     envanter_csv = os.path.join(
-        os.path.dirname(CIKTI_DIZINI),  # output_v4 root
-        "kaynak_envanteri_siniflandirilmis.csv"
+        CIKTI_KOK_DIZINI, "kaynak_envanteri_siniflandirilmis.csv"
     )
-    if not os.path.exists(envanter_csv):
-        envanter_csv = os.path.join(
-            os.path.dirname(os.path.dirname(CIKTI_DIZINI)),  # data/
-            "output_v4",
-            "kaynak_envanteri_siniflandirilmis.csv"
-        )
     print(f"   📂 Envanter yolu: {envanter_csv}")
 
     # Envanter hash hesapla

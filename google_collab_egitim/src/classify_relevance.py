@@ -10,13 +10,15 @@ Envanterdeki 113 belgeyi UYDS ile ilgililiğine göre sınıflandırır:
 - manuel_inceleme: Numaralı genelgeler, belirsiz başlıklar
 """
 import os
+import sys
 import csv
 import re
 
-PROJE_KOKU = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTPUT_KOKU = os.path.join(PROJE_KOKU, "google_collab_egitim", "data", "output_v4")
-ENVANTER_YOLU = os.path.join(OUTPUT_KOKU, "kaynak_envanteri.csv")
-ENVANTER_YENI_YOLU = os.path.join(OUTPUT_KOKU, "kaynak_envanteri_siniflandirilmis.csv")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config import CIKTI_KOK_DIZINI
+
+ENVANTER_YOLU = os.path.join(CIKTI_KOK_DIZINI, "kaynak_envanteri.csv")
+ENVANTER_YENI_YOLU = os.path.join(CIKTI_KOK_DIZINI, "kaynak_envanteri_siniflandirilmis.csv")
 
 # ============================================================
 # Puan Tabanlı Sınıflandırma (v2.0)
@@ -271,7 +273,7 @@ def main():
     
     # Özet JSON
     import json
-    ozet_yolu = os.path.join(OUTPUT_KOKU, "ilgililik_ozet.json")
+    ozet_yolu = os.path.join(CIKTI_KOK_DIZINI, "ilgililik_ozet.json")
     ozet = {
         "toplam_belge": len(envanter),
         "dagilim": dict(dagilim),

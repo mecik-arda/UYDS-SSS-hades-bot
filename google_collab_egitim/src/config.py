@@ -78,6 +78,7 @@ DIZINLER = _kesfet_dizinler()
 # Kolay erişim kısayolları
 KAYNAK_DIZINI = DIZINLER["kaynak"]
 INPUT_DIZINI = DIZINLER["input"]
+CIKTI_KOK_DIZINI = os.path.join(DIZINLER["notebook"], "data", "output_v4")
 CIKTI_DIZINI = DIZINLER["cikti"]
 CKPT_DIZINI = DIZINLER["ckpt"]
 CONFIG_DIZINI = DIZINLER["config"]
