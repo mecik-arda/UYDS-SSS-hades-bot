@@ -19,11 +19,8 @@ GEREKLI_DOSYALAR = [
 ]
 
 TEMIZLENEBILIR = [
-    "checkpoints_v4/latest/kaynak_embedding",
-    "checkpoints_v4/latest/dogrulama_sonuclari.jsonl",
-    "checkpoints_v4/latest/meta.json",
-    "checkpoints_v4/latest/benchmark_sonuclari.jsonl",
-    "checkpoints_v4/latest/benchmark_meta.json",
+    "checkpoints_v4",
+    "data/checkpoints_v4",
 ]
 
 DOKUNULMAZ = ["data/input", "data/kaynaklar"]
