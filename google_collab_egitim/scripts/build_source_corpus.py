@@ -62,12 +62,32 @@ def main():
         print(f"   ⚠️ {ozet['kopya']} kopya tespit edildi")
     z.kontrol("envanter")
 
-    # 2. Belgeleri oku
-    print("\n📄 Belgeler okunuyor...")
-    belgeler = tum_kaynaklari_yukle(kaynak)
+    # 2. Belgeleri oku (envanter metadata + ilgililik filtresi ile)
+    print("\n📄 Belgeler okunuyor (UYDS ilgililik filtresi: dogrudan + dolayli)...")
+    # Envanter root output_v4 seviyesinde (timestamp'li alt klasörde değil)
+    envanter_csv = os.path.join(
+        os.path.dirname(CIKTI_DIZINI),  # output_v4 root
+        "kaynak_envanteri_siniflandirilmis.csv"
+    )
+    if not os.path.exists(envanter_csv):
+        envanter_csv = os.path.join(
+            os.path.dirname(os.path.dirname(CIKTI_DIZINI)),  # data/
+            "output_v4",
+            "kaynak_envanteri_siniflandirilmis.csv"
+        )
+    print(f"   📂 Envanter yolu: {envanter_csv}")
+    belgeler = tum_kaynaklari_yukle(
+        kaynak,
+        envanter_yolu=envanter_csv,
+        ilgililik_filtresi=["dogrudan_ilgili", "dolayli_ilgili"],
+    )
     if not belgeler:
-        raise RuntimeError("Hiç belge okunamadı!")
+        raise RuntimeError("Hiç belge okunamadı! İlgililik filtresi çok sıkı olabilir.")
     print(f"   {len(belgeler)} sayfa/belge metni okundu")
+    
+    # Metadata kontrolü
+    meta_dolu = sum(1 for b in belgeler if b.get("meta", {}).get("kaynak_id"))
+    print(f"   📋 {meta_dolu}/{len(belgeler)} belgede kaynak_id metadata'sı var")
     z.kontrol("belge_okuma")
 
     # 3. Chunk'lama

@@ -1,0 +1,27 @@
+UYDS kullanım kılavuzu filetype:pdf
+Ulusal Yapı Denetim Sistemi kullanım kılavuzu
+UYDS eğitim dokümanı filetype:pdf
+UYDS kullanıcı işlemleri
+UYDS modül kılavuzu
+UYDS hata çözümü
+UYDS yetkilendirme
+UYDS hakediş işlemleri
+UYDS yapı kayıt işlemleri
+UYDS denetçi işlemleri
+UYDS laboratuvar modülü
+UYDS personel işlemleri
+UYDS proje müellifi işlemleri
+UYDS ruhsat işlemleri
+UYDS seviye tespit tutanağı
+UYDS iş bitirme işlemleri
+UYDS yapı denetim kuruluşu işlemleri
+UYDS şantiye şefi işlemleri
+Yapı Denetimi Uygulama Yönetmeliği
+4708 sayılı Yapı Denetimi Hakkında Kanun
+yapı denetimi genelge filetype:pdf
+yapı denetimi tebliğ filetype:pdf
+UYDS duyuru
+UYDS sürüm notları
+site:csb.gov.tr UYDS
+site:yapiisleri.csb.gov.tr UYDS
+site:gov.tr "Ulusal Yapı Denetim Sistemi"

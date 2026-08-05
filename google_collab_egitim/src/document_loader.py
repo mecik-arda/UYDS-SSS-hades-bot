@@ -278,9 +278,48 @@ def kaynak_dizinini_tara(kaynak_dizini: str) -> List[str]:
     return sorted(dosyalar)
 
 
-def tum_kaynaklari_yukle(kaynak_dizini: str) -> List[Dict[str, Any]]:
+def _envanter_metadata_yukle(envanter_yolu: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Sınıflandırılmış envanter CSV'sini yükler, dosya_adi → metadata eşlemesi döner.
+    """
+    import csv as _csv
+    metadata_haritasi = {}
+    if not os.path.exists(envanter_yolu):
+        return metadata_haritasi
+    with open(envanter_yolu, "r", encoding="utf-8-sig") as f:
+        for kayit in _csv.DictReader(f):
+            dosya_adi = kayit.get("dosya_adi", "")
+            if dosya_adi:
+                metadata_haritasi[dosya_adi] = {
+                    "kaynak_id": kayit.get("kaynak_id", ""),
+                    "guven_sinifi": kayit.get("guven_sinifi", ""),
+                    "kurum": kayit.get("kurum", ""),
+                    "domain": kayit.get("domain", ""),
+                    "modul": kayit.get("modul", ""),
+                    "alt_konu": kayit.get("alt_konu", ""),
+                    "kaynak_tipi": kayit.get("kaynak_tipi", ""),
+                    "kaynak_url": kayit.get("kaynak_url", ""),
+                    "yayin_tarihi": kayit.get("yayin_tarihi", ""),
+                    "durum": kayit.get("durum", ""),
+                    "uyds_ilgililik": kayit.get("uyds_ilgililik", ""),
+                    "resmiyet_seviyesi": kayit.get("guven_sinifi", "belirsiz"),
+                }
+    return metadata_haritasi
+
+
+def tum_kaynaklari_yukle(
+    kaynak_dizini: str,
+    envanter_yolu: Optional[str] = None,
+    ilgililik_filtresi: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
     """
     Kaynak dizinindeki tüm belgeleri okur, birleşik liste döner.
+
+    Parametreler:
+      kaynak_dizini: Kaynak dosyalarının bulunduğu dizin
+      envanter_yolu: Sınıflandırılmış envanter CSV yolu (metadata için)
+      ilgililik_filtresi: Sadece bu ilgililik sınıflarındaki belgeleri al
+        (örn: ["dogrudan_ilgili", "dolayli_ilgili"])
 
     Her kayıt:
       {
@@ -289,29 +328,69 @@ def tum_kaynaklari_yukle(kaynak_dizini: str) -> List[Dict[str, Any]]:
         "sayfa": 12,
         "metin": "...",
         "meta": {
-          "kaynak_tipi": "resmi_kilavuz",  # dizin adından çıkarılır
-          "kaynak_dizini": "02_resmi_uyds_kilavuzlari",
+          "kaynak_id": "SRC-000001",
+          "kaynak_tipi": "mevzuat",
+          "guven_sinifi": "A",
+          "kurum": "Yapı İşleri Genel Müdürlüğü",
+          "modul": "mevzuat",
+          "uyds_ilgililik": "dogrudan_ilgili",
+          "kaynak_url": "https://...",
+          ...
         }
       }
     """
+    # Envanter metadata'sını yükle
+    envanter_meta = {}
+    if envanter_yolu:
+        envanter_meta = _envanter_metadata_yukle(envanter_yolu)
+        print(f"   📋 Envanter metadata yüklendi: {len(envanter_meta)} kayıt")
+
+    # İlgililik filtresi uygula
+    if ilgililik_filtresi is None:
+        ilgililik_filtresi = ["dogrudan_ilgili", "dolayli_ilgili"]
+
     dosyalar = kaynak_dizinini_tara(kaynak_dizini)
     tum_belgeler = []
+    atlanan = 0
+
     for df in dosyalar:
+        dosya_adi = os.path.basename(df)
+
         # Dizin adından kaynak tipi çıkar
         rel_yol = os.path.relpath(df, kaynak_dizini)
         dizin_adi = os.path.dirname(rel_yol).replace(os.sep, "/")
         if dizin_adi in (".", ""):
             dizin_adi = os.path.basename(kaynak_dizini)
 
+        # Envanter metadata'sını al (varsa)
         meta = {
             "kaynak_dizini": dizin_adi,
             "kaynak_tipi": _dizinden_tip_cikar(dizin_adi),
+            "resmiyet_seviyesi": "belirsiz",
         }
+
+        env_kayit = envanter_meta.get(dosya_adi)
+        if env_kayit:
+            meta.update(env_kayit)
+
+            # İlgililik filtresi
+            ilgililik = env_kayit.get("uyds_ilgililik", "")
+            if ilgililik_filtresi and ilgililik not in ilgililik_filtresi:
+                atlanan += 1
+                continue
+        elif envanter_meta:
+            # Envanter var ama bu dosya envanterde yok — atla
+            atlanan += 1
+            continue
+
         try:
             belgeler = belge_oku(df, meta=meta)
             tum_belgeler.extend(belgeler)
         except Exception as e:
-            print(f"   ⚠️ {os.path.basename(df)} okunamadı: {e}")
+            print(f"   ⚠️ {dosya_adi} okunamadı: {e}")
+
+    if atlanan > 0:
+        print(f"   🗑️ {atlanan} belge ilgililik filtresi nedeniyle atlandı")
 
     return tum_belgeler
 
