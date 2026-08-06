@@ -45,3 +45,13 @@ htmlcov/
 testler/_pytest_tmp/
 playwright-report/
 test-results/
+
+# Kok dizine tasinmis gecici dosyalar
+/testler/_ptmp/
+/google_coll
+/google_collab_egit
+
+# Takip edilmeyen notebook surumleri
+/google_collab_egitim/veri_ayiklama_v4.0.ipynb
+/google_collab_egitim/veri_ayiklama_v4.0.2.ipynb
+/google_collab_egitim/veri_ayiklama_v4.0.3.ipynb
