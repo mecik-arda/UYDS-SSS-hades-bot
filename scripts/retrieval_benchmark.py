@@ -3,9 +3,12 @@ import html as html_mod
 import json
 import math
 import statistics
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 
@@ -92,21 +95,26 @@ def _tek_sorgu_testi(
             "yeniden_siralama_etkin": False,
         }
     adaylar = sonuc.adaylar
-    aday_idleri = [int(a.sss_id) for a in adaylar[:10]]
+    aday_idleri = [int(a.sss_id) for a in adaylar[:10] if a.sss_id is not None]
     isabet = soru_id in aday_idleri
     isabet_sirasi = aday_idleri.index(soru_id) + 1 if isabet else 0
+    max_rrf = max((a.rrf_skoru for a in adaylar), default=0.0)
+    aday_sayisi = len(adaylar)
+    guven = min(aday_sayisi / 10.0, 1.0) * 0.6 + min(max_rrf * 0.4, 0.4)
+    if sonuc.yeniden_siralama_etkin:
+        guven = min(guven * 1.15, 1.0)
     return {
         "sss_id": soru_id,
         "soru": soru_metni[:200],
-        "gecen_ms": round(gecen_ms, 2),
-        "aday_sayisi": len(adaylar),
+        "gecen_ms": round(sonuc.gecen_sure_ms, 2),
+        "aday_sayisi": aday_sayisi,
         "isabet": isabet,
         "isabet_sirasi": isabet_sirasi,
         "top_1_id": aday_idleri[0] if aday_idleri else None,
         "top_3_idleri": aday_idleri[:3],
         "top_10_idleri": aday_idleri,
-        "maks_rrf": round(sonuc.maks_rrf, 4),
-        "guven_skoru": round(sonuc.guven_skoru, 4),
+        "maks_rrf": round(max_rrf, 4),
+        "guven_skoru": round(guven, 4),
         "yeniden_siralama_etkin": sonuc.yeniden_siralama_etkin,
     }
 
@@ -131,10 +139,14 @@ def _semantik_test_calistir(servis, test_senaryolari: list[dict]) -> list[dict]:
                 "gecen_ms": round((time.perf_counter() - baslangic) * 1000, 2),
             })
             continue
-        aday_idleri = [int(a.sss_id) for a in sonuc.adaylar[:10]]
+        aday_idleri = [int(a.sss_id) for a in sonuc.adaylar[:10] if a.sss_id is not None]
         beklenen = senaryo["beklenen_sss_id"]
         isabet = beklenen in aday_idleri
         isabet_sirasi = aday_idleri.index(beklenen) + 1 if isabet else 0
+        max_rrf = max((a.rrf_skoru for a in sonuc.adaylar), default=0.0)
+        guven = min(len(sonuc.adaylar) / 10.0, 1.0) * 0.6 + min(max_rrf * 0.4, 0.4)
+        if sonuc.yeniden_siralama_etkin:
+            guven = min(guven * 1.15, 1.0)
         sonuclar.append({
             "senaryo_id": senaryo["id"],
             "soru": senaryo["soru"][:200],
@@ -145,8 +157,8 @@ def _semantik_test_calistir(servis, test_senaryolari: list[dict]) -> list[dict]:
             "isabet": isabet,
             "isabet_sirasi": isabet_sirasi,
             "gecen_ms": round(gecen_ms, 2),
-            "maks_rrf": round(sonuc.maks_rrf, 4),
-            "guven_skoru": round(sonuc.guven_skoru, 4),
+            "maks_rrf": round(max_rrf, 4),
+            "guven_skoru": round(guven, 4),
         })
     return sonuclar
 

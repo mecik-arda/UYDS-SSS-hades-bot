@@ -1,8 +1,11 @@
 import argparse
 import json
 import statistics
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 
