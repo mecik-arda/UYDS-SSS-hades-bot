@@ -5,6 +5,7 @@ from uygulama.cekirdek.konfigurasyon import konfigurasyon
 from uygulama.servisler.pii_maskeleyici import PiiMaskeleyici
 from uygulama.cekirdek.veritabani import baglam_yoneticisi
 from uygulama.modeller.semalar import GeriBildirimIstegi
+from uygulama.servisler.deepseek_servisi import PROMPT_SURUMU
 from uygulama.servisler.vektor_servisi import VektorServisi
 
 
@@ -650,7 +651,7 @@ class ApiServisi:
                     int(cevaplandi_mi),
                     kullanici_adi,
                     konfigurasyon.DEEPSEEK_MODEL_ADI,
-                    "faz6-v1",
+                    PROMPT_SURUMU,
                     json.dumps(kaynak_sss_idleri, separators=(",", ":")),
                 ),
             )
