@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from pathlib import Path
@@ -23,10 +24,14 @@ _SISTEM_TALIMATI = (
     "kalibi kullan: 'Bu konuda kesin kural bulunmamakla birlikte, ilgili "
     "surec soyledir:'\n"
     "4. Kaynak atiflarini cumlenin SONUNA ekle, [Kaynak N] biciminde.\n"
-    "5. Yanitini Turkce, acik ve kisa tut. Markdown formatini kullan: "
+    "5. Kaynaklar arasinda celisen bilgiler varsa, farkli gorusleri ve "
+    "hangi kaynagin ne soyledigini acikca belirt. Hicbir tarafi atlama.\n"
+    "6. Yanitini Turkce, acik ve kisa tut. Markdown formatini kullan: "
     "**kalin** vurgular icin, * madde isaretleriyle liste olustur, duzgun "
     "paragraflara ayir."
 )
+
+PROMPT_SURUMU = hashlib.sha256(_SISTEM_TALIMATI.encode("utf-8")).hexdigest()
 
 
 class DeepSeekServisiHatasi(RuntimeError):

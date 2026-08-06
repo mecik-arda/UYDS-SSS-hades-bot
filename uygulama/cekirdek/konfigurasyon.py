@@ -79,7 +79,7 @@ class Konfigurasyon(BaseSettings):
     DOSYA_YUKLEME_MAKS_BOYUT: int = Field(default=52428800, gt=0)
     LOG_SEVIYESI: str = Field(default="INFO")
     ORTAM_PROFILI: str = Field(default="prod")
-    API_DOKUMANTASYONU_AKTIF: bool = Field(default=False)
+    API_DOKUMANTASYONU_AKTIF: bool = Field(default=True)
     RRF_K: int = Field(default=60, gt=0)
     FTS_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
     VEKTOR_ADAY_SAYISI: int = Field(default=50, gt=0, le=500)
@@ -90,7 +90,7 @@ class Konfigurasyon(BaseSettings):
         ge=0,
         le=1,
     )
-    YENIDEN_SIRALAMA_ETKIN: bool = Field(default=False)
+    YENIDEN_SIRALAMA_ETKIN: bool = Field(default=True)
     YENIDEN_SIRALAMA_MODEL_YOLU: str = Field(
         default="modeller/mmarco-mMiniLMv2-L12-H384-v1"
     )
@@ -115,7 +115,7 @@ class Konfigurasyon(BaseSettings):
     PII_MASKELEME_AKTIF: bool = Field(default=True)
     KULLANICI_SORULARINI_GIZLE: bool = Field(default=False)
     YEDEK_KAYNAK_SAYISI: int = Field(default=3, gt=0, le=10)
-    NIYET_SINIFLANDIRMA_AKTIF: bool = Field(default=False)
+    NIYET_SINIFLANDIRMA_AKTIF: bool = Field(default=True)
     NIYET_GUVEN_ESIGI: float = Field(default=0.80, ge=0, le=1)
     NIYET_EYLEMLERI_YOLU: str = Field(default="veriler/niyet_eylemleri.json")
     EPOSTA_RAPORLAMA_AKTIF: bool = Field(default=False)
