@@ -314,6 +314,48 @@ tr.isabetsiz {{ background: #fef2f2; }}
 </body></html>"""
 
 
+def _markdown_raporu_olustur(metrikler: dict, karsilastirma: list[dict], gecen_sure: float, zaman: str) -> str:
+    satirlar = []
+    satirlar.append("# Retrieval Benchmark Raporu")
+    satirlar.append("")
+    satirlar.append(f"**Tarih:** {zaman} | **Kayit:** {metrikler.get('test_edilen_kayit', 0)} | **Sure:** {gecen_sure:.1f}s")
+    satirlar.append("")
+    satirlar.append("## Metrikler")
+    satirlar.append("")
+    satirlar.append("| Metrik | Olculen |")
+    satirlar.append("|---|---|")
+    for anahtar, etiket in [
+        ("top_1_dogruluk", "Top-1 Dogruluk"),
+        ("top_3_dogruluk", "Top-3 Dogruluk"),
+        ("mrr_10", "MRR@10"),
+        ("ndcg_10", "NDCG@10"),
+        ("aday_bulma_orani", "Aday Bulma Orani"),
+        ("isabet_sayisi", "Isabet Sayisi"),
+        ("ortalama_guven", "Ortalama Guven"),
+        ("ortalama_gecikme_ms", "Ortalama Gecikme (ms)"),
+        ("p95_gecikme_ms", "P95 Gecikme (ms)"),
+        ("hata_sayisi", "Hata Sayisi"),
+    ]:
+        deger = metrikler.get(anahtar)
+        if deger is not None:
+            satirlar.append(f"| {etiket} | {deger} |")
+    satirlar.append("")
+    satirlar.append("## Hedef Karsilastirmasi")
+    satirlar.append("")
+    satirlar.append("| Metrik | Olculen | Hedef | Durum |")
+    satirlar.append("|---|---|---|---|")
+    for k in karsilastirma:
+        satirlar.append(f'| {k["metrik"]} | %{k["olculen"]} | %{k["hedef"]} | {k["durum"]} |')
+    if metrikler.get("semantik_top_1_dogruluk") is not None:
+        satirlar.append("")
+        satirlar.append("## Semantik Test")
+        satirlar.append("")
+        satirlar.append(f'- Top-1: %{metrikler["semantik_top_1_dogruluk"]}')
+        satirlar.append(f'- Top-3: %{metrikler["semantik_top_3_dogruluk"]}')
+        satirlar.append(f'- MRR@10: {metrikler.get("semantik_mrr_10")}')
+    return "\n".join(satirlar)
+
+
 def main() -> None:
     ayrıştırıcı = argparse.ArgumentParser(description="Retrieval benchmark — gercek Excel ile metrik olcumu")
     ayrıştırıcı.add_argument("--orneklem", type=int, default=100, help="Test edilecek kayit sayisi (0=tumu)")
@@ -357,6 +399,10 @@ def main() -> None:
     html_yolu = cikti_dizini / f"benchmark_{zaman_damgasi}.html"
     html_yolu.write_text(html, encoding="utf-8")
     print(f"HTML rapor: {html_yolu}")
+    md = _markdown_raporu_olustur(metrikler, karsilastirma, gecen, zaman_damgasi)
+    md_yolu = cikti_dizini / f"benchmark_{zaman_damgasi}.md"
+    md_yolu.write_text(md, encoding="utf-8")
+    print(f"Markdown rapor: {md_yolu}")
     if argumanlar.json:
         json_yolu = cikti_dizini / f"benchmark_{zaman_damgasi}.json"
         json_yolu.write_text(json.dumps({
