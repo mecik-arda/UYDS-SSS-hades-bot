@@ -30,7 +30,7 @@ venv/
 
 # Test ve karşılaştırma sonuçları
 test_sonucu.txt
-/testler/benchmark/raporlar/
+/testler/benchmark/
 /testler/karsilastirma/raporlar/
 /testler/test_tum_sorular_benchmark.py
 /testler/test_benchmark_lokal.py
@@ -42,5 +42,6 @@ htmlcov/
 .pytest_cache/
 .pytest_tmp*/
 .pytest_sandbox_*/
+testler/_pytest_tmp/
 playwright-report/
 test-results/
