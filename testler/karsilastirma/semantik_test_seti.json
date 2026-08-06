@@ -1,0 +1,107 @@
+[
+  {
+    "id": "STM-001",
+    "soru": "UYDS sistemi üzerinde yeni bir kullanıcı tanımlamak için hangi adımlar izlenmeli?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Kullanici tanimlama",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-002",
+    "soru": "E-fatura gönderimi sırasında hata kodu alıyorum, nereden kontrol edebilirim?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "E-fatura hata kodlari",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-003",
+    "soru": "İhale sürecinde teklif zarfları ne zaman ve kim tarafından açılır?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Teklif zarfi acma islemi",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-004",
+    "soru": "Geçici kabul için hangi evrakların sisteme yüklenmesi gerekiyor?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Gecici kabul evraklari",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-005",
+    "soru": "Sözleşme bedeli üzerinden damga vergisi hesaplaması nasıl yapılır?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Damga vergisi hesaplama",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-006",
+    "soru": "Hesabıma giriş yapamıyorum, şifre yenileme işlemini nasıl başlatabilirim?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Sifre yenileme",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-007",
+    "soru": "Firmaya ait banka hesap bilgilerini hangi menüden güncelleyebilirim?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Banka hesap guncelleme",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-008",
+    "soru": "Satın alma talebinde onay akışına takıldı, hangi yetkiliye ulaşmalıyım?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Satin alma onay akisi",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-009",
+    "soru": "Malzeme giriş fişi ile irsaliye arasındaki miktar farkını sisteme nasıl yansıtırım?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Irsaliye miktar farki",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-010",
+    "soru": "Geçmiş dönem faturalarını toplu olarak dışa aktarmak mümkün mü?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Fatura toplu disa aktarim",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-011",
+    "soru": "Performans değerlendirme formunu doldururken hangi kriterleri baz almalıyım?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Performans degerlendirme kriterleri",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-012",
+    "soru": "Yıllık izin talebimi sistemden oluşturdum ama yönetici onayına düşmedi, sebebi nedir?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Izin onay akisi",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-013",
+    "soru": "Dövizli fatura girişinde kur farkını muhasebeleştirmek için hangi hesap kodları kullanılır?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Dovizli fatura kur farki",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-014",
+    "soru": "Kar zarar raporunda dönem karşılaştırması yaparken geçen yılın verilerini göremiyorum",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Kar zarar donem karsilastirma",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  },
+  {
+    "id": "STM-015",
+    "soru": "Çalışan bordrosunda AGİ hesaplaması neden sıfır görünüyor, güncel mevzuata uygun mu?",
+    "beklenen_sss_id": null,
+    "orijinal_soru": "Bordro AGI hesaplama",
+    "not": "beklenen_sss_id gercek Excel'deki SSS ID'si ile doldurulmali"
+  }
+]
