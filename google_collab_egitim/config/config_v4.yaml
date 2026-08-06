@@ -31,15 +31,15 @@ v4:
 
   # --- Tokenizer Tabanlı Chunking ---
   chunk:
-    token_boyut: 110            # Hedef token sayısı (~embedding 128 limitine uygun)
-    token_overlap: 25           # Chunk'lar arası overlap token sayısı
-    min_token: 20               # Alt sınır (daha kısası komşuyla birleşir)
+    token_boyut: 256            # Hedef token (110->256: Türkçe mevzuat için anlamlı bağlam)
+    token_overlap: 50           # Chunk'lar arası overlap token (~%20)
+    min_token: 40               # Alt sınır (20->40: çok kısa chunk'lar birleşir)
 
   # --- RAG Retrieval ---
   rag:
     top_k: 10                   # Dense retrieval aday sayısı
-    son_k: 3                    # Modele gönderilecek kaynak parçası sayısı
-    min_skor: 0.3               # Minimum cosine benzerlik eşiği
+    son_k: 5                    # Modele gönderilecek kaynak parçası (3->5)
+    min_skor: 0.25              # Minimum cosine benzerlik (0.3->0.25: mpnet Türkçe skorları düşük)
     ayni_dokuman_chunk_limit: 2 # Aynı dokümandan en fazla N chunk
 
   # --- Güven Eşiği (KALİBRE EDİLMEMİŞ) ---
