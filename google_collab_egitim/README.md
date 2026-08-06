@@ -24,10 +24,10 @@ google_collab_egitim/
 ├── .gitignore
 ├── config/
 │   └── config_v4.yaml             ← Tüm eşikler burada
-├── src/                           ← Modüler Python kütüphanesi (12 modül)
+├── src/                           ← Modüler Python kütüphanesi (22 modül)
 │   ├── config.py                  ← YAML config, dizin keşfi, hash
 │   ├── document_loader.py         ← PDF/DOCX/TXT/MD/XLSX/CSV/JSON/JSONL
-│   ├── chunking.py                ← Tokenizer tabanlı chunking (110/25)
+│   ├── chunking.py                ← Tokenizer tabanlı chunking (256/50)
 │   ├── source_inventory.py        ← SHA-256 envanter, kopya tespiti
 │   ├── utils.py                   ← Metin temizleme, GPU bellek, zamanlayıcı
 │   ├── embeddings.py              ← SentenceTransformer + checkpoint
@@ -35,8 +35,20 @@ google_collab_egitim/
 │   ├── prompt_builder.py          ← Chat template token kontrolü
 │   ├── validator.py               ← JSON çıktı doğrulama (6 kural)
 │   ├── checkpoint.py              ← JSONL checkpoint yönetimi
-│   └── reporting.py               ← Excel/JSON/grafik çıktıları
-├── tests/                         ← 71 birim test (pytest)
+│   ├── reporting.py               ← Excel/JSON/grafik çıktıları
+│   ├── excel_format.py            ← Excel başlık algılama, UYDS eşleme
+│   ├── ocr_helpers.py             ← Taranmış PDF OCR pipeline
+│   ├── source_validation.py       ← Kaynak güvenlik kapısı
+│   ├── classify_relevance.py      ← Kaynak ilgililik sınıflandırma
+│   ├── gap_analysis.py            ← Kaynak kapsama analizi
+│   ├── verify_sources.py          ← Kaynak bütünlük doğrulama
+│   ├── download_sources.py        ← Mevzuat kaynak indirme
+│   ├── download_all_sources.py    ← Toplu kaynak indirme
+│   ├── collect_links.py           ← Kaynak bağlantı toplama
+│   ├── final_report.py            ← Nihai rapor çıktısı
+│   ├── web_scraper.py             ← Web kazıma
+│   └── source_inventory.py        ← Dosya envanter yönetimi
+├── tests/                         ← 107 birim test (pytest, 7 dosya)
 │   ├── test_excel_format.py       ← Başlık algılama, UYDS eşleme
 │   ├── test_chunking.py           ← Cümle ayırma, tokenizer chunking
 │   ├── test_retrieval.py          ← Dense RAG, min_skor, aynı doküman limiti
@@ -47,7 +59,10 @@ google_collab_egitim/
 ├── scripts/
 │   ├── build_source_corpus.py     ← Kaynak havuzu inşa betiği
 │   ├── run_smoke_test.py          ← Mock model ile 20 kayıt uçtan uca test
-│   └── validate_outputs.py        ← Çıktı bütünlüğü kontrol aracı
+│   ├── validate_outputs.py        ← Çıktı bütünlüğü kontrol aracı
+│   ├── evaluate_retrieval.py      ← Retrieval değerlendirmesi (Hit@k)
+│   ├── prepare_colab.py           ← Colab ortam hazırlık
+│   └── validate_notebook.py       ← Notebook yapısal doğrulama
 └── data/
     ├── input/                     ← UYDS Excel'i buraya (.gitignore korumalı)
     └── kaynaklar/                 ← Referans belgeler (.gitignore korumalı)
@@ -62,6 +77,8 @@ google_collab_egitim/
 ---
 
 ## Hızlı Başlangıç
+
+Ayrıntılı adım adım talimatlar ve komutlar için **[COLAB_KULLANIM.md](COLAB_KULLANIM.md)** dosyasına bakın. Aşağıda özet çalışma sırası verilmiştir:
 
 ### 1. Kaynak Belgeleri Ekle
 
@@ -79,14 +96,38 @@ google_collab_egitim/
 
 `google_collab_egitim/` klasörünün tamamını Google Drive → MyDrive'a yükleyin.
 
-### 4. Colab'da Çalıştır
+### 4. Ön Hazırlık (Colab veya Lokal)
+
+```bash
+# Kaynak ilgililik sınıflandırması
+python src/classify_relevance.py
+
+# Corpus ve embedding üretimi
+python scripts/build_source_corpus.py --cpu --force
+
+# Retrieval değerlendirmesi (örnek 50 soru)
+python scripts/evaluate_retrieval.py --soru_sayisi 50 --cpu
+```
+
+### 5. Smoke Test (GPU Gerektirmez)
+
+20 kayıt mock model ile uçtan uca test; kalite kapıları:
+- İşlem hatası < %5 (zorunlu)
+- Ortalama kaynak kullanımı > 1 (zorunlu)
+
+```bash
+python scripts/run_smoke_test.py
+```
+
+### 6. Colab'da Çalıştır
 
 1. `veri_ayiklama_v4.1.ipynb` → Google Colab'da aç
 2. Runtime → Change runtime type → **A100 GPU**
 3. `Disconnect and delete runtime` ile temiz başlangıç
-4. `Run All`
+4. Hücreleri sırayla çalıştır (Hücre 0-8)
+5. Benchmark (Hücre 5) kalite kapıları geçmeden tam çalışmaya geçilmez
 
-### 5. Çıktıları Al
+### 7. Çıktıları Al
 
 `data/output_v4/YYYY-MM-DD_HHMM/` içinde:
 
@@ -124,7 +165,7 @@ cd google_collab_egitim
 python -m pytest tests/ -v
 ```
 
-71 test (excel_format, chunking, retrieval, json_validation, checkpoint, prompt_token_limit, output_integrity).
+107 test (excel_format, chunking, retrieval, json_validation, checkpoint, prompt_token_limit, output_integrity).
 
 ---
 
@@ -142,11 +183,11 @@ Yeniden başlatmak için: `checkpoints_v4/latest/` klasörünü silin.
 |---|---|---|
 | `v4.model.birincil` | Qwen/Qwen3-32B-AWQ | Birincil LLM |
 | `v4.model.yedek` | Qwen/Qwen2.5-32B-Instruct-AWQ | Yedek LLM |
-| `v4.chunk.token_boyut` | 110 | Hedef chunk token sayısı |
-| `v4.chunk.token_overlap` | 25 | Chunk örtüşme |
+| `v4.chunk.token_boyut` | 256 | Hedef chunk token sayısı |
+| `v4.chunk.token_overlap` | 50 | Chunk örtüşme |
 | `v4.rag.top_k` | 10 | Dense retrieval aday sayısı |
-| `v4.rag.son_k` | 3 | Modele gönderilen kaynak sayısı |
-| `v4.rag.min_skor` | 0.3 | Minimum cosine eşiği |
+| `v4.rag.son_k` | 5 | Modele gönderilen kaynak sayısı |
+| `v4.rag.min_skor` | 0.25 | Minimum cosine eşiği |
 | `v4.vllm.max_model_len` | 4096 | Maksimum bağlam uzunluğu |
 | `v4.vllm.gpu_memory_utilization` | 0.75 | GPU bellek kullanımı |
 | `v4.vllm.batch_size` | 4 | Batch büyüklüğü |
@@ -163,7 +204,7 @@ Yeniden başlatmak için: `checkpoints_v4/latest/` klasörünü silin.
 | **OOM (Out of Memory)** | `config_v4.yaml` → `gpu_memory_utilization: 0.70`; `max_model_len: 3072` |
 | **Kaynak bulunamadı** | `data/kaynaklar/` içine en az bir belge koyun |
 | **Excel bulunamadı** | `data/input/` yolunu kontrol et |
-| **%87 kanit_yetersiz** | Kaynak havuzu yetersiz — daha fazla belge ekleyin |
+| **>%80 kanit_yetersiz** | Kaynak havuzu yetersiz veya soru-kaynak domain uyumsuzluğu — daha fazla belge ekleyin veya domain'i kontrol edin |
 | **vLLM yüklenemedi** | İnternet bağlantısını kontrol et; yedek model otomatik denenir |
 | **Prompt token aşımı** | Sistem otomatik kısaltır; `max_model_len` artırılabilir |
 | **vLLM sürüm uyumsuzluğu** | `pip install vllm==0.12.0 --extra-index-url https://download.pytorch.org/whl/cu128` |

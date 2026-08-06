@@ -20,7 +20,7 @@ MyDrive/
     ├── .gitignore
     ├── config/
     │   └── config_v4.yaml
-    ├── src/               (12 modül)
+    ├── src/               (22 modül)
     ├── scripts/
     ├── tests/
     └── data/
@@ -97,7 +97,7 @@ Bu, `data/output_v4/kaynak_envanteri_siniflandirilmis.csv` üretir.
 Bu adım:
 - Sınıflandırılmış envanteri yükler (hash kontrolü ile)
 - Sadece `dogrudan_ilgili` + `dolayli_ilgili` belgeleri okur
-- Tokenizer tabanlı chunking (110 token, 25 overlap)
+- Tokenizer tabanlı chunking (256 token, 50 overlap)
 - MPNet embedding üretir
 - `checkpoints_v4/latest/kaynak_embedding/` kaydeder
 
@@ -138,9 +138,11 @@ Notebook Hücre 0-5'i çalıştırın. Hücre 5 benchmark için `BENCHMARK_KAYIT
 BENCHMARK_KAYIT = min(20, len(veri))  # 100 yerine 20
 ```
 
-**Kalite kapıları:**
-- İşlem hatası < %5
-- Kanıt yetersiz < %80
+**Kalite kapıları (notebook Hücre 5 benchmark):**
+- İşlem hatası < %5 (geçemezse `RuntimeError`)
+- Kanıt yetersiz < %80 (geçemezse `RuntimeError`)
+
+**Not:** `scripts/run_smoke_test.py` script'inde kanıt yetersiz > %80 yalnızca **uyarı** üretir, fail sayılmaz. Gerçek A100 benchmark'ında her iki kapı da zorunludur.
 
 Geçemezse tam çalıştırmaya geçmeyin.
 
