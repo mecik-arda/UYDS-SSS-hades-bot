@@ -55,3 +55,7 @@ test-results/
 /google_collab_egitim/veri_ayiklama_v4.0.ipynb
 /google_collab_egitim/veri_ayiklama_v4.0.2.ipynb
 /google_collab_egitim/veri_ayiklama_v4.0.3.ipynb
+
+# Insan dogrulama sonuclari (gercek SSS ID'leri icerir)
+/testler/benchmark/insan_dogrulama_sonuclari.json
+/testler/benchmark/gold_benchmark_v1.json
