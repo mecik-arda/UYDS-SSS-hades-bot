@@ -127,7 +127,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Playwright tarayıcısını önbellekten yükle
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-onbellek
         with:
           path: ~/.cache/ms-playwright
