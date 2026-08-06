@@ -15,6 +15,13 @@ _YETERSIZ_BILGI_YANITI = (
 _URETIM_HATASI_YANITI = "Yanıt üretimi şu anda tamamlanamadı"
 
 
+_CELISKI_SSS_BILGI_METNI = (
+    "Dikkat: Asagidaki kaynaklar arasinda benzer konuda farkli veya celisen bilgiler "
+    "tespit edilmistir. Yanitinda her iki kaynagin ne soyledigini belirt ve "
+    "kullanicidan hangi baglamda oldugunu dogrulamasini iste."
+)
+
+
 class AkisServisi:
     def __init__(
         self,
@@ -73,6 +80,11 @@ class AkisServisi:
             )
             yield self._olay_olustur("tamamlandi", {"cevaplandi": False})
             return
+
+        celiski_bilgisi = self._celiski_tespit_et(kaynaklar)
+        if celiski_bilgisi["celiski_var"]:
+            yield self._olay_olustur("celiski", celiski_bilgisi)
+
         niyet_sonucu = None
         if self._niyet_siniflandirici is not None:
             niyet_sonucu = self._niyet_siniflandirici.siniflandir(temiz_soru)
@@ -93,9 +105,12 @@ class AkisServisi:
                 )
         gecmis = await self._oturum_hafizasi.mesajlari_al(oturum_id)
         yanit_parcalari = []
+        etkili_soru = temiz_soru
+        if celiski_bilgisi["celiski_var"]:
+            etkili_soru = f"{_CELISKI_SSS_BILGI_METNI}\n\nSORU: {temiz_soru}"
         try:
             async for parca in self._deepseek_servisi.yanit_akisini_uret(
-                temiz_soru,
+                etkili_soru,
                 kaynaklar,
                 gecmis,
             ):
@@ -145,6 +160,53 @@ class AkisServisi:
         if not skorlar:
             return 0.0
         return round(max(0.0, min(1.0, max(skorlar))), 6)
+
+    def _celiski_tespit_et(
+        self,
+        kaynaklar: tuple[AramaAdayi, ...],
+    ) -> dict:
+        if len(kaynaklar) < 2:
+            return {"celiski_var": False, "ilgili_sss_idler": [], "aciklama": ""}
+
+        modul_gruplari: dict[str, list[AramaAdayi]] = {}
+        for aday in kaynaklar:
+            dokuman = aday.kaynak_dokuman or ""
+            if dokuman not in modul_gruplari:
+                modul_gruplari[dokuman] = []
+            modul_gruplari[dokuman].append(aday)
+
+        celiskiler = []
+        for modul, adaylar in modul_gruplari.items():
+            if len(adaylar) < 2:
+                continue
+            skorlar = [a.rrf_skoru for a in adaylar]
+            skor_araligi = max(skorlar) - min(skorlar)
+            if skor_araligi > 0.15:
+                continue
+            metin_uzunluklari = [len(a.aday_metni) for a in adaylar]
+            if max(metin_uzunluklari) > 0 and min(metin_uzunluklari) / max(metin_uzunluklari) < 0.3:
+                continue
+            celiski_adaylari = [a for a in adaylar if a.sss_id is not None]
+            if len(celiski_adaylari) >= 2:
+                celiskiler.append({
+                    "modul": modul,
+                    "ilgili_sss_idler": [a.sss_id for a in celiski_adaylari],
+                    "skor_benzerligi": round(skor_araligi, 4),
+                })
+
+        if celiskiler:
+            tum_idler: list[int] = []
+            for c in celiskiler:
+                for sss_id in c["ilgili_sss_idler"]:
+                    if sss_id not in tum_idler:
+                        tum_idler.append(sss_id)
+            return {
+                "celiski_var": True,
+                "ilgili_sss_idler": tum_idler,
+                "aciklama": f"{len(celiskiler)} belge grubunda benzer skorlu farkli SSS kaydi tespit edildi",
+                "detay": celiskiler,
+            }
+        return {"celiski_var": False, "ilgili_sss_idler": [], "aciklama": ""}
 
     def _kaynak_ozetlerini_olustur(
         self,
