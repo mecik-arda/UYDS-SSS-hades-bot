@@ -3,29 +3,29 @@
 # ============================================================
 
 # --- Embedding Model ---
-sentence-transformers==3.4.1
+sentence-transformers==6.2.0
 
 # --- Dosya İşleme ---
 openpyxl==3.1.5
-pypdf>=5.0
-python-docx>=1.1
-pyyaml>=6.0
+pypdf>=6.21.4
+python-docx>=1.2.0
+pyyaml>=6.0.3
 
 # --- Veri İşleme ---
-numpy>=1.26,<2.0
-pandas>=2.0
-pyarrow==18.1.0
+numpy>=2.4.6,<3.0
+pandas>=3.1.0
+pyarrow==26.0.0
 
 # --- İlerleme Çubuğu ---
-tqdm==4.67.1
+tqdm==4.70.1
 
 # --- Görselleştirme ---
-matplotlib>=3.7
+matplotlib>=3.11.2
 
 # --- LLM Inference ---
-vllm==0.12.0
-transformers>=4.45
+vllm==0.32.0
+transformers>=5.22.0
 
 # --- Test (opsiyonel, Colab dışı) ---
-pytest>=7.0
-pytest-mock>=3.0
+pytest>=9.2.0
+pytest-mock>=3.17.0
